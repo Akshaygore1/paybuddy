@@ -1,4 +1,4 @@
-import { Toaster } from "@my-better-t-app/ui/components/sonner";
+import { Toaster } from "@paybuddy/ui/components/sonner";
 import { QueryClientProvider } from "@tanstack/react-query";
 
 import "./index.css";

@@ -3,15 +3,15 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "my-better-t-app",
+      "name": "paybuddy",
       "dependencies": {
-        "@my-better-t-app/env": "workspace:*",
+        "@paybuddy/env": "workspace:*",
         "dotenv": "catalog:",
         "zod": "catalog:",
       },
       "devDependencies": {
         "@cloudflare/workers-types": "catalog:",
-        "@my-better-t-app/config": "workspace:*",
+        "@paybuddy/config": "workspace:*",
         "@types/node": "^22.13.14",
         "rolldown": "1.1.0",
         "typescript": "catalog:",
@@ -22,10 +22,10 @@
       "name": "server",
       "dependencies": {
         "@hono/trpc-server": "^0.4.0",
-        "@my-better-t-app/api": "workspace:*",
-        "@my-better-t-app/auth": "workspace:*",
-        "@my-better-t-app/db": "workspace:*",
-        "@my-better-t-app/env": "workspace:*",
+        "@paybuddy/api": "workspace:*",
+        "@paybuddy/auth": "workspace:*",
+        "@paybuddy/db": "workspace:*",
+        "@paybuddy/env": "workspace:*",
         "@trpc/server": "catalog:",
         "better-auth": "catalog:",
         "dotenv": "catalog:",
@@ -35,7 +35,7 @@
       },
       "devDependencies": {
         "@cloudflare/workers-types": "catalog:",
-        "@my-better-t-app/config": "workspace:*",
+        "@paybuddy/config": "workspace:*",
         "@types/node": "^22.13.14",
         "alchemy": "catalog:",
         "tsdown": "^0.21.9",
@@ -46,10 +46,10 @@
     "apps/web": {
       "name": "web",
       "dependencies": {
-        "@my-better-t-app/api": "workspace:*",
-        "@my-better-t-app/auth": "workspace:*",
-        "@my-better-t-app/env": "workspace:*",
-        "@my-better-t-app/ui": "workspace:*",
+        "@paybuddy/api": "workspace:*",
+        "@paybuddy/auth": "workspace:*",
+        "@paybuddy/env": "workspace:*",
+        "@paybuddy/ui": "workspace:*",
         "@react-router/fs-routes": "^7.14.1",
         "@react-router/node": "^7.14.1",
         "@react-router/serve": "^7.14.1",
@@ -70,7 +70,7 @@
         "zod": "catalog:",
       },
       "devDependencies": {
-        "@my-better-t-app/config": "workspace:*",
+        "@paybuddy/config": "workspace:*",
         "@react-router/dev": "^7.14.1",
         "@tailwindcss/vite": "^4.2.2",
         "@tanstack/react-query-devtools": "^5.91.1",
@@ -86,11 +86,11 @@
       },
     },
     "packages/api": {
-      "name": "@my-better-t-app/api",
+      "name": "@paybuddy/api",
       "dependencies": {
-        "@my-better-t-app/auth": "workspace:*",
-        "@my-better-t-app/db": "workspace:*",
-        "@my-better-t-app/env": "workspace:*",
+        "@paybuddy/auth": "workspace:*",
+        "@paybuddy/db": "workspace:*",
+        "@paybuddy/env": "workspace:*",
         "@trpc/client": "catalog:",
         "@trpc/server": "catalog:",
         "dotenv": "catalog:",
@@ -98,47 +98,47 @@
         "zod": "catalog:",
       },
       "devDependencies": {
-        "@my-better-t-app/config": "workspace:*",
+        "@paybuddy/config": "workspace:*",
         "hono": "catalog:",
         "typescript": "catalog:",
       },
     },
     "packages/auth": {
-      "name": "@my-better-t-app/auth",
+      "name": "@paybuddy/auth",
       "dependencies": {
-        "@my-better-t-app/db": "workspace:*",
-        "@my-better-t-app/env": "workspace:*",
+        "@paybuddy/db": "workspace:*",
+        "@paybuddy/env": "workspace:*",
         "better-auth": "catalog:",
         "dotenv": "catalog:",
         "zod": "catalog:",
       },
       "devDependencies": {
-        "@my-better-t-app/config": "workspace:*",
+        "@paybuddy/config": "workspace:*",
         "typescript": "catalog:",
       },
     },
     "packages/config": {
-      "name": "@my-better-t-app/config",
+      "name": "@paybuddy/config",
       "version": "0.0.0",
     },
     "packages/db": {
-      "name": "@my-better-t-app/db",
+      "name": "@paybuddy/db",
       "dependencies": {
         "@libsql/client": "0.15.15",
-        "@my-better-t-app/env": "workspace:*",
+        "@paybuddy/env": "workspace:*",
         "dotenv": "catalog:",
         "drizzle-orm": "catalog:",
         "libsql": "0.5.22",
         "zod": "catalog:",
       },
       "devDependencies": {
-        "@my-better-t-app/config": "workspace:*",
+        "@paybuddy/config": "workspace:*",
         "drizzle-kit": "^0.31.8",
         "typescript": "catalog:",
       },
     },
     "packages/env": {
-      "name": "@my-better-t-app/env",
+      "name": "@paybuddy/env",
       "version": "0.0.0",
       "dependencies": {
         "@t3-oss/env-core": "^0.13.1",
@@ -146,26 +146,26 @@
         "zod": "catalog:",
       },
       "devDependencies": {
-        "@my-better-t-app/config": "workspace:*",
-        "@my-better-t-app/infra": "workspace:*",
+        "@paybuddy/config": "workspace:*",
+        "@paybuddy/infra": "workspace:*",
         "@types/node": "^22.13.14",
         "typescript": "catalog:",
       },
     },
     "packages/infra": {
-      "name": "@my-better-t-app/infra",
+      "name": "@paybuddy/infra",
       "dependencies": {
         "dotenv": "catalog:",
         "zod": "catalog:",
       },
       "devDependencies": {
-        "@my-better-t-app/config": "workspace:*",
+        "@paybuddy/config": "workspace:*",
         "alchemy": "catalog:",
         "typescript": "catalog:",
       },
     },
     "packages/ui": {
-      "name": "@my-better-t-app/ui",
+      "name": "@paybuddy/ui",
       "version": "0.0.0",
       "dependencies": {
         "@base-ui/react": "^1.0.0",
@@ -182,7 +182,7 @@
         "tw-animate-css": "^1.3.4",
       },
       "devDependencies": {
-        "@my-better-t-app/config": "workspace:*",
+        "@paybuddy/config": "workspace:*",
         "@types/react": "catalog:",
         "@types/react-dom": "catalog:",
         "tailwindcss": "^4.1.18",
@@ -578,19 +578,19 @@
 
     "@mswjs/interceptors": ["@mswjs/interceptors@0.41.9", "", { "dependencies": { "@open-draft/deferred-promise": "^2.2.0", "@open-draft/logger": "^0.3.0", "@open-draft/until": "^2.0.0", "is-node-process": "^1.2.0", "outvariant": "^1.4.3", "strict-event-emitter": "^0.5.1" } }, "sha512-VVPPgHyQ6ShqnrmDWuxjmUIsO9gWyOZFmuOfLd9LfBGQJwZfy0gvv9pbHSJuoFNIYC7ZDX9aoFwowjcdSC4E8w=="],
 
-    "@my-better-t-app/api": ["@my-better-t-app/api@workspace:packages/api"],
+    "@paybuddy/api": ["@paybuddy/api@workspace:packages/api"],
 
-    "@my-better-t-app/auth": ["@my-better-t-app/auth@workspace:packages/auth"],
+    "@paybuddy/auth": ["@paybuddy/auth@workspace:packages/auth"],
 
-    "@my-better-t-app/config": ["@my-better-t-app/config@workspace:packages/config"],
+    "@paybuddy/config": ["@paybuddy/config@workspace:packages/config"],
 
-    "@my-better-t-app/db": ["@my-better-t-app/db@workspace:packages/db"],
+    "@paybuddy/db": ["@paybuddy/db@workspace:packages/db"],
 
-    "@my-better-t-app/env": ["@my-better-t-app/env@workspace:packages/env"],
+    "@paybuddy/env": ["@paybuddy/env@workspace:packages/env"],
 
-    "@my-better-t-app/infra": ["@my-better-t-app/infra@workspace:packages/infra"],
+    "@paybuddy/infra": ["@paybuddy/infra@workspace:packages/infra"],
 
-    "@my-better-t-app/ui": ["@my-better-t-app/ui@workspace:packages/ui"],
+    "@paybuddy/ui": ["@paybuddy/ui@workspace:packages/ui"],
 
     "@napi-rs/wasm-runtime": ["@napi-rs/wasm-runtime@1.1.5", "", { "dependencies": { "@tybys/wasm-util": "^0.10.2" }, "peerDependencies": { "@emnapi/core": "^1.7.1", "@emnapi/runtime": "^1.7.1" } }, "sha512-AWPoBRJ9tsnVhor4sjO7rkni+7p+2IAEFj6cx06UgP10jkQHqay/36uRV/bFkgrh18D9vb4cr8Q0Pthskgzy+Q=="],
 

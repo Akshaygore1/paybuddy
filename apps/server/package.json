@@ -9,10 +9,10 @@
   },
   "dependencies": {
     "@hono/trpc-server": "^0.4.0",
-    "@my-better-t-app/api": "workspace:*",
-    "@my-better-t-app/auth": "workspace:*",
-    "@my-better-t-app/db": "workspace:*",
-    "@my-better-t-app/env": "workspace:*",
+    "@paybuddy/api": "workspace:*",
+    "@paybuddy/auth": "workspace:*",
+    "@paybuddy/db": "workspace:*",
+    "@paybuddy/env": "workspace:*",
     "@trpc/server": "catalog:",
     "better-auth": "catalog:",
     "dotenv": "catalog:",
@@ -22,7 +22,7 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "catalog:",
-    "@my-better-t-app/config": "workspace:*",
+    "@paybuddy/config": "workspace:*",
     "@types/node": "^22.13.14",
     "alchemy": "catalog:",
     "tsdown": "^0.21.9",

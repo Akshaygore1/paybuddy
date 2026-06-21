@@ -1,10 +1,10 @@
-import { Button } from "@my-better-t-app/ui/components/button";
+import { Button } from "@paybuddy/ui/components/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@my-better-t-app/ui/components/dropdown-menu";
+} from "@paybuddy/ui/components/dropdown-menu";
 import { Moon, Sun } from "lucide-react";
 
 import { useTheme } from "@/components/theme-provider";

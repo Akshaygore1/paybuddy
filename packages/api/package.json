@@ -1,5 +1,5 @@
 {
-  "name": "@my-better-t-app/api",
+  "name": "@paybuddy/api",
   "type": "module",
   "exports": {
     ".": {
@@ -11,9 +11,9 @@
   },
   "scripts": {},
   "dependencies": {
-    "@my-better-t-app/auth": "workspace:*",
-    "@my-better-t-app/db": "workspace:*",
-    "@my-better-t-app/env": "workspace:*",
+    "@paybuddy/auth": "workspace:*",
+    "@paybuddy/db": "workspace:*",
+    "@paybuddy/env": "workspace:*",
     "@trpc/client": "catalog:",
     "@trpc/server": "catalog:",
     "dotenv": "catalog:",
@@ -21,7 +21,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@my-better-t-app/config": "workspace:*",
+    "@paybuddy/config": "workspace:*",
     "hono": "catalog:",
     "typescript": "catalog:"
   }

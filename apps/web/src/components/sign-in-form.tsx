@@ -4,9 +4,9 @@ import {
   FieldError,
   FieldGroup,
   FieldLabel,
-} from "@my-better-t-app/ui/components/field";
-import { Button } from "@my-better-t-app/ui/components/button";
-import { Input } from "@my-better-t-app/ui/components/input";
+} from "@paybuddy/ui/components/field";
+import { Button } from "@paybuddy/ui/components/button";
+import { Input } from "@paybuddy/ui/components/input";
 import { useForm } from "@tanstack/react-form";
 import { toast } from "sonner";
 import z from "zod";

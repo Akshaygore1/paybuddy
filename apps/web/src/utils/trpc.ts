@@ -1,5 +1,5 @@
-import type { AppRouter } from "@my-better-t-app/api/routers/index";
-import { env } from "@my-better-t-app/env/web";
+import type { AppRouter } from "@paybuddy/api/routers/index";
+import { env } from "@paybuddy/env/web";
 import { QueryCache, QueryClient } from "@tanstack/react-query";
 import { createTRPCClient, httpBatchLink } from "@trpc/client";
 import { createTRPCOptionsProxy } from "@trpc/tanstack-react-query";

@@ -1,4 +1,4 @@
-import { Button } from "@my-better-t-app/ui/components/button";
+import { Button } from "@paybuddy/ui/components/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -7,8 +7,8 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@my-better-t-app/ui/components/dropdown-menu";
-import { Skeleton } from "@my-better-t-app/ui/components/skeleton";
+} from "@paybuddy/ui/components/dropdown-menu";
+import { Skeleton } from "@paybuddy/ui/components/skeleton";
 import { Link, useNavigate } from "react-router";
 
 import { authClient } from "@/lib/auth-client";

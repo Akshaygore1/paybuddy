@@ -1,13 +1,13 @@
-import { Button } from "@my-better-t-app/ui/components/button";
+import { Button } from "@paybuddy/ui/components/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@my-better-t-app/ui/components/card";
-import { Checkbox } from "@my-better-t-app/ui/components/checkbox";
-import { Input } from "@my-better-t-app/ui/components/input";
+} from "@paybuddy/ui/components/card";
+import { Checkbox } from "@paybuddy/ui/components/checkbox";
+import { Input } from "@paybuddy/ui/components/input";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Loader2, Trash2 } from "lucide-react";
 import { useState, type FormEvent } from "react";

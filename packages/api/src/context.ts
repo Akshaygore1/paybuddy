@@ -1,4 +1,4 @@
-import { createAuth } from "@my-better-t-app/auth";
+import { createAuth } from "@paybuddy/auth";
 import type { Context as HonoContext } from "hono";
 
 export type CreateContextOptions = {

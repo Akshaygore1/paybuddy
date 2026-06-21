@@ -1,5 +1,5 @@
 {
-  "name": "@my-better-t-app/db",
+  "name": "@paybuddy/db",
   "type": "module",
   "exports": {
     ".": {
@@ -14,14 +14,14 @@
   },
   "dependencies": {
     "@libsql/client": "0.15.15",
-    "@my-better-t-app/env": "workspace:*",
+    "@paybuddy/env": "workspace:*",
     "dotenv": "catalog:",
     "drizzle-orm": "catalog:",
     "libsql": "0.5.22",
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@my-better-t-app/config": "workspace:*",
+    "@paybuddy/config": "workspace:*",
     "drizzle-kit": "^0.31.8",
     "typescript": "catalog:"
   }

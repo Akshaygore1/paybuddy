@@ -22,8 +22,8 @@ const TITLE_TEXT = `
 
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: "my-better-t-app" },
-    { name: "description", content: "my-better-t-app is a web application" },
+    { title: "paybuddy" },
+    { name: "description", content: "paybuddy is a web application" },
   ];
 }
 

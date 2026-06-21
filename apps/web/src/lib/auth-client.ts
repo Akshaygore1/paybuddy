@@ -1,4 +1,4 @@
-import { env } from "@my-better-t-app/env/web";
+import { env } from "@paybuddy/env/web";
 import { inferAdditionalFields } from "better-auth/client/plugins";
 import { createAuthClient } from "better-auth/react";
 

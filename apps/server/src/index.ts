@@ -1,10 +1,10 @@
 import { trpcServer } from "@hono/trpc-server";
-import { createContext } from "@my-better-t-app/api/context";
-import { appRouter } from "@my-better-t-app/api/routers/index";
-import { createAuth, userRoles } from "@my-better-t-app/auth";
-import { createDb } from "@my-better-t-app/db";
-import { user } from "@my-better-t-app/db/schema/auth";
-import { env } from "@my-better-t-app/env/server";
+import { createContext } from "@paybuddy/api/context";
+import { appRouter } from "@paybuddy/api/routers/index";
+import { createAuth, userRoles } from "@paybuddy/auth";
+import { createDb } from "@paybuddy/db";
+import { account, session, user } from "@paybuddy/db/schema/auth";
+import { env } from "@paybuddy/env/server";
 import { APIError } from "better-auth";
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
@@ -21,6 +21,10 @@ const bootstrapUserSchema = z.object({
   email: z.email("Invalid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
   role: z.enum(userRoles),
+});
+
+const bootstrapDeleteUserSchema = z.object({
+  email: z.email("Invalid email address"),
 });
 
 app.use(logger());
@@ -98,9 +102,15 @@ app.post("/api/bootstrap/users", async (c) => {
       },
     });
 
+    const [persistedUser] = await db
+      .update(user)
+      .set({ role })
+      .where(eq(user.id, result.user.id))
+      .returning();
+
     return c.json(
       {
-        user: result.user,
+        user: persistedUser ?? { ...result.user, role },
       },
       201,
     );
@@ -118,6 +128,56 @@ app.post("/api/bootstrap/users", async (c) => {
 
     throw error;
   }
+});
+
+app.delete("/api/bootstrap/users", async (c) => {
+  const providedSecret = c.req.header("x-bootstrap-secret");
+
+  if (!providedSecret || providedSecret !== env.BOOTSTRAP_API_SECRET) {
+    return c.json(
+      {
+        message: "Invalid bootstrap secret",
+      },
+      401,
+    );
+  }
+
+  const json = await c.req.json().catch(() => null);
+  const parsedBody = bootstrapDeleteUserSchema.safeParse(json);
+
+  if (!parsedBody.success) {
+    return c.json(
+      {
+        message: "Invalid request body",
+        issues: parsedBody.error.flatten(),
+      },
+      400,
+    );
+  }
+
+  const { email } = parsedBody.data;
+  const existingUser = await db.select({ id: user.id }).from(user).where(eq(user.email, email)).get();
+
+  if (!existingUser) {
+    return c.json(
+      {
+        message: "User not found",
+      },
+      404,
+    );
+  }
+
+  await db.delete(session).where(eq(session.userId, existingUser.id));
+  await db.delete(account).where(eq(account.userId, existingUser.id));
+
+  const [deletedUser] = await db.delete(user).where(eq(user.id, existingUser.id)).returning();
+
+  return c.json(
+    {
+      user: deletedUser,
+    },
+    200,
+  );
 });
 
 app.on(["POST", "GET"], "/api/auth/*", (c) => auth.handler(c.req.raw));

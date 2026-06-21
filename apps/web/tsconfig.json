@@ -10,7 +10,7 @@
     "rootDirs": [".", "./.react-router/types"],
     "paths": {
       "@/*": ["./src/*"],
-      "@my-better-t-app/ui/*": ["../../packages/ui/src/*"]
+      "@paybuddy/ui/*": ["../../packages/ui/src/*"]
     },
     "esModuleInterop": true,
     "verbatimModuleSyntax": true,

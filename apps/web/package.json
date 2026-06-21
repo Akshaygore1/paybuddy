@@ -9,10 +9,10 @@
     "dev:bare": "react-router dev"
   },
   "dependencies": {
-    "@my-better-t-app/api": "workspace:*",
-    "@my-better-t-app/auth": "workspace:*",
-    "@my-better-t-app/env": "workspace:*",
-    "@my-better-t-app/ui": "workspace:*",
+    "@paybuddy/api": "workspace:*",
+    "@paybuddy/auth": "workspace:*",
+    "@paybuddy/env": "workspace:*",
+    "@paybuddy/ui": "workspace:*",
     "@react-router/fs-routes": "^7.14.1",
     "@react-router/node": "^7.14.1",
     "@react-router/serve": "^7.14.1",
@@ -33,7 +33,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@my-better-t-app/config": "workspace:*",
+    "@paybuddy/config": "workspace:*",
     "@react-router/dev": "^7.14.1",
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/react-query-devtools": "^5.91.1",

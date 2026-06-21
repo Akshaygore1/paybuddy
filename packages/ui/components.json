@@ -12,11 +12,11 @@
   },
   "iconLibrary": "lucide",
   "aliases": {
-    "components": "@my-better-t-app/ui/components",
-    "utils": "@my-better-t-app/ui/lib/utils",
-    "hooks": "@my-better-t-app/ui/hooks",
-    "lib": "@my-better-t-app/ui/lib",
-    "ui": "@my-better-t-app/ui/components"
+    "components": "@paybuddy/ui/components",
+    "utils": "@paybuddy/ui/lib/utils",
+    "hooks": "@paybuddy/ui/hooks",
+    "lib": "@paybuddy/ui/lib",
+    "ui": "@paybuddy/ui/components"
   },
   "menuColor": "default",
   "menuAccent": "subtle",

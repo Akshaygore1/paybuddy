@@ -1,5 +1,5 @@
-import { createDb } from "@my-better-t-app/db";
-import { todo } from "@my-better-t-app/db/schema/todo";
+import { createDb } from "@paybuddy/db";
+import { todo } from "@paybuddy/db/schema/todo";
 import { eq } from "drizzle-orm";
 import z from "zod";
 

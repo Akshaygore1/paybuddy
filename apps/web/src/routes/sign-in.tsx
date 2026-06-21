@@ -5,7 +5,7 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@my-better-t-app/ui/components/card";
+} from "@paybuddy/ui/components/card";
 import { Navigate } from "react-router";
 
 import SignInForm from "@/components/sign-in-form";

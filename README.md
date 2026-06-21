@@ -7,7 +7,7 @@ This project is a **full-stack Cloudflare Workers app** built with the [Better-T
 ## Project Structure
 
 ```
-my-better-t-app/
+paybuddy/
 ├── apps/
 │   ├── web/                    # React Router SPA frontend (Vite)
 │   │   └── src/
@@ -110,7 +110,7 @@ tRPC routers live in `packages/api/src/routers/`.
 
 ```ts
 // packages/api/src/routers/items.ts
-import { createDb } from "@my-better-t-app/db";
+import { createDb } from "@paybuddy/db";
 import { z } from "zod";
 import { router, publicProcedure, protectedProcedure } from "../index";
 
@@ -217,7 +217,7 @@ Migrations are applied automatically when you run `bun run dev` or `bun run depl
 If you need to apply them manually (e.g. to production), use:
 
 ```bash
-bunx wrangler d1 migrations apply my-better-t-app-db --remote
+bunx wrangler d1 migrations apply paybuddy-db --remote
 ```
 
 > **Tip:** The migration directory is configured in `packages/infra/alchemy.run.ts`:
@@ -293,7 +293,7 @@ Better Auth manages four tables: `user`, `session`, `account` (OAuth links), `ve
 bun run deploy
 ```
 
-This runs `vp run --filter @my-better-t-app/infra deploy` which calls `alchemy deploy`.
+This runs `vp run --filter @paybuddy/infra deploy` which calls `alchemy deploy`.
 
 Alchemy will:
 1. Build the server Worker and web app

@@ -1,5 +1,5 @@
 import { initTRPC, TRPCError } from "@trpc/server";
-import type { UserRole } from "@my-better-t-app/auth";
+import type { UserRole } from "@paybuddy/auth";
 
 import type { Context } from "./context";
 

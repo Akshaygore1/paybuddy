@@ -1,5 +1,5 @@
 {
-  "name": "my-better-t-app",
+  "name": "paybuddy",
   "private": true,
   "workspaces": {
     "packages": [
@@ -36,18 +36,18 @@
     "hooks:setup": "vp config",
     "dev:web": "vp run --filter web dev",
     "dev:server": "vp run --filter server dev",
-    "db:generate": "vp run --filter @my-better-t-app/db db:generate",
-    "deploy": "vp run --filter @my-better-t-app/infra deploy",
-    "destroy": "vp run --filter @my-better-t-app/infra destroy"
+    "db:generate": "vp run --filter @paybuddy/db db:generate",
+    "deploy": "vp run --filter @paybuddy/infra deploy",
+    "destroy": "vp run --filter @paybuddy/infra destroy"
   },
   "dependencies": {
-    "@my-better-t-app/env": "workspace:*",
+    "@paybuddy/env": "workspace:*",
     "dotenv": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "catalog:",
-    "@my-better-t-app/config": "workspace:*",
+    "@paybuddy/config": "workspace:*",
     "@types/node": "^22.13.14",
     "rolldown": "1.1.0",
     "typescript": "catalog:",
