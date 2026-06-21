@@ -1,11 +1,11 @@
 import { Navigate } from "react-router";
-import { PageHeader } from "@/components/page-header";
-import { Button } from "@paybuddy/ui/components/button";
 
 import Loader from "@/components/loader";
+import { PageHeader } from "@/components/page-header";
+import { Button } from "@paybuddy/ui/components/button";
 import { authClient } from "@/lib/auth-client";
 
-export default function Dashboard() {
+export default function Settings() {
   const { data: session, isPending } = authClient.useSession();
 
   if (isPending) {
@@ -19,8 +19,9 @@ export default function Dashboard() {
   return (
     <section className="p-6">
       <PageHeader
-        title="Dashboard"
+        title="Settings"
         description="Update your account preferences and profile details."
+        action={<Button>Save changes</Button>}
       />
     </section>
   );

@@ -1,14 +1,6 @@
 import { Button } from "@paybuddy/ui/components/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@paybuddy/ui/components/dropdown-menu";
 import { Skeleton } from "@paybuddy/ui/components/skeleton";
+import { LogOutIcon } from "lucide-react";
 import { Link, useNavigate } from "react-router";
 
 import { authClient } from "@/lib/auth-client";
@@ -30,31 +22,20 @@ export default function UserMenu() {
   }
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger render={<Button variant="outline" />}>
-        {session.user.name}
-      </DropdownMenuTrigger>
-      <DropdownMenuContent className="bg-card">
-        <DropdownMenuGroup>
-          <DropdownMenuLabel>My Account</DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem>{session.user.email}</DropdownMenuItem>
-          <DropdownMenuItem
-            variant="destructive"
-            onClick={() => {
-              authClient.signOut({
-                fetchOptions: {
-                  onSuccess: () => {
-                    navigate("/");
-                  },
-                },
-              });
-            }}
-          >
-            Sign Out
-          </DropdownMenuItem>
-        </DropdownMenuGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <Button
+      variant="outline"
+      onClick={() => {
+        authClient.signOut({
+          fetchOptions: {
+            onSuccess: () => {
+              navigate("/sign-in");
+            },
+          },
+        });
+      }}
+    >
+      {/*<LogOutIcon />*/}
+      Sign Out
+    </Button>
   );
 }

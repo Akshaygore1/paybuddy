@@ -4,6 +4,11 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import "./index.css";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import {
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@paybuddy/ui/components/sidebar";
+import {
   isRouteErrorResponse,
   Links,
   Meta,
@@ -14,7 +19,7 @@ import {
 } from "react-router";
 
 import type { Route } from "./+types/root";
-import Header from "./components/header";
+import AppSidebar from "./components/app-sidebar";
 import Loader from "./components/loader";
 import { ThemeProvider } from "./components/theme-provider";
 import { queryClient } from "./utils/trpc";
@@ -49,20 +54,36 @@ export function HydrateFallback() {
 
 export default function App() {
   const location = useLocation();
-  const isAuthRoute = location.pathname === "/sign-in" || location.pathname === "/login";
+  const isAuthRoute = location.pathname === "/sign-in";
 
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider
         attribute="class"
-        defaultTheme="dark"
+        defaultTheme="light"
+        forcedTheme="light"
         disableTransitionOnChange
+        enableSystem={false}
         storageKey="vite-ui-theme"
       >
-        <div className="grid grid-rows-[auto_1fr] h-svh">
-          {isAuthRoute ? null : <Header />}
+        {isAuthRoute ? (
           <Outlet />
-        </div>
+        ) : (
+          <SidebarProvider>
+            <AppSidebar />
+            <SidebarInset>
+              <header className="sticky top-0 z-20 flex h-14 items-center border-b border-border/70 bg-background/80 px-4 backdrop-blur">
+                <SidebarTrigger />
+                <div className="ml-3 min-w-0">
+                  <p className="text-sm font-semibold tracking-tight">Paybuddy</p>
+                </div>
+              </header>
+              <div className="min-w-0 flex-1">
+                <Outlet />
+              </div>
+            </SidebarInset>
+          </SidebarProvider>
+        )}
         <Toaster richColors />
       </ThemeProvider>
       <ReactQueryDevtools position="bottom" buttonPosition="bottom-right" />
