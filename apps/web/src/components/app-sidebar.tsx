@@ -13,13 +13,13 @@ import {
   SidebarSeparator,
 } from "@paybuddy/ui/components/sidebar";
 import {
-  ArrowLeftRightIcon,
+  Building2Icon,
   LayoutDashboardIcon,
-  SettingsIcon,
   WalletCardsIcon,
-  WalletIcon,
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router";
+
+import { authClient } from "@/lib/auth-client";
 
 import UserMenu from "./user-menu";
 
@@ -30,24 +30,29 @@ const navigationItems = [
     icon: LayoutDashboardIcon,
   },
   {
-    title: "Transactions",
-    to: "/transactions",
-    icon: ArrowLeftRightIcon,
-  },
-  {
-    title: "Wallet",
-    to: "/wallet",
-    icon: WalletIcon,
-  },
-  {
-    title: "Settings",
-    to: "/settings",
-    icon: SettingsIcon,
+    title: "Employee",
+    to: "/employee",
+    icon: WalletCardsIcon,
   },
 ];
 
 export default function AppSidebar() {
   const location = useLocation();
+  const { data: session } = authClient.useSession();
+  const visibleNavigationItems = (() => {
+    if (session?.user.role === "admin") {
+      return [
+        navigationItems[0],
+        {
+          title: "Institution",
+          to: "/institutions",
+          icon: Building2Icon,
+        },
+      ];
+    }
+
+    return navigationItems;
+  })();
 
   return (
     <Sidebar collapsible="icon">
@@ -68,7 +73,7 @@ export default function AppSidebar() {
           <SidebarGroupLabel>Overview</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navigationItems.map((item) => (
+              {visibleNavigationItems.map((item) => (
                 <SidebarMenuItem key={item.to}>
                   <SidebarMenuButton
                     render={<NavLink to={item.to} end />}

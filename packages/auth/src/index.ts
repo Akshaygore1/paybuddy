@@ -3,6 +3,9 @@ import * as schema from "@paybuddy/db/schema/auth";
 import { env } from "@paybuddy/env/server";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { admin } from "better-auth/plugins/admin";
+import { username } from "better-auth/plugins/username";
+import { z } from "zod";
 export { authAdditionalUserFields, type UserRole, userRoles } from "./shared";
 import { authAdditionalUserFields } from "./shared";
 
@@ -22,6 +25,17 @@ export function createAuth() {
     user: {
       additionalFields: authAdditionalUserFields,
     },
+    plugins: [
+      username({
+        maxUsernameLength: 254,
+        usernameValidator: (value) =>
+          z.email().safeParse(value).success || /^[a-zA-Z0-9_.]+$/.test(value),
+      }),
+      admin({
+        adminRoles: ["admin"],
+        defaultRole: "user",
+      }),
+    ],
     // uncomment cookieCache setting when ready to deploy to Cloudflare using *.workers.dev domains
     // session: {
     //   cookieCache: {

@@ -1,5 +1,5 @@
 import type { UserRole } from "./auth-schema";
 
-export function getDefaultRouteForRole(_role: UserRole) {
-  return "/dashboard";
+export function getDefaultRouteForRole(role: UserRole) {
+  return role === "admin" ? "/dashboard" : "/employee";
 }

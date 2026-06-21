@@ -20,28 +20,31 @@ export default function SignInForm() {
 
   const form = useForm({
     defaultValues: {
-      email: "",
+      identifier: "",
       password: "",
     },
     onSubmit: async ({ value }) => {
-      await authClient.signIn.email(
-        {
-          email: value.email,
-          password: value.password,
-        },
-        {
-          onSuccess: () => {
-            toast.success("Sign in successful");
-          },
-          onError: (error) => {
-            toast.error(error.error.message || error.error.statusText);
-          },
-        },
-      );
+      const normalizedIdentifier = value.identifier.trim();
+      const result = await (normalizedIdentifier.includes("@")
+        ? authClient.signIn.email({
+            email: normalizedIdentifier,
+            password: value.password,
+          })
+        : authClient.signIn.username({
+            username: normalizedIdentifier,
+            password: value.password,
+          }));
+
+      if (result.error) {
+        toast.error(result.error.message || result.error.statusText);
+        return;
+      }
+
+      toast.success("Sign in successful");
     },
     validators: {
       onSubmit: z.object({
-        email: z.email("Invalid email address"),
+        identifier: z.string().trim().min(1, "Email or username is required"),
         password: z.string().min(8, "Password must be at least 8 characters"),
       }),
     },
@@ -61,24 +64,26 @@ export default function SignInForm() {
       className="flex flex-col gap-5"
     >
       <FieldGroup>
-        <form.Field name="email">
+        <form.Field name="identifier">
           {(field) => {
             const hasError = field.state.meta.errors.length > 0;
 
             return (
               <Field data-invalid={hasError || undefined}>
-                <FieldLabel htmlFor={field.name}>Email</FieldLabel>
+                <FieldLabel htmlFor={field.name}>Email or Username</FieldLabel>
                 <Input
                   id={field.name}
                   name={field.name}
-                  type="email"
-                  autoComplete="email"
+                  type="text"
+                  autoComplete="username"
                   value={field.state.value}
                   onBlur={field.handleBlur}
                   onChange={(e) => field.handleChange(e.target.value)}
                   aria-invalid={hasError}
                 />
-                <FieldDescription>Use the email address tied to your account.</FieldDescription>
+                <FieldDescription>
+                  Admins can sign in with email. Institution accounts sign in with username.
+                </FieldDescription>
                 <FieldError errors={field.state.meta.errors} />
               </Field>
             );

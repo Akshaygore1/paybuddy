@@ -15,6 +15,13 @@
       "when": 1781977390351,
       "tag": "0001_right_talisman",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1782050766521,
+      "tag": "0002_little_dagger",
+      "breakpoints": true
     }
   ]
 }

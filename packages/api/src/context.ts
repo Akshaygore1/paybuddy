@@ -11,6 +11,7 @@ export async function createContext({ context }: CreateContextOptions) {
   });
   return {
     auth: null,
+    headers: context.req.raw.headers,
     session,
   };
 }
