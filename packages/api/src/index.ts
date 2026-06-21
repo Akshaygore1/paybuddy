@@ -1,4 +1,5 @@
 import { initTRPC, TRPCError } from "@trpc/server";
+import type { UserRole } from "@my-better-t-app/auth";
 
 import type { Context } from "./context";
 
@@ -20,6 +21,24 @@ export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
     ctx: {
       ...ctx,
       session: ctx.session,
+    },
+  });
+});
+
+export const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
+  if (ctx.session.user.role !== "admin") {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Admin role required",
+    });
+  }
+
+  return next({
+    ctx: {
+      ...ctx,
+      session: ctx.session as typeof ctx.session & {
+        user: typeof ctx.session.user & { role: Extract<UserRole, "admin"> };
+      },
     },
   });
 });

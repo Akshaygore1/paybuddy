@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@my-better-t-app/api": "workspace:*",
+    "@my-better-t-app/auth": "workspace:*",
     "@my-better-t-app/env": "workspace:*",
     "@my-better-t-app/ui": "workspace:*",
     "@react-router/fs-routes": "^7.14.1",

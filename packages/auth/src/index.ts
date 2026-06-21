@@ -3,6 +3,8 @@ import * as schema from "@my-better-t-app/db/schema/auth";
 import { env } from "@my-better-t-app/env/server";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+export { authAdditionalUserFields, type UserRole, userRoles } from "./shared";
+import { authAdditionalUserFields } from "./shared";
 
 export function createAuth() {
   const db = createDb();
@@ -16,6 +18,9 @@ export function createAuth() {
     trustedOrigins: [env.CORS_ORIGIN],
     emailAndPassword: {
       enabled: true,
+    },
+    user: {
+      additionalFields: authAdditionalUserFields,
     },
     // uncomment cookieCache setting when ready to deploy to Cloudflare using *.workers.dev domains
     // session: {

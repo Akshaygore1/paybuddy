@@ -10,32 +10,27 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  useLocation,
 } from "react-router";
 
 import type { Route } from "./+types/root";
 import Header from "./components/header";
+import Loader from "./components/loader";
 import { ThemeProvider } from "./components/theme-provider";
 import { queryClient } from "./utils/trpc";
 
-export const links: Route.LinksFunction = () => [
-  { rel: "preconnect", href: "https://fonts.googleapis.com" },
-  { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-  {
-    rel: "stylesheet",
-    href: "https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap",
-  },
-];
+export const links: Route.LinksFunction = () => [];
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <Meta />
         <Links />
       </head>
-      <body>
+      <body suppressHydrationWarning>
         {children}
         <ScrollRestoration />
         <Scripts />
@@ -44,7 +39,18 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
+export function HydrateFallback() {
+  return (
+    <main className="grid min-h-svh place-items-center px-4">
+      <Loader />
+    </main>
+  );
+}
+
 export default function App() {
+  const location = useLocation();
+  const isAuthRoute = location.pathname === "/sign-in" || location.pathname === "/login";
+
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider
@@ -54,7 +60,7 @@ export default function App() {
         storageKey="vite-ui-theme"
       >
         <div className="grid grid-rows-[auto_1fr] h-svh">
-          <Header />
+          {isAuthRoute ? null : <Header />}
           <Outlet />
         </div>
         <Toaster richColors />

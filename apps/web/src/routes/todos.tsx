@@ -11,15 +11,22 @@ import { Input } from "@my-better-t-app/ui/components/input";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Loader2, Trash2 } from "lucide-react";
 import { useState, type FormEvent } from "react";
+import { Navigate } from "react-router";
 
 import { trpc } from "@/utils/trpc";
+import Loader from "@/components/loader";
+import { authClient } from "@/lib/auth-client";
 
 type TodoId = number;
 
 export default function Todos() {
   const [newTodoText, setNewTodoText] = useState("");
+  const { data: session, isPending } = authClient.useSession();
 
-  const todos = useQuery(trpc.todo.getAll.queryOptions());
+  const todos = useQuery({
+    ...trpc.todo.getAll.queryOptions(),
+    enabled: !!session,
+  });
   const createMutation = useMutation(
     trpc.todo.create.mutationOptions({
       onSuccess: () => {
@@ -57,6 +64,14 @@ export default function Todos() {
   const handleDeleteTodo = (id: TodoId) => {
     deleteMutation.mutate({ id });
   };
+
+  if (isPending) {
+    return <Loader />;
+  }
+
+  if (!session) {
+    return <Navigate to="/sign-in" replace />;
+  }
 
   return (
     <div className="w-full mx-auto max-w-md py-10">
