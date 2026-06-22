@@ -14,6 +14,7 @@ import {
 } from "@paybuddy/ui/components/sidebar";
 import {
   Building2Icon,
+  BriefcaseBusinessIcon,
   LayoutDashboardIcon,
   WalletCardsIcon,
 } from "lucide-react";
@@ -33,6 +34,11 @@ const navigationItems = [
     title: "Employee",
     to: "/employee",
     icon: WalletCardsIcon,
+  },
+  {
+    title: "Employee Setup",
+    to: "/institution-settings",
+    icon: BriefcaseBusinessIcon,
   },
 ];
 

@@ -22,6 +22,20 @@
       "when": 1782050766521,
       "tag": "0002_little_dagger",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1782066513270,
+      "tag": "0003_nasty_warpath",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1782119714053,
+      "tag": "0004_public_wolverine",
+      "breakpoints": true
     }
   ]
 }

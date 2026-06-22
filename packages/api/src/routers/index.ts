@@ -1,4 +1,6 @@
 import { protectedProcedure, publicProcedure, router } from "../index";
+import { employeeSettingsRouter } from "./employee-settings";
+import { employeesRouter } from "./employees";
 import { institutionsRouter } from "./institutions";
 
 export const appRouter = router({
@@ -11,6 +13,8 @@ export const appRouter = router({
       user: ctx.session.user,
     };
   }),
+  employeeSettings: employeeSettingsRouter,
+  employees: employeesRouter,
   institutions: institutionsRouter,
 });
 export type AppRouter = typeof appRouter;
