@@ -59,7 +59,9 @@ export default function EmployeeIndexPage() {
                   {employeesQuery.data.map((employee) => (
                     <tr className="border-b align-top" key={employee.id}>
                       <td className="py-3 pr-4">
-                        <p className="font-medium">{employee.fullName}</p>
+                        <p className="font-medium">
+                          {employee.surname}, {employee.firstName} {employee.middleName}
+                        </p>
                         <p className="text-muted-foreground">
                           PAN: {employee.panNumber || "Not provided"}
                         </p>

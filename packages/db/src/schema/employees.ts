@@ -60,7 +60,9 @@ export const employees = sqliteTable(
     institutionId: text("institution_id")
       .notNull()
       .references(() => institutions.id, { onDelete: "cascade" }),
-    fullName: text("full_name").notNull(),
+    firstName: text("first_name").notNull(),
+    middleName: text("middle_name").notNull(),
+    surname: text("surname").notNull(),
     designationId: text("designation_id")
       .notNull()
       .references(() => employeeDesignations.id, { onDelete: "restrict" }),

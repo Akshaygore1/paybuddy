@@ -93,12 +93,6 @@ app.post("/api/bootstrap/users", async (c) => {
         email,
         name,
         password,
-        role,
-      } as {
-        email: string;
-        name: string;
-        password: string;
-        role: (typeof userRoles)[number];
       },
     });
 

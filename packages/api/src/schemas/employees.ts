@@ -64,7 +64,9 @@ export const addCustomFieldSchema = z.object({
 });
 
 export const createEmployeeSchema = z.object({
-  fullName: requiredTextSchema.max(160, "Employee name is too long"),
+  firstName: requiredTextSchema.max(160, "First name is too long"),
+  middleName: requiredTextSchema.max(160, "Middle name is too long"),
+  surname: requiredTextSchema.max(160, "Surname is too long"),
   designationId: requiredTextSchema,
   seniorityRank: z.coerce
     .number()

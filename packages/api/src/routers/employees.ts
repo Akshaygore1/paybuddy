@@ -24,7 +24,9 @@ export const employeesRouter = router({
     const employeeRows = await db
       .select({
         id: employees.id,
-        fullName: employees.fullName,
+        firstName: employees.firstName,
+        middleName: employees.middleName,
+        surname: employees.surname,
         panNumber: employees.panNumber,
         pfNumber: employees.pfNumber,
         npsAccountNumber: employees.npsAccountNumber,
@@ -44,7 +46,8 @@ export const employeesRouter = router({
       .orderBy(
         asc(employees.seniorityRank),
         asc(employeeDesignations.sortOrder),
-        asc(employees.fullName),
+        asc(employees.surname),
+        asc(employees.firstName),
       );
 
     const employeeIds = employeeRows.map((row) => row.id);
@@ -158,7 +161,9 @@ export const employeesRouter = router({
       .values({
         id: crypto.randomUUID(),
         institutionId: ctx.institution.id,
-        fullName: input.fullName.trim(),
+        firstName: input.firstName.trim(),
+        middleName: input.middleName.trim(),
+        surname: input.surname.trim(),
         designationId: input.designationId,
         seniorityRank: input.seniorityRank,
         panNumber: toNullableText(input.panNumber),

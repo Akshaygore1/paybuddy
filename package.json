@@ -36,6 +36,7 @@
     "hooks:setup": "vp config",
     "dev:web": "vp run --filter web dev",
     "dev:server": "vp run --filter server dev",
+    "seed:admin": "bun scripts/seed-admin.ts",
     "db:generate": "vp run --filter @paybuddy/db db:generate",
     "deploy": "vp run --filter @paybuddy/infra deploy",
     "destroy": "vp run --filter @paybuddy/infra destroy"

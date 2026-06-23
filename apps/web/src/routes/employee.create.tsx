@@ -35,7 +35,9 @@ import { UserRouteGuard } from "@/components/user-route-guard";
 import { queryClient, trpc } from "@/utils/trpc";
 
 type EmployeeFormValues = {
-  fullName: string;
+  firstName: string;
+  middleName: string;
+  surname: string;
   designationId: string;
   seniorityRank: string;
   panNumber: string;
@@ -48,7 +50,9 @@ type EmployeeFormValues = {
 
 type EmployeeFormErrors = Partial<
   Record<
-    | "fullName"
+    | "firstName"
+    | "middleName"
+    | "surname"
     | "designationId"
     | "seniorityRank"
     | "panNumber"
@@ -63,7 +67,9 @@ type EmployeeFormErrors = Partial<
 };
 
 const initialValues: EmployeeFormValues = {
-  fullName: "",
+  firstName: "",
+  middleName: "",
+  surname: "",
   designationId: "",
   seniorityRank: "",
   panNumber: "",
@@ -261,15 +267,35 @@ export default function EmployeeCreatePage() {
           <CardContent>
             <form className="flex flex-col gap-5" onSubmit={handleCreateEmployee}>
               <FieldGroup className="grid gap-4 md:grid-cols-2">
-                <Field data-invalid={Boolean(errors.fullName) || undefined}>
-                  <FieldLabel htmlFor="employee-full-name">Full name</FieldLabel>
+                <Field data-invalid={Boolean(errors.surname) || undefined}>
+                  <FieldLabel htmlFor="employee-surname">Surname</FieldLabel>
                   <Input
-                    id="employee-full-name"
-                    value={values.fullName}
-                    onChange={(event) => updateValue("fullName", event.target.value)}
-                    aria-invalid={Boolean(errors.fullName)}
+                    id="employee-surname"
+                    value={values.surname}
+                    onChange={(event) => updateValue("surname", event.target.value)}
+                    aria-invalid={Boolean(errors.surname)}
                   />
-                  <FieldError>{errors.fullName}</FieldError>
+                  <FieldError>{errors.surname}</FieldError>
+                </Field>
+                <Field data-invalid={Boolean(errors.firstName) || undefined}>
+                  <FieldLabel htmlFor="employee-first-name">First name</FieldLabel>
+                  <Input
+                    id="employee-first-name"
+                    value={values.firstName}
+                    onChange={(event) => updateValue("firstName", event.target.value)}
+                    aria-invalid={Boolean(errors.firstName)}
+                  />
+                  <FieldError>{errors.firstName}</FieldError>
+                </Field>
+                <Field data-invalid={Boolean(errors.middleName) || undefined}>
+                  <FieldLabel htmlFor="employee-middle-name">Middle name</FieldLabel>
+                  <Input
+                    id="employee-middle-name"
+                    value={values.middleName}
+                    onChange={(event) => updateValue("middleName", event.target.value)}
+                    aria-invalid={Boolean(errors.middleName)}
+                  />
+                  <FieldError>{errors.middleName}</FieldError>
                 </Field>
                 <Field data-invalid={Boolean(errors.designationId) || undefined}>
                   <FieldLabel>Designation</FieldLabel>
