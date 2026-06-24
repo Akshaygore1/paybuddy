@@ -80,4 +80,13 @@ export const createEmployeeSchema = z.object({
   customFieldValues: z.record(z.string(), z.string().trim().max(1000)).default({}),
 });
 
+export const employeeIdSchema = z.object({
+  employeeId: requiredTextSchema,
+});
+
+export const updateEmployeeSchema = createEmployeeSchema.extend({
+  employeeId: requiredTextSchema,
+});
+
 export type CreateEmployeeInput = z.infer<typeof createEmployeeSchema>;
+export type UpdateEmployeeInput = z.infer<typeof updateEmployeeSchema>;
