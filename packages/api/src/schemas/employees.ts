@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+export const employeeGenderValues = ["Male", "Female"] as const;
+
 export const defaultEmployeeFieldDefinitions = [
   {
     key: "fullName",
@@ -9,6 +11,16 @@ export const defaultEmployeeFieldDefinitions = [
   {
     key: "designationId",
     label: "Designation",
+    isRequired: true,
+  },
+  {
+    key: "dateOfBirth",
+    label: "Date of birth",
+    isRequired: true,
+  },
+  {
+    key: "gender",
+    label: "Gender",
     isRequired: true,
   },
   {
@@ -45,6 +57,26 @@ export const defaultEmployeeFieldDefinitions = [
 
 const requiredTextSchema = z.string().trim().min(1, "This field is required");
 const optionalTextSchema = z.string().trim().max(255).optional().default("");
+const dateOnlyPattern = /^\d{4}-\d{2}-\d{2}$/;
+
+function isValidDateOnly(value: string) {
+  if (!dateOnlyPattern.test(value)) {
+    return false;
+  }
+
+  const [yearText, monthText, dayText] = value.split("-");
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const date = new Date(Date.UTC(year, month - 1, day));
+
+  return (
+    Number.isFinite(date.getTime()) &&
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day
+  );
+}
 
 export const createDesignationSchema = z.object({
   name: requiredTextSchema.max(120, "Designation name is too long"),
@@ -67,6 +99,12 @@ export const createEmployeeSchema = z.object({
   firstName: requiredTextSchema.max(160, "First name is too long"),
   middleName: requiredTextSchema.max(160, "Middle name is too long"),
   surname: requiredTextSchema.max(160, "Surname is too long"),
+  dateOfBirth: requiredTextSchema.refine(isValidDateOnly, {
+    message: "Date of birth must be a valid date",
+  }),
+  gender: z.enum(employeeGenderValues, {
+    error: "Please select a valid gender",
+  }),
   designationId: requiredTextSchema,
   seniorityRank: z.coerce
     .number()

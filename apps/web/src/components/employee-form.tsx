@@ -1,4 +1,7 @@
-import { createEmployeeSchema } from "@paybuddy/api/schemas/employees";
+import {
+  createEmployeeSchema,
+  employeeGenderValues,
+} from "@paybuddy/api/schemas/employees";
 import { Button } from "@paybuddy/ui/components/button";
 import { Checkbox } from "@paybuddy/ui/components/checkbox";
 import {
@@ -24,6 +27,8 @@ export type EmployeeFormValues = {
   firstName: string;
   middleName: string;
   surname: string;
+  dateOfBirth: string;
+  gender: (typeof employeeGenderValues)[number] | "";
   designationId: string;
   seniorityRank: string;
   panNumber: string;
@@ -39,6 +44,8 @@ export type EmployeeFormErrors = Partial<
     | "firstName"
     | "middleName"
     | "surname"
+    | "dateOfBirth"
+    | "gender"
     | "designationId"
     | "seniorityRank"
     | "panNumber"
@@ -67,7 +74,8 @@ export type EmployeeFormOptions = {
   }>;
 };
 
-export type EmployeeSubmitValues = Omit<EmployeeFormValues, "seniorityRank"> & {
+export type EmployeeSubmitValues = Omit<EmployeeFormValues, "seniorityRank" | "gender"> & {
+  gender: (typeof employeeGenderValues)[number];
   seniorityRank: number;
 };
 
@@ -102,6 +110,8 @@ export const emptyEmployeeFormValues: EmployeeFormValues = {
   firstName: "",
   middleName: "",
   surname: "",
+  dateOfBirth: "",
+  gender: "",
   designationId: "",
   seniorityRank: "",
   panNumber: "",
@@ -123,6 +133,8 @@ export function buildEmployeeFormValues(input: {
   firstName: string;
   middleName: string;
   surname: string;
+  dateOfBirth: string;
+  gender: (typeof employeeGenderValues)[number];
   designationId: string;
   seniorityRank: number | string;
   panNumber: string | null;
@@ -139,6 +151,8 @@ export function buildEmployeeFormValues(input: {
     firstName: input.firstName ?? "",
     middleName: input.middleName ?? "",
     surname: input.surname ?? "",
+    dateOfBirth: input.dateOfBirth ?? "",
+    gender: input.gender ?? "",
     designationId: input.designationId ?? "",
     seniorityRank: String(input.seniorityRank ?? ""),
     panNumber: input.panNumber ?? "",
@@ -255,6 +269,7 @@ export function EmployeeForm({
 
     await onSubmit({
       ...values,
+      gender: values.gender as (typeof employeeGenderValues)[number],
       seniorityRank: Number(values.seniorityRank),
       customFieldValues: Object.fromEntries(
         Object.entries(values.customFieldValues).filter(([fieldId]) =>
@@ -299,6 +314,43 @@ export function EmployeeForm({
             disabled={isLoading || isSubmitting}
           />
           <FieldError>{errors.middleName}</FieldError>
+        </Field>
+        <Field data-invalid={Boolean(errors.dateOfBirth) || undefined}>
+          <FieldLabel htmlFor={`employee-date-of-birth-${mode}`}>Date of Birth</FieldLabel>
+          <Input
+            id={`employee-date-of-birth-${mode}`}
+            type="date"
+            value={values.dateOfBirth}
+            onChange={(event) => updateValue("dateOfBirth", event.target.value)}
+            aria-invalid={Boolean(errors.dateOfBirth)}
+            disabled={isLoading || isSubmitting}
+          />
+          <FieldError>{errors.dateOfBirth}</FieldError>
+        </Field>
+        <Field data-invalid={Boolean(errors.gender) || undefined}>
+          <FieldLabel>Gender</FieldLabel>
+          <Select
+            items={employeeGenderValues.map((gender) => ({
+              label: gender,
+              value: gender,
+            }))}
+            value={values.gender}
+            onValueChange={(value) => updateValue("gender", (value ?? "") as EmployeeFormValues["gender"])}
+          >
+            <SelectTrigger aria-invalid={Boolean(errors.gender)} disabled={isLoading || isSubmitting}>
+              <SelectValue placeholder="Select gender" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                {employeeGenderValues.map((gender) => (
+                  <SelectItem key={gender} value={gender}>
+                    {gender}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+          <FieldError>{errors.gender}</FieldError>
         </Field>
         <Field data-invalid={Boolean(errors.designationId) || undefined}>
           <FieldLabel>Designation</FieldLabel>

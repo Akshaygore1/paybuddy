@@ -55,37 +55,73 @@ function formatDate(value: Date | string | number) {
   }).format(new Date(value));
 }
 
+function formatDateOnly(value: string) {
+  const [yearText, monthText, dayText] = value.split("-");
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+
+  return new Intl.DateTimeFormat("en-IN", {
+    dateStyle: "medium",
+    timeZone: "UTC",
+  }).format(new Date(Date.UTC(year, month - 1, day)));
+}
+
 const PAGE_SIZE = 10;
 
-const columnDefinitions = [
+const fixedColumnDefinitions = [
   { key: "employee", label: "Employee", defaultVisible: true },
   { key: "rank", label: "Rank", defaultVisible: true },
   { key: "designation", label: "Designation", defaultVisible: true },
+  { key: "dateOfBirth", label: "Date of Birth", defaultVisible: false },
+  { key: "gender", label: "Gender", defaultVisible: false },
   { key: "contactNumber", label: "Contact", defaultVisible: true },
   { key: "whatsAppNumber", label: "WhatsApp", defaultVisible: false },
   { key: "panNumber", label: "PAN", defaultVisible: false },
   { key: "pfNumber", label: "PF", defaultVisible: false },
   { key: "npsAccountNumber", label: "NPS", defaultVisible: false },
-  { key: "customFields", label: "Custom fields", defaultVisible: false },
   { key: "created", label: "Created", defaultVisible: true },
 ] as const;
 
-type ColumnKey = (typeof columnDefinitions)[number]["key"];
+function getCustomFieldColumnKey(fieldDefinitionId: string) {
+  return `customField:${fieldDefinitionId}`;
+}
 
 export default function EmployeeIndexPage() {
   const navigate = useNavigate();
   const employeesQuery = useQuery(trpc.employees.list.queryOptions());
+  const formOptionsQuery = useQuery(trpc.employees.getCreateFormOptions.queryOptions());
   const employees = employeesQuery.data ?? [];
+  const customFieldDefinitions = formOptionsQuery.data?.customFields ?? [];
 
   const [pageIndex, setPageIndex] = React.useState(0);
-  const [visibleColumns, setVisibleColumns] = React.useState<Record<ColumnKey, boolean>>(
+  const [visibleColumns, setVisibleColumns] = React.useState<Record<string, boolean>>(
     Object.fromEntries(
-      columnDefinitions.map((column) => [column.key, column.defaultVisible]),
-    ) as Record<ColumnKey, boolean>,
+      fixedColumnDefinitions.map((column) => [column.key, column.defaultVisible]),
+    ),
   );
   const [employeePendingDelete, setEmployeePendingDelete] = React.useState<
     (typeof employees)[number] | null
   >(null);
+
+  const customFieldValueLookupByEmployee = React.useMemo(
+    () =>
+      new Map(
+        employees.map((employee) => [
+          employee.id,
+          Object.fromEntries(
+            employee.customFields.map((field) => [field.fieldDefinitionId, field.value]),
+          ),
+        ]),
+      ),
+    [employees],
+  );
+
+  const visibleFixedColumns = fixedColumnDefinitions.filter((column) => visibleColumns[column.key]);
+  const visibleCustomFieldColumns = customFieldDefinitions.filter((field) =>
+    visibleColumns[getCustomFieldColumnKey(field.id)],
+  );
+  const visibleColumnCount = visibleFixedColumns.length + visibleCustomFieldColumns.length;
 
   const deleteEmployeeMutation = useMutation(
     trpc.employees.delete.mutationOptions({
@@ -118,7 +154,7 @@ export default function EmployeeIndexPage() {
     }
   }, [clampedPageIndex, pageIndex]);
 
-  function toggleColumn(columnKey: ColumnKey, checked: boolean) {
+  function toggleColumn(columnKey: string, checked: boolean) {
     setVisibleColumns((current) => ({
       ...current,
       [columnKey]: checked,
@@ -146,10 +182,10 @@ export default function EmployeeIndexPage() {
               <DropdownMenuTrigger
                 render={<Button variant="outline">Choose Columns</Button>}
               />
-              <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>Visible columns</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                {columnDefinitions.map((column) => (
+                {fixedColumnDefinitions.map((column) => (
                   <DropdownMenuCheckboxItem
                     checked={visibleColumns[column.key]}
                     key={column.key}
@@ -158,6 +194,25 @@ export default function EmployeeIndexPage() {
                     {column.label}
                   </DropdownMenuCheckboxItem>
                 ))}
+                {customFieldDefinitions.length > 0 ? (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel>Custom fields</DropdownMenuLabel>
+                    {customFieldDefinitions.map((field) => {
+                      const columnKey = getCustomFieldColumnKey(field.id);
+
+                      return (
+                        <DropdownMenuCheckboxItem
+                          checked={visibleColumns[columnKey] ?? false}
+                          key={columnKey}
+                          onCheckedChange={(checked) => toggleColumn(columnKey, Boolean(checked))}
+                        >
+                          {field.label}
+                        </DropdownMenuCheckboxItem>
+                      );
+                    })}
+                  </>
+                ) : null}
               </DropdownMenuContent>
             </DropdownMenu>
             <Button onClick={() => navigate("/employee/create")}>Add Employee</Button>
@@ -179,12 +234,18 @@ export default function EmployeeIndexPage() {
                 {visibleColumns.employee ? <TableHead className="min-w-56">Employee</TableHead> : null}
                 {visibleColumns.rank ? <TableHead>Rank</TableHead> : null}
                 {visibleColumns.designation ? <TableHead>Designation</TableHead> : null}
+                {visibleColumns.dateOfBirth ? <TableHead>Date of Birth</TableHead> : null}
+                {visibleColumns.gender ? <TableHead>Gender</TableHead> : null}
                 {visibleColumns.contactNumber ? <TableHead>Contact</TableHead> : null}
                 {visibleColumns.whatsAppNumber ? <TableHead>WhatsApp</TableHead> : null}
                 {visibleColumns.panNumber ? <TableHead>PAN</TableHead> : null}
                 {visibleColumns.pfNumber ? <TableHead>PF</TableHead> : null}
                 {visibleColumns.npsAccountNumber ? <TableHead>NPS</TableHead> : null}
-                {visibleColumns.customFields ? <TableHead className="min-w-48">Custom fields</TableHead> : null}
+                {visibleCustomFieldColumns.map((field) => (
+                  <TableHead className="min-w-40" key={field.id}>
+                    {field.label}
+                  </TableHead>
+                ))}
                 {visibleColumns.created ? <TableHead>Created</TableHead> : null}
                 <TableHead className="w-12 text-right">Action</TableHead>
               </TableRow>
@@ -193,13 +254,16 @@ export default function EmployeeIndexPage() {
               {employeesQuery.isPending
                 ? Array.from({ length: 5 }, (_, rowIndex) => (
                     <TableRow key={`loading-${rowIndex}`}>
-                      {columnDefinitions
-                        .filter((column) => visibleColumns[column.key])
-                        .map((column) => (
-                          <TableCell key={`${column.key}-${rowIndex}`}>
-                            <Skeleton className={column.key === "employee" ? "h-4 w-40" : "h-4 w-24"} />
-                          </TableCell>
-                        ))}
+                      {visibleFixedColumns.map((column) => (
+                        <TableCell key={`${column.key}-${rowIndex}`}>
+                          <Skeleton className={column.key === "employee" ? "h-4 w-40" : "h-4 w-24"} />
+                        </TableCell>
+                      ))}
+                      {visibleCustomFieldColumns.map((field) => (
+                        <TableCell key={`${field.id}-${rowIndex}`}>
+                          <Skeleton className="h-4 w-24" />
+                        </TableCell>
+                      ))}
                       <TableCell>
                         <Skeleton className="ml-auto h-8 w-8" />
                       </TableCell>
@@ -226,6 +290,10 @@ export default function EmployeeIndexPage() {
                           {employee.designationIsActive ? "" : " (archived)"}
                         </TableCell>
                       ) : null}
+                      {visibleColumns.dateOfBirth ? (
+                        <TableCell>{formatDateOnly(employee.dateOfBirth)}</TableCell>
+                      ) : null}
+                      {visibleColumns.gender ? <TableCell>{employee.gender}</TableCell> : null}
                       {visibleColumns.contactNumber ? (
                         <TableCell>{employee.contactNumber || "Not provided"}</TableCell>
                       ) : null}
@@ -241,21 +309,16 @@ export default function EmployeeIndexPage() {
                       {visibleColumns.npsAccountNumber ? (
                         <TableCell>{employee.npsAccountNumber || "Not provided"}</TableCell>
                       ) : null}
-                      {visibleColumns.customFields ? (
-                        <TableCell className="whitespace-normal">
-                          {employee.customFields.length ? (
-                            <div className="space-y-1">
-                              {employee.customFields.map((field) => (
-                                <p key={field.fieldDefinitionId}>
-                                  <span className="font-medium">{field.label}:</span> {field.value}
-                                </p>
-                              ))}
-                            </div>
-                          ) : (
-                            <span className="text-muted-foreground">No custom values</span>
-                          )}
-                        </TableCell>
-                      ) : null}
+                      {visibleCustomFieldColumns.map((field) => {
+                        const fieldValue =
+                          customFieldValueLookupByEmployee.get(employee.id)?.[field.id] ?? null;
+
+                        return (
+                          <TableCell key={field.id}>
+                            {fieldValue ? fieldValue : "Not provided"}
+                          </TableCell>
+                        );
+                      })}
                       {visibleColumns.created ? (
                         <TableCell>{formatDate(employee.createdAt)}</TableCell>
                       ) : null}
@@ -289,7 +352,7 @@ export default function EmployeeIndexPage() {
                 <TableRow>
                   <TableCell
                     className="h-24 text-center text-muted-foreground"
-                    colSpan={columnDefinitions.filter((column) => visibleColumns[column.key]).length + 1}
+                    colSpan={visibleColumnCount + 1}
                   >
                     Start by creating a designation in Employee Setup, then add your first
                     employee here.

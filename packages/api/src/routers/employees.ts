@@ -23,6 +23,10 @@ function toNullableText(value: string | undefined) {
   return normalized.length > 0 ? normalized : null;
 }
 
+function toDateOnly(value: string) {
+  return value.trim();
+}
+
 async function getEmployeeBaseById(institutionId: string, employeeId: string) {
   return db
     .select({
@@ -30,6 +34,8 @@ async function getEmployeeBaseById(institutionId: string, employeeId: string) {
       firstName: employees.firstName,
       middleName: employees.middleName,
       surname: employees.surname,
+      dateOfBirth: employees.dateOfBirth,
+      gender: employees.gender,
       panNumber: employees.panNumber,
       pfNumber: employees.pfNumber,
       npsAccountNumber: employees.npsAccountNumber,
@@ -171,6 +177,8 @@ export const employeesRouter = router({
         firstName: employees.firstName,
         middleName: employees.middleName,
         surname: employees.surname,
+        dateOfBirth: employees.dateOfBirth,
+        gender: employees.gender,
         panNumber: employees.panNumber,
         pfNumber: employees.pfNumber,
         npsAccountNumber: employees.npsAccountNumber,
@@ -244,6 +252,8 @@ export const employeesRouter = router({
         firstName: input.firstName.trim(),
         middleName: input.middleName.trim(),
         surname: input.surname.trim(),
+        dateOfBirth: toDateOnly(input.dateOfBirth),
+        gender: input.gender,
         designationId: input.designationId,
         seniorityRank: input.seniorityRank,
         panNumber: toNullableText(input.panNumber),
@@ -320,52 +330,43 @@ export const employeesRouter = router({
         value: field.value,
       }));
 
-    const updatedEmployee = await db.transaction(async (tx) => {
-      const [nextEmployee] = await tx
-        .update(employees)
-        .set({
-          firstName: input.firstName.trim(),
-          middleName: input.middleName.trim(),
-          surname: input.surname.trim(),
-          designationId: input.designationId,
-          seniorityRank: input.seniorityRank,
-          panNumber: toNullableText(input.panNumber),
-          pfNumber: toNullableText(input.pfNumber),
-          npsAccountNumber: toNullableText(input.npsAccountNumber),
-          whatsAppNumber: toNullableText(input.whatsAppNumber),
-          contactNumber: toNullableText(input.contactNumber),
-        })
-        .where(and(eq(employees.id, input.employeeId), eq(employees.institutionId, ctx.institution.id)))
-        .returning();
-
-      if (!nextEmployee) {
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Unable to update employee",
-        });
-      }
-
-      if (activeFieldDefinitionIds.length > 0) {
-        await tx.delete(employeeCustomFieldValues).where(
-          and(
-            eq(employeeCustomFieldValues.employeeId, input.employeeId),
-            inArray(employeeCustomFieldValues.fieldDefinitionId, activeFieldDefinitionIds),
-          ),
-        );
-      }
-
-      if (customFieldValuesToInsert.length > 0) {
-        await tx.insert(employeeCustomFieldValues).values(customFieldValuesToInsert);
-      }
-
-      return nextEmployee;
-    });
+    const [updatedEmployee] = await db
+      .update(employees)
+      .set({
+        firstName: input.firstName.trim(),
+        middleName: input.middleName.trim(),
+        surname: input.surname.trim(),
+        dateOfBirth: toDateOnly(input.dateOfBirth),
+        gender: input.gender,
+        designationId: input.designationId,
+        seniorityRank: input.seniorityRank,
+        panNumber: toNullableText(input.panNumber),
+        pfNumber: toNullableText(input.pfNumber),
+        npsAccountNumber: toNullableText(input.npsAccountNumber),
+        whatsAppNumber: toNullableText(input.whatsAppNumber),
+        contactNumber: toNullableText(input.contactNumber),
+      })
+      .where(and(eq(employees.id, input.employeeId), eq(employees.institutionId, ctx.institution.id)))
+      .returning();
 
     if (!updatedEmployee) {
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
         message: "Unable to update employee",
       });
+    }
+
+    if (activeFieldDefinitionIds.length > 0) {
+      await db.delete(employeeCustomFieldValues).where(
+        and(
+          eq(employeeCustomFieldValues.employeeId, input.employeeId),
+          inArray(employeeCustomFieldValues.fieldDefinitionId, activeFieldDefinitionIds),
+        ),
+      );
+    }
+
+    if (customFieldValuesToInsert.length > 0) {
+      await db.insert(employeeCustomFieldValues).values(customFieldValuesToInsert);
     }
 
     return updatedEmployee;
