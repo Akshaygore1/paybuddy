@@ -92,7 +92,9 @@ export default function EmployeeIndexPage() {
       onSuccess: async () => {
         toast.success("Employee deleted");
         setEmployeePendingDelete(null);
-        await queryClient.invalidateQueries();
+        await queryClient.invalidateQueries({
+          queryKey: trpc.employees.list.queryKey(),
+        });
       },
       onError: (error) => {
         toast.error(error.message);

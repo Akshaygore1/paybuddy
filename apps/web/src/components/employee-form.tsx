@@ -88,6 +88,7 @@ type EmployeeFormProps = {
   submitLabel: string;
   submittingLabel: string;
   cancelLabel?: string;
+  resetKey: string;
   initialValues: EmployeeFormValues;
   formOptions: EmployeeFormOptions | undefined;
   isLoading?: boolean;
@@ -156,6 +157,7 @@ export function EmployeeForm({
   submitLabel,
   submittingLabel,
   cancelLabel = "Back",
+  resetKey,
   initialValues,
   formOptions,
   isLoading = false,
@@ -170,7 +172,7 @@ export function EmployeeForm({
   React.useEffect(() => {
     setValues(cloneValues(initialValues));
     setErrors({});
-  }, [initialValues]);
+  }, [initialValues, resetKey]);
 
   const designationItems =
     formOptions?.designations.map((designation) => ({

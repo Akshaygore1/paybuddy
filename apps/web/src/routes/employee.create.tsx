@@ -68,7 +68,9 @@ export default function EmployeeCreatePage() {
   );
 
   async function handleSubmit(values: EmployeeSubmitValues) {
-    await createEmployeeMutation.mutateAsync(values);
+    try {
+      await createEmployeeMutation.mutateAsync(values);
+    } catch {}
   }
 
   async function handleAddCustomField() {
@@ -114,6 +116,7 @@ export default function EmployeeCreatePage() {
             mode="create"
             submitLabel="Create Employee"
             submittingLabel="Saving..."
+            resetKey="create"
             initialValues={emptyEmployeeFormValues}
             formOptions={formOptionsQuery.data}
             isLoading={formOptionsQuery.isPending}

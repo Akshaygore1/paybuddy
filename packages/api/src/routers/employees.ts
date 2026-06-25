@@ -306,34 +306,7 @@ export const employeesRouter = router({
     const fieldDefinitions = await getActiveCustomFieldDefinitions(ctx.institution.id);
     validateSubmittedCustomFields(fieldDefinitions, input.customFieldValues);
 
-    const [updatedEmployee] = await db
-      .update(employees)
-      .set({
-        firstName: input.firstName.trim(),
-        middleName: input.middleName.trim(),
-        surname: input.surname.trim(),
-        designationId: input.designationId,
-        seniorityRank: input.seniorityRank,
-        panNumber: toNullableText(input.panNumber),
-        pfNumber: toNullableText(input.pfNumber),
-        npsAccountNumber: toNullableText(input.npsAccountNumber),
-        whatsAppNumber: toNullableText(input.whatsAppNumber),
-        contactNumber: toNullableText(input.contactNumber),
-      })
-      .where(and(eq(employees.id, input.employeeId), eq(employees.institutionId, ctx.institution.id)))
-      .returning();
-
-    if (!updatedEmployee) {
-      throw new TRPCError({
-        code: "INTERNAL_SERVER_ERROR",
-        message: "Unable to update employee",
-      });
-    }
-
-    await db
-      .delete(employeeCustomFieldValues)
-      .where(eq(employeeCustomFieldValues.employeeId, input.employeeId));
-
+    const activeFieldDefinitionIds = fieldDefinitions.map((field) => field.id);
     const customFieldValuesToInsert = fieldDefinitions
       .map((field) => ({
         fieldDefinitionId: field.id,
@@ -347,8 +320,52 @@ export const employeesRouter = router({
         value: field.value,
       }));
 
-    if (customFieldValuesToInsert.length > 0) {
-      await db.insert(employeeCustomFieldValues).values(customFieldValuesToInsert);
+    const updatedEmployee = await db.transaction(async (tx) => {
+      const [nextEmployee] = await tx
+        .update(employees)
+        .set({
+          firstName: input.firstName.trim(),
+          middleName: input.middleName.trim(),
+          surname: input.surname.trim(),
+          designationId: input.designationId,
+          seniorityRank: input.seniorityRank,
+          panNumber: toNullableText(input.panNumber),
+          pfNumber: toNullableText(input.pfNumber),
+          npsAccountNumber: toNullableText(input.npsAccountNumber),
+          whatsAppNumber: toNullableText(input.whatsAppNumber),
+          contactNumber: toNullableText(input.contactNumber),
+        })
+        .where(and(eq(employees.id, input.employeeId), eq(employees.institutionId, ctx.institution.id)))
+        .returning();
+
+      if (!nextEmployee) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Unable to update employee",
+        });
+      }
+
+      if (activeFieldDefinitionIds.length > 0) {
+        await tx.delete(employeeCustomFieldValues).where(
+          and(
+            eq(employeeCustomFieldValues.employeeId, input.employeeId),
+            inArray(employeeCustomFieldValues.fieldDefinitionId, activeFieldDefinitionIds),
+          ),
+        );
+      }
+
+      if (customFieldValuesToInsert.length > 0) {
+        await tx.insert(employeeCustomFieldValues).values(customFieldValuesToInsert);
+      }
+
+      return nextEmployee;
+    });
+
+    if (!updatedEmployee) {
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Unable to update employee",
+      });
     }
 
     return updatedEmployee;

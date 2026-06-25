@@ -7,6 +7,7 @@ import {
   CardTitle,
 } from "@paybuddy/ui/components/card";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import * as React from "react";
 import { useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
 
@@ -47,15 +48,21 @@ export default function EmployeeEditPage() {
   );
 
   async function handleSubmit(values: EmployeeSubmitValues) {
-    await updateEmployeeMutation.mutateAsync({
-      employeeId: resolvedEmployeeId,
-      ...values,
-    });
+    try {
+      await updateEmployeeMutation.mutateAsync({
+        employeeId: resolvedEmployeeId,
+        ...values,
+      });
+    } catch {}
   }
 
-  const initialValues = employeeQuery.data
-    ? buildEmployeeFormValues(employeeQuery.data)
-    : emptyEmployeeFormValues;
+  const initialValues = React.useMemo(
+    () =>
+      employeeQuery.data
+        ? buildEmployeeFormValues(employeeQuery.data)
+        : emptyEmployeeFormValues,
+    [employeeQuery.data],
+  );
 
   return (
     <section className="space-y-6 p-6">
@@ -81,6 +88,7 @@ export default function EmployeeEditPage() {
             mode="edit"
             submitLabel="Save Changes"
             submittingLabel="Saving..."
+            resetKey={resolvedEmployeeId}
             initialValues={initialValues}
             formOptions={formOptionsQuery.data}
             isLoading={formOptionsQuery.isPending || employeeQuery.isPending}
