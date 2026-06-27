@@ -89,15 +89,22 @@ function getCustomFieldColumnKey(fieldDefinitionId: string) {
 
 export default function EmployeeIndexPage() {
   const navigate = useNavigate();
-  const employeesQuery = useQuery(trpc.employees.list.queryOptions());
-  const formOptionsQuery = useQuery(trpc.employees.getCreateFormOptions.queryOptions());
-  const employees = employeesQuery.data ?? [];
+  const employeesQuery = useQuery(trpc.employees.getDirectory.queryOptions());
+  const formOptionsQuery = useQuery(
+    trpc.employees.getCreateForm.queryOptions(),
+  );
+  const employees = employeesQuery.data?.rows ?? [];
   const customFieldDefinitions = formOptionsQuery.data?.customFields ?? [];
 
   const [pageIndex, setPageIndex] = React.useState(0);
-  const [visibleColumns, setVisibleColumns] = React.useState<Record<string, boolean>>(
+  const [visibleColumns, setVisibleColumns] = React.useState<
+    Record<string, boolean>
+  >(
     Object.fromEntries(
-      fixedColumnDefinitions.map((column) => [column.key, column.defaultVisible]),
+      fixedColumnDefinitions.map((column) => [
+        column.key,
+        column.defaultVisible,
+      ]),
     ),
   );
   const [employeePendingDelete, setEmployeePendingDelete] = React.useState<
@@ -110,18 +117,24 @@ export default function EmployeeIndexPage() {
         employees.map((employee) => [
           employee.id,
           Object.fromEntries(
-            employee.customFields.map((field) => [field.fieldDefinitionId, field.value]),
+            customFieldDefinitions.map((field) => [
+              field.id,
+              employee.values[getCustomFieldColumnKey(field.id)],
+            ]),
           ),
         ]),
       ),
-    [employees],
+    [customFieldDefinitions, employees],
   );
 
-  const visibleFixedColumns = fixedColumnDefinitions.filter((column) => visibleColumns[column.key]);
-  const visibleCustomFieldColumns = customFieldDefinitions.filter((field) =>
-    visibleColumns[getCustomFieldColumnKey(field.id)],
+  const visibleFixedColumns = fixedColumnDefinitions.filter(
+    (column) => visibleColumns[column.key],
   );
-  const visibleColumnCount = visibleFixedColumns.length + visibleCustomFieldColumns.length;
+  const visibleCustomFieldColumns = customFieldDefinitions.filter(
+    (field) => visibleColumns[getCustomFieldColumnKey(field.id)],
+  );
+  const visibleColumnCount =
+    visibleFixedColumns.length + visibleCustomFieldColumns.length;
 
   const deleteEmployeeMutation = useMutation(
     trpc.employees.delete.mutationOptions({
@@ -129,7 +142,7 @@ export default function EmployeeIndexPage() {
         toast.success("Employee deleted");
         setEmployeePendingDelete(null);
         await queryClient.invalidateQueries({
-          queryKey: trpc.employees.list.queryKey(),
+          queryKey: trpc.employees.getDirectory.queryKey(),
         });
       },
       onError: (error) => {
@@ -144,7 +157,10 @@ export default function EmployeeIndexPage() {
   const pageStart = clampedPageIndex * PAGE_SIZE;
   const paginatedEmployees = employees.slice(pageStart, pageStart + PAGE_SIZE);
   const rangeStart = totalRows === 0 ? 0 : pageStart + 1;
-  const rangeEnd = totalRows === 0 ? 0 : Math.min(pageStart + paginatedEmployees.length, totalRows);
+  const rangeEnd =
+    totalRows === 0
+      ? 0
+      : Math.min(pageStart + paginatedEmployees.length, totalRows);
   const canGoPrevious = clampedPageIndex > 0;
   const canGoNext = clampedPageIndex < totalPages - 1;
 
@@ -189,7 +205,9 @@ export default function EmployeeIndexPage() {
                   <DropdownMenuCheckboxItem
                     checked={visibleColumns[column.key]}
                     key={column.key}
-                    onCheckedChange={(checked) => toggleColumn(column.key, Boolean(checked))}
+                    onCheckedChange={(checked) =>
+                      toggleColumn(column.key, Boolean(checked))
+                    }
                   >
                     {column.label}
                   </DropdownMenuCheckboxItem>
@@ -205,7 +223,9 @@ export default function EmployeeIndexPage() {
                         <DropdownMenuCheckboxItem
                           checked={visibleColumns[columnKey] ?? false}
                           key={columnKey}
-                          onCheckedChange={(checked) => toggleColumn(columnKey, Boolean(checked))}
+                          onCheckedChange={(checked) =>
+                            toggleColumn(columnKey, Boolean(checked))
+                          }
                         >
                           {field.label}
                         </DropdownMenuCheckboxItem>
@@ -215,7 +235,9 @@ export default function EmployeeIndexPage() {
                 ) : null}
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button onClick={() => navigate("/employee/create")}>Add Employee</Button>
+            <Button onClick={() => navigate("/employee/create")}>
+              Add Employee
+            </Button>
           </div>
         }
       />
@@ -224,23 +246,37 @@ export default function EmployeeIndexPage() {
         <CardHeader>
           <CardTitle>Employee directory</CardTitle>
           <CardDescription>
-            {employees.length ? `${employees.length} employee records` : "No employees created yet"}
+            {employees.length
+              ? `${employees.length} employee records`
+              : "No employees created yet"}
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <Table aria-label="Employee directory">
             <TableHeader>
               <TableRow>
-                {visibleColumns.employee ? <TableHead className="min-w-56">Employee</TableHead> : null}
+                {visibleColumns.employee ? (
+                  <TableHead className="min-w-56">Employee</TableHead>
+                ) : null}
                 {visibleColumns.rank ? <TableHead>Rank</TableHead> : null}
-                {visibleColumns.designation ? <TableHead>Designation</TableHead> : null}
-                {visibleColumns.dateOfBirth ? <TableHead>Date of Birth</TableHead> : null}
+                {visibleColumns.designation ? (
+                  <TableHead>Designation</TableHead>
+                ) : null}
+                {visibleColumns.dateOfBirth ? (
+                  <TableHead>Date of Birth</TableHead>
+                ) : null}
                 {visibleColumns.gender ? <TableHead>Gender</TableHead> : null}
-                {visibleColumns.contactNumber ? <TableHead>Contact</TableHead> : null}
-                {visibleColumns.whatsAppNumber ? <TableHead>WhatsApp</TableHead> : null}
+                {visibleColumns.contactNumber ? (
+                  <TableHead>Contact</TableHead>
+                ) : null}
+                {visibleColumns.whatsAppNumber ? (
+                  <TableHead>WhatsApp</TableHead>
+                ) : null}
                 {visibleColumns.panNumber ? <TableHead>PAN</TableHead> : null}
                 {visibleColumns.pfNumber ? <TableHead>PF</TableHead> : null}
-                {visibleColumns.npsAccountNumber ? <TableHead>NPS</TableHead> : null}
+                {visibleColumns.npsAccountNumber ? (
+                  <TableHead>NPS</TableHead>
+                ) : null}
                 {visibleCustomFieldColumns.map((field) => (
                   <TableHead className="min-w-40" key={field.id}>
                     {field.label}
@@ -256,7 +292,13 @@ export default function EmployeeIndexPage() {
                     <TableRow key={`loading-${rowIndex}`}>
                       {visibleFixedColumns.map((column) => (
                         <TableCell key={`${column.key}-${rowIndex}`}>
-                          <Skeleton className={column.key === "employee" ? "h-4 w-40" : "h-4 w-24"} />
+                          <Skeleton
+                            className={
+                              column.key === "employee"
+                                ? "h-4 w-40"
+                                : "h-4 w-24"
+                            }
+                          />
                         </TableCell>
                       ))}
                       {visibleCustomFieldColumns.map((field) => (
@@ -278,12 +320,15 @@ export default function EmployeeIndexPage() {
                         <TableCell className="whitespace-normal">
                           <div className="space-y-1">
                             <p className="font-medium">
-                              {employee.surname}, {employee.firstName} {employee.middleName}
+                              {employee.surname} {employee.firstName}{" "}
+                              {employee.middleName}
                             </p>
                           </div>
                         </TableCell>
                       ) : null}
-                      {visibleColumns.rank ? <TableCell>{employee.seniorityRank}</TableCell> : null}
+                      {visibleColumns.rank ? (
+                        <TableCell>{employee.seniorityRank}</TableCell>
+                      ) : null}
                       {visibleColumns.designation ? (
                         <TableCell className="whitespace-normal">
                           {employee.designationName}
@@ -291,27 +336,43 @@ export default function EmployeeIndexPage() {
                         </TableCell>
                       ) : null}
                       {visibleColumns.dateOfBirth ? (
-                        <TableCell>{formatDateOnly(employee.dateOfBirth)}</TableCell>
+                        <TableCell>
+                          {formatDateOnly(employee.dateOfBirth)}
+                        </TableCell>
                       ) : null}
-                      {visibleColumns.gender ? <TableCell>{employee.gender}</TableCell> : null}
+                      {visibleColumns.gender ? (
+                        <TableCell>{employee.gender}</TableCell>
+                      ) : null}
                       {visibleColumns.contactNumber ? (
-                        <TableCell>{employee.contactNumber || "Not provided"}</TableCell>
+                        <TableCell>
+                          {employee.contactNumber || "Not provided"}
+                        </TableCell>
                       ) : null}
                       {visibleColumns.whatsAppNumber ? (
-                        <TableCell>{employee.whatsAppNumber || "Not provided"}</TableCell>
+                        <TableCell>
+                          {employee.whatsAppNumber || "Not provided"}
+                        </TableCell>
                       ) : null}
                       {visibleColumns.panNumber ? (
-                        <TableCell>{employee.panNumber || "Not provided"}</TableCell>
+                        <TableCell>
+                          {employee.panNumber || "Not provided"}
+                        </TableCell>
                       ) : null}
                       {visibleColumns.pfNumber ? (
-                        <TableCell>{employee.pfNumber || "Not provided"}</TableCell>
+                        <TableCell>
+                          {employee.pfNumber || "Not provided"}
+                        </TableCell>
                       ) : null}
                       {visibleColumns.npsAccountNumber ? (
-                        <TableCell>{employee.npsAccountNumber || "Not provided"}</TableCell>
+                        <TableCell>
+                          {employee.npsAccountNumber || "Not provided"}
+                        </TableCell>
                       ) : null}
                       {visibleCustomFieldColumns.map((field) => {
                         const fieldValue =
-                          customFieldValueLookupByEmployee.get(employee.id)?.[field.id] ?? null;
+                          customFieldValueLookupByEmployee.get(employee.id)?.[
+                            field.id
+                          ] ?? null;
 
                         return (
                           <TableCell key={field.id}>
@@ -325,13 +386,21 @@ export default function EmployeeIndexPage() {
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger
-                            render={<Button variant="ghost" size="icon-sm" aria-label="Employee actions" />}
+                            render={
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                aria-label="Employee actions"
+                              />
+                            }
                           >
                             <MoreHorizontalIcon />
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem
-                              onClick={() => navigate(`/employee/${employee.id}/edit`)}
+                              onClick={() =>
+                                navigate(`/employee/${employee.id}/edit`)
+                              }
                             >
                               Edit
                             </DropdownMenuItem>
@@ -354,8 +423,8 @@ export default function EmployeeIndexPage() {
                     className="h-24 text-center text-muted-foreground"
                     colSpan={visibleColumnCount + 1}
                   >
-                    Start by creating a designation in Employee Setup, then add your first
-                    employee here.
+                    Start by creating a designation in Employee Setup, then add
+                    your first employee here.
                   </TableCell>
                 </TableRow>
               ) : null}
@@ -372,14 +441,20 @@ export default function EmployeeIndexPage() {
                   <PaginationItem>
                     <PaginationPrevious
                       disabled={!canGoPrevious}
-                      onClick={() => setPageIndex((current) => Math.max(current - 1, 0))}
+                      onClick={() =>
+                        setPageIndex((current) => Math.max(current - 1, 0))
+                      }
                       variant="outline"
                     />
                   </PaginationItem>
                   <PaginationItem>
                     <PaginationNext
                       disabled={!canGoNext}
-                      onClick={() => setPageIndex((current) => Math.min(current + 1, totalPages - 1))}
+                      onClick={() =>
+                        setPageIndex((current) =>
+                          Math.min(current + 1, totalPages - 1),
+                        )
+                      }
                       variant="outline"
                     />
                   </PaginationItem>
@@ -422,7 +497,9 @@ export default function EmployeeIndexPage() {
               }}
               disabled={deleteEmployeeMutation.isPending}
             >
-              {deleteEmployeeMutation.isPending ? "Deleting..." : "Delete employee"}
+              {deleteEmployeeMutation.isPending
+                ? "Deleting..."
+                : "Delete employee"}
             </Button>
           </DialogFooter>
         </DialogContent>

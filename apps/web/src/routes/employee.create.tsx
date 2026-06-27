@@ -25,7 +25,7 @@ export default function EmployeeCreatePage() {
   const [fieldRequired, setFieldRequired] = React.useState(false);
   const [fieldError, setFieldError] = React.useState<string | null>(null);
 
-  const formOptionsQuery = useQuery(trpc.employees.getCreateFormOptions.queryOptions());
+  const formOptionsQuery = useQuery(trpc.employees.getCreateForm.queryOptions());
 
   const createEmployeeMutation = useMutation(
     trpc.employees.create.mutationOptions({

@@ -12,7 +12,6 @@ import { useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
 
 import {
-  buildEmployeeFormValues,
   EmployeeForm,
   type EmployeeSubmitValues,
   emptyEmployeeFormValues,
@@ -25,10 +24,8 @@ export default function EmployeeEditPage() {
   const { employeeId } = useParams();
 
   const resolvedEmployeeId = employeeId ?? "";
-
-  const formOptionsQuery = useQuery(trpc.employees.getCreateFormOptions.queryOptions());
   const employeeQuery = useQuery(
-    trpc.employees.getById.queryOptions(
+    trpc.employees.getEditForm.queryOptions(
       { employeeId: resolvedEmployeeId },
       { enabled: resolvedEmployeeId.length > 0 },
     ),
@@ -57,10 +54,7 @@ export default function EmployeeEditPage() {
   }
 
   const initialValues = React.useMemo(
-    () =>
-      employeeQuery.data
-        ? buildEmployeeFormValues(employeeQuery.data)
-        : emptyEmployeeFormValues,
+    () => employeeQuery.data?.initialValues ?? emptyEmployeeFormValues,
     [employeeQuery.data],
   );
 
@@ -90,8 +84,8 @@ export default function EmployeeEditPage() {
             submittingLabel="Saving..."
             resetKey={resolvedEmployeeId}
             initialValues={initialValues}
-            formOptions={formOptionsQuery.data}
-            isLoading={formOptionsQuery.isPending || employeeQuery.isPending}
+            formOptions={employeeQuery.data}
+            isLoading={employeeQuery.isPending}
             isSubmitting={updateEmployeeMutation.isPending}
             onSubmit={handleSubmit}
             onCancel={() => navigate("/employee")}
