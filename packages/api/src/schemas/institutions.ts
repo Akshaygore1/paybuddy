@@ -47,3 +47,7 @@ export const resetInstitutionPasswordSchema = z.object({
   institutionId: z.string().trim().min(1, "Institution ID is required"),
   password: z.string().min(8, "Password must be at least 8 characters"),
 });
+
+export const deactivateInstitutionLoginSchema = z.object({
+  institutionId: z.string().trim().min(1, "Institution ID is required"),
+});
