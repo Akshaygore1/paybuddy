@@ -1,7 +1,9 @@
 import { relations, sql } from "drizzle-orm";
-import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { check, index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 import { institutions } from "./institutions";
+
+export const employeeGenderValues = ["Male", "Female"] as const;
 
 export const employeeDesignations = sqliteTable(
   "employee_designations",
@@ -63,6 +65,8 @@ export const employees = sqliteTable(
     firstName: text("first_name").notNull(),
     middleName: text("middle_name").notNull(),
     surname: text("surname").notNull(),
+    dateOfBirth: text("date_of_birth").notNull(),
+    gender: text("gender", { enum: employeeGenderValues }).notNull(),
     designationId: text("designation_id")
       .notNull()
       .references(() => employeeDesignations.id, { onDelete: "restrict" }),
@@ -83,6 +87,14 @@ export const employees = sqliteTable(
   (table) => [
     index("employees_institution_id_idx").on(table.institutionId),
     index("employees_designation_id_idx").on(table.designationId),
+    check(
+      "employees_date_of_birth_format_check",
+      sql`${table.dateOfBirth} GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'`,
+    ),
+    check(
+      "employees_gender_check",
+      sql`${table.gender} IN ('Male', 'Female')`,
+    ),
   ],
 );
 
