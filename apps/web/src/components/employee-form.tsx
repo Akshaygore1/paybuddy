@@ -337,7 +337,11 @@ export function EmployeeForm({
             value={values.gender}
             onValueChange={(value) => updateValue("gender", (value ?? "") as EmployeeFormValues["gender"])}
           >
-            <SelectTrigger aria-invalid={Boolean(errors.gender)} disabled={isLoading || isSubmitting}>
+            <SelectTrigger
+              aria-invalid={Boolean(errors.gender)}
+              aria-label="Gender"
+              disabled={isLoading || isSubmitting}
+            >
               <SelectValue placeholder="Select gender" />
             </SelectTrigger>
             <SelectContent>
@@ -359,7 +363,11 @@ export function EmployeeForm({
             value={values.designationId}
             onValueChange={(value) => updateValue("designationId", value ?? "")}
           >
-            <SelectTrigger aria-invalid={Boolean(errors.designationId)} disabled={isLoading || isSubmitting}>
+            <SelectTrigger
+              aria-invalid={Boolean(errors.designationId)}
+              aria-label="Designation"
+              disabled={isLoading || isSubmitting}
+            >
               <SelectValue placeholder="Select designation" />
             </SelectTrigger>
             <SelectContent>
@@ -500,6 +508,7 @@ export function EmployeeForm({
             <div className="flex items-end gap-3">
               <Field className="h-8 justify-center" orientation="horizontal">
                 <Checkbox
+                  aria-label="Required"
                   checked={customFieldManager.fieldRequired}
                   onCheckedChange={(checked) =>
                     customFieldManager.onFieldRequiredChange(Boolean(checked))
@@ -524,10 +533,11 @@ export function EmployeeForm({
               {(formOptions?.customFields ?? []).map((field) => (
                 <div
                   className="flex min-h-12 items-center justify-between gap-3 border p-3"
+                  data-testid="custom-field-manager-row"
                   key={field.id}
                 >
                   <div className="min-w-0">
-                    <p className="truncate font-medium">
+                    <p className="truncate font-medium" data-testid="custom-field-manager-name">
                       {field.label}
                       {field.isRequired ? " *" : ""}
                     </p>

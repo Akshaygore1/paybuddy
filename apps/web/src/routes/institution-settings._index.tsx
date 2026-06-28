@@ -160,10 +160,13 @@ export default function InstitutionSettingsIndexPage() {
               formConfig?.designations.map((designation, index) => (
                 <div
                   className="flex items-center justify-between gap-3 border p-3"
+                  data-testid="designation-row"
                   key={designation.id}
                 >
                   <div>
-                    <p className="font-medium">{designation.name}</p>
+                    <p className="font-medium" data-testid="designation-name">
+                      {designation.name}
+                    </p>
                     <p className="text-sm text-muted-foreground">
                       Display order: {designation.sortOrder}
                     </p>
