@@ -4,7 +4,8 @@
   "workspaces": {
     "packages": [
       "apps/*",
-      "packages/*"
+      "packages/*",
+      "e2e"
     ],
     "catalog": {
       "dotenv": "^17.2.2",
@@ -39,6 +40,9 @@
     "dev:server": "vp run --filter server dev",
     "seed:admin": "bun scripts/seed-admin.ts",
     "db:generate": "vp run --filter @paybuddy/db db:generate",
+    "test:e2e": "bun run --cwd e2e test",
+    "test:e2e:ui": "bun run --cwd e2e test:ui",
+    "test:e2e:headed": "bun run --cwd e2e test:headed",
     "deploy": "vp run --filter @paybuddy/infra deploy",
     "destroy": "vp run --filter @paybuddy/infra destroy"
   },
