@@ -652,7 +652,11 @@ export default function PayrollIndexPage() {
       const value = valueParts.join(": ");
 
       if (!value) {
-        return React.createElement(Text, { key: line, style: styles.metaText }, line);
+        return React.createElement(
+          Text,
+          { key: line, style: styles.metaText },
+          line,
+        );
       }
 
       return React.createElement(
@@ -717,7 +721,11 @@ export default function PayrollIndexPage() {
         },
         React.createElement(
           Text,
-          { style: options?.isHeader ? styles.headerCellText : styles.bodyCellText },
+          {
+            style: options?.isHeader
+              ? styles.headerCellText
+              : styles.bodyCellText,
+          },
           text,
         ),
       );
@@ -749,7 +757,11 @@ export default function PayrollIndexPage() {
             { style: styles.institutionTan },
             `TAN No.: ${institutionTan}`,
           ),
-          React.createElement(Text, { style: styles.title }, tableModel.header.title),
+          React.createElement(
+            Text,
+            { style: styles.title },
+            tableModel.header.title,
+          ),
           React.createElement(
             View,
             { style: styles.headerMetaRow },
@@ -772,7 +784,10 @@ export default function PayrollIndexPage() {
         React.createElement(
           View,
           {
-            style: [styles.tableWrap, { width: tableModel.widthFit.tableWidth }],
+            style: [
+              styles.tableWrap,
+              { width: tableModel.widthFit.tableWidth },
+            ],
           },
           React.createElement(
             View,
@@ -793,7 +808,8 @@ export default function PayrollIndexPage() {
                 style:
                   row.rowLabel === "Total"
                     ? [styles.tableRow, styles.totalRow]
-                    : row.key === "selected-month" || Number(row.serialNumber) % 2 === 1
+                    : row.key === "selected-month" ||
+                        Number(row.serialNumber) % 2 === 1
                       ? [styles.tableRow, styles.alternateRow]
                       : styles.tableRow,
               },
@@ -838,34 +854,36 @@ export default function PayrollIndexPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Payroll period</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>Payroll period</CardTitle>
+            {selectedEmployeeId ? (
+              <div className="flex flex-wrap gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => void downloadPdf("monthly")}
+                  disabled={formQuery.isFetching}
+                >
+                  <DownloadIcon data-icon="inline-start" />
+                  Download Monthly Payslip
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => void downloadPdf("annual")}
+                  disabled={formQuery.isFetching}
+                >
+                  <DownloadIcon data-icon="inline-start" />
+                  Download Annual Payslip
+                </Button>
+              </div>
+            ) : null}
+          </div>
           <CardDescription>
             Select an employee and month, then reveal the payroll form.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {formKey ? (
-            <div className="flex flex-wrap justify-end gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => void downloadPdf("monthly")}
-                disabled={formQuery.isFetching}
-              >
-                <DownloadIcon data-icon="inline-start" />
-                Download Monthly Payslip
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => void downloadPdf("annual")}
-                disabled={formQuery.isFetching}
-              >
-                <DownloadIcon data-icon="inline-start" />
-                Download Annual Payslip
-              </Button>
-            </div>
-          ) : null}
           <div className="grid gap-4 md:grid-cols-[1fr_220px_220px_auto]">
             <Field>
               <FieldLabel>Employee</FieldLabel>
@@ -876,7 +894,8 @@ export default function PayrollIndexPage() {
                 <SelectTrigger aria-label="Select employee">
                   <SelectValue placeholder="Select employee">
                     {selectedEmployeeId
-                      ? (employeeLabelById[selectedEmployeeId] ?? "Select employee")
+                      ? (employeeLabelById[selectedEmployeeId] ??
+                        "Select employee")
                       : "Select employee"}
                   </SelectValue>
                 </SelectTrigger>
@@ -898,7 +917,9 @@ export default function PayrollIndexPage() {
                 onValueChange={updateFinancialYear}
               >
                 <SelectTrigger aria-label="Select payroll financial year">
-                  <SelectValue />
+                  <SelectValue placeholder="Select financial year">
+                    {getFinancialYearLabel(financialYearStart)}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
@@ -918,7 +939,9 @@ export default function PayrollIndexPage() {
                 onValueChange={(value) => value && setSelectedMonth(value)}
               >
                 <SelectTrigger aria-label="Select payroll month">
-                  <SelectValue />
+                  <SelectValue placeholder="Select month">
+                    {selectedMonthDefinition.label}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
