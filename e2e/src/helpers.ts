@@ -1,4 +1,6 @@
-import { expect, type Locator, type Page } from "@playwright/test";
+import { readFile } from "node:fs/promises";
+
+import { expect, type Download, type Locator, type Page } from "@playwright/test";
 
 import type { RunContext } from "./run-context";
 
@@ -121,10 +123,49 @@ export async function expectEmployeeRow(page: Page, displayName: string) {
 }
 
 export async function enableCustomFieldColumn(page: Page, label: string) {
-  await page.getByRole("button", { name: "Choose Columns" }).click();
-  await page.locator('[data-slot="dropdown-menu-content"]').getByText(label, { exact: true }).click();
-  await page.keyboard.press("Escape");
+  await setColumnVisibility(page, label, true);
   await expect(page.getByRole("columnheader", { name: label, exact: true })).toBeVisible();
+}
+
+export async function setColumnVisibility(
+  page: Page,
+  label: string,
+  visible: boolean,
+) {
+  await page.getByRole("button", { name: "Choose Columns" }).click();
+  const columnToggle = page.getByRole("menuitemcheckbox", {
+    name: label,
+    exact: true,
+  });
+  const isChecked = (await columnToggle.getAttribute("aria-checked")) === "true";
+
+  if (isChecked !== visible) {
+    await columnToggle.click();
+  }
+
+  await page.keyboard.press("Escape");
+
+  if (visible) {
+    await expect(page.getByRole("columnheader", { name: label, exact: true })).toBeVisible();
+    return;
+  }
+
+  await expect(page.getByRole("columnheader", { name: label, exact: true })).toHaveCount(0);
+}
+
+export async function searchEmployeeDirectory(page: Page, value: string) {
+  await page.getByLabel("Search employees").fill(value);
+}
+
+export async function downloadEmployeeDirectoryCsv(page: Page) {
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download CSV", exact: true }).click();
+  const download = await downloadPromise;
+
+  return {
+    download,
+    rows: await readCsvDownload(download),
+  };
 }
 
 export function employeeRow(page: Page, displayName: string) {
@@ -360,4 +401,64 @@ async function waitForListToSettle(input: {
       return rowCount > 0 || emptyVisible;
     })
     .toBeTruthy();
+}
+
+async function readCsvDownload(download: Download) {
+  const downloadPath = await download.path();
+
+  if (!downloadPath) {
+    throw new Error("Expected download path to be available");
+  }
+
+  return parseCsv(await readFile(downloadPath, "utf8"));
+}
+
+function parseCsv(input: string) {
+  const rows: string[][] = [];
+  let currentRow: string[] = [];
+  let currentValue = "";
+  let inQuotes = false;
+
+  for (let index = 0; index < input.length; index += 1) {
+    const character = input[index];
+    const nextCharacter = input[index + 1];
+
+    if (character === '"') {
+      if (inQuotes && nextCharacter === '"') {
+        currentValue += '"';
+        index += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+
+      continue;
+    }
+
+    if (!inQuotes && character === ",") {
+      currentRow.push(currentValue);
+      currentValue = "";
+      continue;
+    }
+
+    if (!inQuotes && (character === "\n" || character === "\r")) {
+      if (character === "\r" && nextCharacter === "\n") {
+        index += 1;
+      }
+
+      currentRow.push(currentValue);
+      rows.push(currentRow);
+      currentRow = [];
+      currentValue = "";
+      continue;
+    }
+
+    currentValue += character;
+  }
+
+  if (currentValue.length > 0 || currentRow.length > 0) {
+    currentRow.push(currentValue);
+    rows.push(currentRow);
+  }
+
+  return rows;
 }

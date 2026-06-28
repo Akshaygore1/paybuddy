@@ -6,6 +6,7 @@ import {
   clickDesignationMove,
   createDesignation,
   deleteEmployee,
+  downloadEmployeeDirectoryCsv,
   editEmployee,
   employeeRow,
   enableCustomFieldColumn,
@@ -17,7 +18,9 @@ import {
   goToEmployeeDirectory,
   goToInstitutionSettings,
   resetInstitutionWorkspace,
+  searchEmployeeDirectory,
   selectOption,
+  setColumnVisibility,
   signIn,
   submitEmployeeCreate,
   submitEmployeeEdit,
@@ -135,6 +138,63 @@ test.describe("institution user flows", () => {
     );
 
     await assertRunEmployeeOrder(page, run);
+  });
+
+  test("filters the directory by visible columns and exports visible columns to csv", async ({
+    page,
+    env,
+    run,
+  }) => {
+    await signIn(page, env.identifier, env.password);
+    await goToEmployeeDirectory(page);
+
+    await searchEmployeeDirectory(page, run.employees.teacherA.surname);
+    await expectEmployeeRow(page, run.employees.teacherA.displayName);
+    await expect(employeeRow(page, run.employees.teacherB.displayName)).toHaveCount(
+      0,
+    );
+    await expect(page.getByText("1 matching employee records of 4")).toBeVisible();
+    await expect(
+      page.getByText("Showing 1-1 of 1 matches (4 total)", { exact: true }),
+    ).toBeVisible();
+
+    await enableCustomFieldColumn(page, run.customFieldLabel);
+    await searchEmployeeDirectory(page, run.employees.teacherA.customFieldValue);
+    await expectEmployeeRow(page, run.employees.teacherA.displayName);
+    await expect(employeeRow(page, run.employees.headmaster.displayName)).toHaveCount(
+      0,
+    );
+
+    await setColumnVisibility(page, run.customFieldLabel, false);
+    await expect(
+      page.getByText("No employees match your search.", { exact: true }),
+    ).toBeVisible();
+
+    await searchEmployeeDirectory(page, run.employees.associate.surname);
+    await expectEmployeeRow(page, run.employees.associate.displayName);
+    await enableCustomFieldColumn(page, run.customFieldLabel);
+
+    const { download, rows } = await downloadEmployeeDirectoryCsv(page);
+    expect(download.suggestedFilename()).toBe("employee-directory.csv");
+    expect(rows[0]).toEqual([
+      "Employee",
+      "Rank",
+      "Designation",
+      "Contact",
+      run.customFieldLabel,
+      "Created",
+    ]);
+
+    const exportedNames = rows.slice(1).map((row) => row[0]);
+    expect(exportedNames).toEqual(
+      expect.arrayContaining([
+        run.employees.headmaster.displayName,
+        run.employees.teacherA.displayName,
+        run.employees.teacherB.displayName,
+        run.employees.associate.displayName,
+      ]),
+    );
+    expect(rows).toHaveLength(5);
   });
 
   test("saves payroll and downloads monthly and annual payslips", async ({
