@@ -13,6 +13,7 @@
     "@paybuddy/auth": "workspace:*",
     "@paybuddy/env": "workspace:*",
     "@paybuddy/ui": "workspace:*",
+    "@react-pdf/renderer": "^4.5.1",
     "@react-router/fs-routes": "^7.14.1",
     "@react-router/node": "^7.14.1",
     "@react-router/serve": "^7.14.1",

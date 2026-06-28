@@ -16,11 +16,28 @@ import {
   Building2Icon,
   BriefcaseBusinessIcon,
   LayoutDashboardIcon,
+  ReceiptIndianRupeeIcon,
   WalletCardsIcon,
 } from "lucide-react";
+import * as React from "react";
 import { NavLink, useLocation } from "react-router";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@paybuddy/ui/components/select";
 
 import { authClient } from "@/lib/auth-client";
+import {
+  financialYearOptions,
+  getFinancialYearLabel,
+  readSelectedFinancialYearStart,
+  writeSelectedFinancialYearStart,
+  type FinancialYearStart,
+} from "@/lib/financial-year";
 
 import UserMenu from "./user-menu";
 
@@ -40,11 +57,18 @@ const navigationItems = [
     to: "/institution-settings",
     icon: BriefcaseBusinessIcon,
   },
+  {
+    title: "Payroll",
+    to: "/payroll",
+    icon: ReceiptIndianRupeeIcon,
+  },
 ];
 
 export default function AppSidebar() {
   const location = useLocation();
   const { data: session } = authClient.useSession();
+  const [financialYearStart, setFinancialYearStart] =
+    React.useState<FinancialYearStart>(() => readSelectedFinancialYearStart());
   const visibleNavigationItems = (() => {
     if (session?.user.role === "admin") {
       return [
@@ -59,6 +83,17 @@ export default function AppSidebar() {
 
     return navigationItems;
   })();
+
+  function updateFinancialYear(value: string | null) {
+    const nextFinancialYearStart = Number(value) as FinancialYearStart;
+
+    if (!financialYearOptions.includes(nextFinancialYearStart)) {
+      return;
+    }
+
+    setFinancialYearStart(nextFinancialYearStart);
+    writeSelectedFinancialYearStart(nextFinancialYearStart);
+  }
 
   return (
     <Sidebar collapsible="icon">
@@ -94,6 +129,33 @@ export default function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        {session?.user.role === "user" ? (
+          <>
+            <SidebarSeparator />
+            <SidebarGroup className="group-data-[collapsible=icon]:hidden">
+              <SidebarGroupLabel>Financial Year</SidebarGroupLabel>
+              <SidebarGroupContent className="px-2">
+                <Select
+                  value={String(financialYearStart)}
+                  onValueChange={updateFinancialYear}
+                >
+                  <SelectTrigger aria-label="Select financial year">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {financialYearOptions.map((yearStart) => (
+                        <SelectItem key={yearStart} value={String(yearStart)}>
+                          {getFinancialYearLabel(yearStart)}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </>
+        ) : null}
       </SidebarContent>
       <SidebarFooter className="p-3 group-data-[collapsible=icon]:hidden">
         <UserMenu />
