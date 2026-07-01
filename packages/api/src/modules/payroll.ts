@@ -34,6 +34,7 @@ export const fixedPayrollFields = {
     { key: "gpf", label: "G.P.F" },
     { key: "rd", label: "R.D" },
     { key: "cmFund", label: "C.M. Fund" },
+    { key: "incomeTax", label: "Income Tax / TDS" },
     { key: "professionalTax", label: "Professional Tax" },
     { key: "lic", label: "L.I.C" },
   ],

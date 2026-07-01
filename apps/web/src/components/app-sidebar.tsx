@@ -15,6 +15,7 @@ import {
 import {
   Building2Icon,
   BriefcaseBusinessIcon,
+  FileTextIcon,
   LayoutDashboardIcon,
   ReceiptIndianRupeeIcon,
   WalletCardsIcon,
@@ -62,6 +63,11 @@ const navigationItems = [
     to: "/payroll",
     icon: ReceiptIndianRupeeIcon,
   },
+  {
+    title: "Reports",
+    to: "/reports",
+    icon: FileTextIcon,
+  },
 ];
 
 export default function AppSidebar() {
@@ -78,6 +84,7 @@ export default function AppSidebar() {
           to: "/institutions",
           icon: Building2Icon,
         },
+        navigationItems[4],
       ];
     }
 
@@ -129,7 +136,7 @@ export default function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-        {session?.user.role === "user" ? (
+        {session ? (
           <>
             <SidebarSeparator />
             <SidebarGroup className="group-data-[collapsible=icon]:hidden">

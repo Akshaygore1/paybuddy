@@ -391,7 +391,14 @@ export default function PayrollIndexPage() {
 
       setFinancialYearStart(nextFinancialYearStart);
       setSelectedMonth(getCurrentFinancialYearMonth(nextFinancialYearStart));
-      setFormKey(null);
+      setFormKey((current) =>
+        current
+          ? {
+              employeeId: current.employeeId,
+              financialYearStart: nextFinancialYearStart,
+            }
+          : null,
+      );
       setLineItems([]);
       setIsDirty(false);
     }
@@ -417,19 +424,17 @@ export default function PayrollIndexPage() {
 
     setFinancialYearStart(nextFinancialYearStart);
     setSelectedMonth(getCurrentFinancialYearMonth(nextFinancialYearStart));
-    setFormKey(null);
+    setFormKey(
+      selectedEmployeeId
+        ? {
+            employeeId: selectedEmployeeId,
+            financialYearStart: nextFinancialYearStart,
+          }
+        : null,
+    );
     setLineItems([]);
     setIsDirty(false);
     writeSelectedFinancialYearStart(nextFinancialYearStart);
-  }
-
-  function showPayrollForm() {
-    if (!selectedEmployeeId) {
-      toast.error("Select an employee first");
-      return;
-    }
-
-    setFormKey({ employeeId: selectedEmployeeId, financialYearStart });
   }
 
   function updateAmount(lineItemKey: string, value: string) {
@@ -880,16 +885,30 @@ export default function PayrollIndexPage() {
             ) : null}
           </div>
           <CardDescription>
-            Select an employee and month, then reveal the payroll form.
+            Select an employee to load payroll for the chosen financial year.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-[1fr_220px_220px_auto]">
+          <div className="grid gap-4 md:grid-cols-[1fr_220px_220px]">
             <Field>
               <FieldLabel>Employee</FieldLabel>
               <Select
                 value={selectedEmployeeId}
-                onValueChange={(value) => setSelectedEmployeeId(value ?? "")}
+                onValueChange={(value) => {
+                  const nextEmployeeId = value ?? "";
+
+                  setSelectedEmployeeId(nextEmployeeId);
+                  setFormKey(
+                    nextEmployeeId
+                      ? {
+                          employeeId: nextEmployeeId,
+                          financialYearStart,
+                        }
+                      : null,
+                  );
+                  setLineItems([]);
+                  setIsDirty(false);
+                }}
               >
                 <SelectTrigger aria-label="Select employee">
                   <SelectValue placeholder="Select employee">
@@ -954,15 +973,6 @@ export default function PayrollIndexPage() {
                 </SelectContent>
               </Select>
             </Field>
-            <div className="flex items-end">
-              <Button
-                type="button"
-                onClick={showPayrollForm}
-                disabled={!selectedEmployeeId}
-              >
-                Show Payroll Form
-              </Button>
-            </div>
           </div>
         </CardContent>
       </Card>

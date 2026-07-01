@@ -218,9 +218,9 @@ test.describe("institution user flows", () => {
     await expect(
       page.getByRole("combobox", { name: "Select employee", exact: true }),
     ).toContainText(employeeName);
+    await expect(page.getByLabel("Basic Pay amount")).toBeVisible();
     await selectOption(page, "Select payroll financial year", "2026-2027");
     await selectOption(page, "Select payroll month", "June 2026");
-    await page.getByRole("button", { name: "Show Payroll Form" }).click();
 
     await page.getByLabel("Basic Pay amount").fill("1000");
     await page.getByLabel("Recovery amount").fill("100");
@@ -237,14 +237,22 @@ test.describe("institution user flows", () => {
     await page.getByRole("button", { name: "Save Payroll" }).click();
     await expect(page.getByText("Payroll saved")).toBeVisible();
 
+    await selectOption(page, "Select payroll financial year", "2025-2026");
+    await expect(page.getByLabel("Basic Pay amount")).toHaveValue("");
+    await selectOption(page, "Select payroll financial year", "2026-2027");
+    await expect(page.getByLabel("Basic Pay amount")).toHaveValue("1000.00");
+    await expect(
+      page.getByLabel(`${customPayrollFieldLabel} amount`),
+    ).toHaveValue("250.00");
+
     await page.reload();
     await selectOption(page, "Select employee", employeeName);
     await expect(
       page.getByRole("combobox", { name: "Select employee", exact: true }),
     ).toContainText(employeeName);
+    await expect(page.getByLabel("Basic Pay amount")).toBeVisible();
     await selectOption(page, "Select payroll financial year", "2026-2027");
     await selectOption(page, "Select payroll month", "June 2026");
-    await page.getByRole("button", { name: "Show Payroll Form" }).click();
     await expect(page.getByLabel("Basic Pay amount")).toHaveValue("1000.00");
     await expect(
       page.getByLabel(`${customPayrollFieldLabel} amount`),
@@ -263,6 +271,33 @@ test.describe("institution user flows", () => {
     await expect((await annualDownload).suggestedFilename()).toMatch(
       /^annual-payslip-.*2026-2027\.pdf$/,
     );
+  });
+
+  test("shows reports for the signed-in institution user", async ({
+    page,
+    env,
+    run,
+  }) => {
+    await signIn(page, env.identifier, env.password);
+    await page.getByRole("link", { name: "Reports", exact: true }).click();
+    await expect(page).toHaveURL(/\/reports$/);
+    await expect(page.getByRole("heading", { name: "Reports" })).toBeVisible();
+    await expect(
+      page.getByRole("combobox", { name: "Select institute", exact: true }),
+    ).toHaveCount(0);
+
+    await expect(page.getByText("2026-2027", { exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("table", { name: "Reports table" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("columnheader", { name: "TDS Deducted Till Now" }),
+    ).toBeVisible();
+    await expect(
+      page
+        .locator('table[aria-label="Reports table"] tbody tr')
+        .filter({ hasText: run.employees.headmaster.displayName }),
+    ).toBeVisible();
   });
 
   test("edits one employee and then deletes all created employees", async ({

@@ -186,11 +186,9 @@ test("Add payroll for all 15 employees", async ({ page }) => {
 
     // Select Employee, Year, Month
     await selectOption(page, "Select employee", emp.fullName);
+    await expect(page.getByLabel("Basic Pay amount")).toBeVisible();
     await selectOption(page, "Select payroll financial year", "2026-2027");
     await selectOption(page, "Select payroll month", "June 2026");
-
-    // Click Show Payroll Form
-    await page.getByRole("button", { name: "Show Payroll Form" }).click();
 
     // Fill Basic Pay and Recovery
     await page.getByLabel("Basic Pay amount").fill(emp.basicPay);

@@ -3,6 +3,7 @@ import { employeeSettingsRouter } from "./employee-settings";
 import { employeesRouter } from "./employees";
 import { institutionsRouter } from "./institutions";
 import { payrollRouter } from "./payroll";
+import { reportsRouter } from "./reports";
 
 export const appRouter = router({
   healthCheck: publicProcedure.query(() => {
@@ -18,5 +19,6 @@ export const appRouter = router({
   employees: employeesRouter,
   institutions: institutionsRouter,
   payroll: payrollRouter,
+  reports: reportsRouter,
 });
 export type AppRouter = typeof appRouter;

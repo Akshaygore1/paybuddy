@@ -1,5 +1,12 @@
 import { test, expect } from "@playwright/test";
-import { signIn, goToInstitutionSettings, createDesignation, goToEmployeeCreate, fillEmployeeForm, submitEmployeeCreate, selectOption } from "../src/helpers";
+import {
+  signIn,
+  goToInstitutionSettings,
+  createDesignation,
+  goToEmployeeCreate,
+  submitEmployeeCreate,
+  selectOption,
+} from "../src/helpers";
 
 const designations = [
   "Headmaster",

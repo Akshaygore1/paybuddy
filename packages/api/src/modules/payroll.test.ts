@@ -58,6 +58,7 @@ describe("Payroll field ordering and totals", () => {
       "G.P.F",
       "R.D",
       "C.M. Fund",
+      "Income Tax / TDS",
       "Professional Tax",
       "L.I.C",
     ]);
