@@ -5,8 +5,19 @@ import { D1Database } from "alchemy/cloudflare";
 import { config } from "dotenv";
 
 config({ path: "./.env" });
-config({ path: "../../apps/web/.env" });
-config({ path: "../../apps/server/.env" });
+
+const envMode = process.env.PAYBUDDY_ENV ?? "local";
+
+if (envMode === "local") {
+  config({ path: "../../apps/web/.env", override: true });
+  config({ path: "../../apps/server/.env", override: true });
+} else if (envMode === "production") {
+  config({ path: "./.env.production.local", override: true });
+} else {
+  throw new Error(
+    `Unsupported PAYBUDDY_ENV "${envMode}". Expected "local" or "production".`,
+  );
+}
 
 const app = await alchemy("paybuddy");
 

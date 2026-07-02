@@ -3,9 +3,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "alchemy dev",
-    "deploy": "alchemy deploy",
-    "destroy": "alchemy destroy"
+    "dev": "PAYBUDDY_ENV=local alchemy dev",
+    "deploy": "PAYBUDDY_ENV=production alchemy deploy",
+    "destroy": "PAYBUDDY_ENV=production alchemy destroy"
   },
   "dependencies": {
     "dotenv": "catalog:",
