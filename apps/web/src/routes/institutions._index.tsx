@@ -1,21 +1,21 @@
 import * as React from "react";
-import { Badge } from "@paybuddy/ui/components/badge";
-import { Button } from "@paybuddy/ui/components/button";
+import { Badge } from "@tds-nivaran/ui/components/badge";
+import { Button } from "@tds-nivaran/ui/components/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@paybuddy/ui/components/card";
+} from "@tds-nivaran/ui/components/card";
 import {
   Pagination,
   PaginationContent,
   PaginationItem,
   PaginationNext,
   PaginationPrevious,
-} from "@paybuddy/ui/components/pagination";
-import { Skeleton } from "@paybuddy/ui/components/skeleton";
+} from "@tds-nivaran/ui/components/pagination";
+import { Skeleton } from "@tds-nivaran/ui/components/skeleton";
 import {
   Table,
   TableBody,
@@ -23,7 +23,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@paybuddy/ui/components/table";
+} from "@tds-nivaran/ui/components/table";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router";
 

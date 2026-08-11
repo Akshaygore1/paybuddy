@@ -1,19 +1,19 @@
 import * as React from "react";
-import { Button } from "@paybuddy/ui/components/button";
+import { Button } from "@tds-nivaran/ui/components/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@paybuddy/ui/components/card";
+} from "@tds-nivaran/ui/components/card";
 import {
   Field,
   FieldError,
   FieldGroup,
   FieldLabel,
-} from "@paybuddy/ui/components/field";
-import { Input } from "@paybuddy/ui/components/input";
+} from "@tds-nivaran/ui/components/field";
+import { Input } from "@tds-nivaran/ui/components/input";
 import {
   Select,
   SelectContent,
@@ -21,7 +21,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@paybuddy/ui/components/select";
+} from "@tds-nivaran/ui/components/select";
 import {
   Table,
   TableBody,
@@ -29,8 +29,8 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@paybuddy/ui/components/table";
-import { Badge } from "@paybuddy/ui/components/badge";
+} from "@tds-nivaran/ui/components/table";
+import { Badge } from "@tds-nivaran/ui/components/badge";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { DownloadIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import { toast } from "sonner";

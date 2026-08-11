@@ -1,10 +1,10 @@
 import { trpcServer } from "@hono/trpc-server";
-import { createContext } from "@paybuddy/api/context";
-import { appRouter } from "@paybuddy/api/routers/index";
-import { createAuth, userRoles } from "@paybuddy/auth";
-import { createDb } from "@paybuddy/db";
-import { account, session, user } from "@paybuddy/db/schema/auth";
-import { env } from "@paybuddy/env/server";
+import { createContext } from "@tds-nivaran/api/context";
+import { appRouter } from "@tds-nivaran/api/routers/index";
+import { createAuth, userRoles } from "@tds-nivaran/auth";
+import { createDb } from "@tds-nivaran/db";
+import { account, session, user } from "@tds-nivaran/db/schema/auth";
+import { env } from "@tds-nivaran/env/server";
 import { APIError } from "better-auth";
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";

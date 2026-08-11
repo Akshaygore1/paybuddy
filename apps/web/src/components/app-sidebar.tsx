@@ -11,7 +11,7 @@ import {
   SidebarMenuItem,
   SidebarRail,
   SidebarSeparator,
-} from "@paybuddy/ui/components/sidebar";
+} from "@tds-nivaran/ui/components/sidebar";
 import {
   Building2Icon,
   BriefcaseBusinessIcon,
@@ -29,7 +29,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@paybuddy/ui/components/select";
+} from "@tds-nivaran/ui/components/select";
 
 import { authClient } from "@/lib/auth-client";
 import {
@@ -108,7 +108,7 @@ export default function AppSidebar() {
         <div className="flex items-center gap-3 overflow-hidden group-data-[collapsible=icon]:justify-center">
           <div className="min-w-0 group-data-[collapsible=icon]:hidden">
             <p className="truncate font-semibold tracking-tight">
-              Paybuddy Payroll Portal
+              TDS Nivaran Payroll Portal
             </p>
             <p className="truncate text-xs text-sidebar-foreground/70">
               Workspace

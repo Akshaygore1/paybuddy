@@ -1,17 +1,17 @@
 import {
   createEmployeeSchema,
   employeeGenderValues,
-} from "@paybuddy/api/schemas/employees";
-import { Button } from "@paybuddy/ui/components/button";
-import { Checkbox } from "@paybuddy/ui/components/checkbox";
+} from "@tds-nivaran/api/schemas/employees";
+import { Button } from "@tds-nivaran/ui/components/button";
+import { Checkbox } from "@tds-nivaran/ui/components/checkbox";
 import {
   Field,
   FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
-} from "@paybuddy/ui/components/field";
-import { Input } from "@paybuddy/ui/components/input";
+} from "@tds-nivaran/ui/components/field";
+import { Input } from "@tds-nivaran/ui/components/input";
 import {
   Select,
   SelectContent,
@@ -19,7 +19,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@paybuddy/ui/components/select";
+} from "@tds-nivaran/ui/components/select";
 import { PlusIcon, Trash2Icon } from "lucide-react";
 import * as React from "react";
 

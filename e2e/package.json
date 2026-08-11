@@ -1,5 +1,5 @@
 {
-  "name": "@paybuddy/e2e",
+  "name": "@tds-nivaran/e2e",
   "private": true,
   "type": "module",
   "scripts": {

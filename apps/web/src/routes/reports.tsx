@@ -1,20 +1,20 @@
 import * as React from "react";
-import { Button } from "@paybuddy/ui/components/button";
+import { Button } from "@tds-nivaran/ui/components/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@paybuddy/ui/components/card";
-import { Input } from "@paybuddy/ui/components/input";
+} from "@tds-nivaran/ui/components/card";
+import { Input } from "@tds-nivaran/ui/components/input";
 import {
   Pagination,
   PaginationContent,
   PaginationItem,
   PaginationNext,
   PaginationPrevious,
-} from "@paybuddy/ui/components/pagination";
+} from "@tds-nivaran/ui/components/pagination";
 import {
   Select,
   SelectContent,
@@ -22,8 +22,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@paybuddy/ui/components/select";
-import { Skeleton } from "@paybuddy/ui/components/skeleton";
+} from "@tds-nivaran/ui/components/select";
+import { Skeleton } from "@tds-nivaran/ui/components/skeleton";
 import {
   Table,
   TableBody,
@@ -31,7 +31,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@paybuddy/ui/components/table";
+} from "@tds-nivaran/ui/components/table";
 import { useQuery } from "@tanstack/react-query";
 import { Navigate } from "react-router";
 

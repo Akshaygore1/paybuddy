@@ -1,23 +1,23 @@
 import {
   createInstitutionStep1Schema,
   createInstitutionStep2Schema,
-} from "@paybuddy/api/schemas/institutions";
-import { Button } from "@paybuddy/ui/components/button";
+} from "@tds-nivaran/api/schemas/institutions";
+import { Button } from "@tds-nivaran/ui/components/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@paybuddy/ui/components/card";
+} from "@tds-nivaran/ui/components/card";
 import {
   Field,
   FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
-} from "@paybuddy/ui/components/field";
-import { Input } from "@paybuddy/ui/components/input";
+} from "@tds-nivaran/ui/components/field";
+import { Input } from "@tds-nivaran/ui/components/input";
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { useNavigate } from "react-router";

@@ -13,8 +13,8 @@
   "iconLibrary": "lucide",
   "aliases": {
     "components": "@/components",
-    "utils": "@paybuddy/ui/lib/utils",
-    "ui": "@paybuddy/ui/components",
+    "utils": "@tds-nivaran/ui/lib/utils",
+    "ui": "@tds-nivaran/ui/components",
     "lib": "@/lib",
     "hooks": "@/hooks"
   },

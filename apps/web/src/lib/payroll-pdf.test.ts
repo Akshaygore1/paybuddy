@@ -44,7 +44,7 @@ describe("buildPayrollPdfTableModel", () => {
       selectedMonthLabel: "Jun 2026",
       months,
       institution: {
-        name: "Paybuddy Public School",
+        name: "TDS Nivaran Public School",
         address: "123 Lake Road",
         tanNumber: "ABCD12345E",
       },
@@ -221,7 +221,7 @@ describe("buildPayrollPdfTableModel", () => {
       "PAY STATEMENT FOR THE FINANCIAL YEAR 2026-2027",
     );
     expect(model.header.leftLines).toEqual([
-      "School: Paybuddy Public School",
+      "School: TDS Nivaran Public School",
       "Address: 123 Lake Road",
       "TAN No.: ABCD12345E",
     ]);

@@ -1,11 +1,11 @@
-import { Button } from "@paybuddy/ui/components/button";
+import { Button } from "@tds-nivaran/ui/components/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@paybuddy/ui/components/card";
+} from "@tds-nivaran/ui/components/card";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import * as React from "react";
 import { useNavigate, useParams } from "react-router";

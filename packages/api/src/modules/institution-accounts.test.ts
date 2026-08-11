@@ -14,7 +14,7 @@ describe("Institution account login email normalization", () => {
 
   it("generates local emails for handles", () => {
     expect(buildInstitutionEmail(" school_admin ")).toBe(
-      "school_admin@institution.paybuddy.local",
+      "school_admin@institution.tds-nivaran.local",
     );
   });
 });

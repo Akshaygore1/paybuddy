@@ -1,8 +1,8 @@
-# Paybuddy Context
+# TDS Nivaran Context
 
 ## Domain Terms
 
-- **Institution**: A customer organization that uses Paybuddy to manage payroll-related Employee data.
+- **Institution**: A customer organization that uses TDS Nivaran to manage payroll-related Employee data.
 - **Institution account**: The admin-managed account row and Login Access for an Institution, backed by a Better Auth user.
 - **Employee**: A person whose payroll-related details are managed by an Institution.
 - **Employee record**: The stored base fields, Designation, and Custom Field values for one Employee.

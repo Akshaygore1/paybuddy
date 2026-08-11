@@ -1,5 +1,5 @@
-import { Button } from "@paybuddy/ui/components/button";
-import { Skeleton } from "@paybuddy/ui/components/skeleton";
+import { Button } from "@tds-nivaran/ui/components/button";
+import { Skeleton } from "@tds-nivaran/ui/components/skeleton";
 import { LogOutIcon } from "lucide-react";
 import { Link, useNavigate } from "react-router";
 

@@ -1,4 +1,4 @@
-import { Toaster } from "@paybuddy/ui/components/sonner";
+import { Toaster } from "@tds-nivaran/ui/components/sonner";
 import { QueryClientProvider } from "@tanstack/react-query";
 
 import "./index.css";
@@ -7,7 +7,7 @@ import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
-} from "@paybuddy/ui/components/sidebar";
+} from "@tds-nivaran/ui/components/sidebar";
 import {
   isRouteErrorResponse,
   Links,
@@ -75,7 +75,7 @@ export default function App() {
               <header className="sticky top-0 z-20 flex h-14 items-center border-b border-border/70 bg-background/80 px-4 backdrop-blur">
                 <SidebarTrigger />
                 <div className="ml-3 min-w-0">
-                  <p className="text-sm font-semibold tracking-tight">Paybuddy</p>
+                  <p className="text-sm font-semibold tracking-tight">TDS Nivaran</p>
                 </div>
               </header>
               <div className="min-w-0 flex-1">

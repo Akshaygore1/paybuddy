@@ -1,5 +1,5 @@
 {
-  "name": "@paybuddy/env",
+  "name": "@tds-nivaran/env",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -13,8 +13,8 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@paybuddy/config": "workspace:*",
-    "@paybuddy/infra": "workspace:*",
+    "@tds-nivaran/config": "workspace:*",
+    "@tds-nivaran/infra": "workspace:*",
     "@types/node": "^22.13.14",
     "typescript": "catalog:"
   }

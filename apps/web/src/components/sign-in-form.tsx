@@ -4,9 +4,9 @@ import {
   FieldError,
   FieldGroup,
   FieldLabel,
-} from "@paybuddy/ui/components/field";
-import { Button } from "@paybuddy/ui/components/button";
-import { Input } from "@paybuddy/ui/components/input";
+} from "@tds-nivaran/ui/components/field";
+import { Button } from "@tds-nivaran/ui/components/button";
+import { Input } from "@tds-nivaran/ui/components/input";
 import { useForm } from "@tanstack/react-form";
 import { toast } from "sonner";
 import z from "zod";

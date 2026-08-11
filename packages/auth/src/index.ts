@@ -1,6 +1,6 @@
-import { createDb } from "@paybuddy/db";
-import * as schema from "@paybuddy/db/schema/auth";
-import { env } from "@paybuddy/env/server";
+import { createDb } from "@tds-nivaran/db";
+import * as schema from "@tds-nivaran/db/schema/auth";
+import { env } from "@tds-nivaran/env/server";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { admin } from "better-auth/plugins/admin";

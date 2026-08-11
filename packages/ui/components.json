@@ -12,11 +12,11 @@
   },
   "iconLibrary": "lucide",
   "aliases": {
-    "components": "@paybuddy/ui/components",
-    "utils": "@paybuddy/ui/lib/utils",
-    "hooks": "@paybuddy/ui/hooks",
-    "lib": "@paybuddy/ui/lib",
-    "ui": "@paybuddy/ui/components"
+    "components": "@tds-nivaran/ui/components",
+    "utils": "@tds-nivaran/ui/lib/utils",
+    "hooks": "@tds-nivaran/ui/hooks",
+    "lib": "@tds-nivaran/ui/lib",
+    "ui": "@tds-nivaran/ui/components"
   },
   "menuColor": "default",
   "menuAccent": "subtle",

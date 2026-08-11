@@ -9,10 +9,10 @@
   },
   "dependencies": {
     "@hono/trpc-server": "^0.4.0",
-    "@paybuddy/api": "workspace:*",
-    "@paybuddy/auth": "workspace:*",
-    "@paybuddy/db": "workspace:*",
-    "@paybuddy/env": "workspace:*",
+    "@tds-nivaran/api": "workspace:*",
+    "@tds-nivaran/auth": "workspace:*",
+    "@tds-nivaran/db": "workspace:*",
+    "@tds-nivaran/env": "workspace:*",
     "@trpc/server": "catalog:",
     "better-auth": "catalog:",
     "dotenv": "catalog:",
@@ -22,7 +22,7 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "catalog:",
-    "@paybuddy/config": "workspace:*",
+    "@tds-nivaran/config": "workspace:*",
     "@types/node": "^22.13.14",
     "alchemy": "catalog:",
     "tsdown": "^0.21.9",

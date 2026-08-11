@@ -1,7 +1,7 @@
 import { initTRPC, TRPCError } from "@trpc/server";
-import type { UserRole } from "@paybuddy/auth";
-import { createDb } from "@paybuddy/db";
-import { institutions } from "@paybuddy/db/schema/index";
+import type { UserRole } from "@tds-nivaran/auth";
+import { createDb } from "@tds-nivaran/db";
+import { institutions } from "@tds-nivaran/db/schema/index";
 import { eq } from "drizzle-orm";
 
 import type { Context } from "./context";

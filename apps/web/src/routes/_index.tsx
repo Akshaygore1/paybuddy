@@ -4,8 +4,8 @@ import type { Route } from "./+types/_index";
 
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: "paybuddy" },
-    { name: "description", content: "paybuddy is a web application" },
+    { title: "TDS Nivaran" },
+    { name: "description", content: "TDS Nivaran is a web application" },
   ];
 }
 

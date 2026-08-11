@@ -5,7 +5,7 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@paybuddy/ui/components/card";
+} from "@tds-nivaran/ui/components/card";
 import { Navigate } from "react-router";
 
 import SignInForm from "@/components/sign-in-form";

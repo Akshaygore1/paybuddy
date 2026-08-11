@@ -6,7 +6,7 @@ import { config } from "dotenv";
 
 config({ path: "./.env" });
 
-const envMode = process.env.PAYBUDDY_ENV ?? "local";
+const envMode = process.env.TDS_NIVARAN_ENV ?? "local";
 
 if (envMode === "local") {
   config({ path: "../../apps/web/.env", override: true });
@@ -15,11 +15,11 @@ if (envMode === "local") {
   config({ path: "./.env.production.local", override: true });
 } else {
   throw new Error(
-    `Unsupported PAYBUDDY_ENV "${envMode}". Expected "local" or "production".`,
+    `Unsupported TDS_NIVARAN_ENV "${envMode}". Expected "local" or "production".`,
   );
 }
 
-const app = await alchemy("paybuddy");
+const app = await alchemy("tds-nivaran");
 
 const db = await D1Database("database", {
   migrationsDir: "../../packages/db/src/migrations",

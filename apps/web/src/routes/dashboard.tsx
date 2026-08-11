@@ -8,14 +8,14 @@ import {
 } from "lucide-react";
 import { Link, Navigate } from "react-router";
 import { PageHeader } from "@/components/page-header";
-import { Button } from "@paybuddy/ui/components/button";
+import { Button } from "@tds-nivaran/ui/components/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@paybuddy/ui/components/card";
+} from "@tds-nivaran/ui/components/card";
 
 import Loader from "@/components/loader";
 import { authClient } from "@/lib/auth-client";

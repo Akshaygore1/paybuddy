@@ -1,5 +1,5 @@
 {
-  "name": "@paybuddy/api",
+  "name": "@tds-nivaran/api",
   "type": "module",
   "exports": {
     ".": {
@@ -11,9 +11,9 @@
   },
   "scripts": {},
   "dependencies": {
-    "@paybuddy/auth": "workspace:*",
-    "@paybuddy/db": "workspace:*",
-    "@paybuddy/env": "workspace:*",
+    "@tds-nivaran/auth": "workspace:*",
+    "@tds-nivaran/db": "workspace:*",
+    "@tds-nivaran/env": "workspace:*",
     "@trpc/client": "catalog:",
     "@trpc/server": "catalog:",
     "dotenv": "catalog:",
@@ -21,7 +21,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@paybuddy/config": "workspace:*",
+    "@tds-nivaran/config": "workspace:*",
     "hono": "catalog:",
     "typescript": "catalog:"
   }

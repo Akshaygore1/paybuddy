@@ -1,18 +1,18 @@
 {
-  "name": "@paybuddy/infra",
+  "name": "@tds-nivaran/infra",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "PAYBUDDY_ENV=local alchemy dev",
-    "deploy": "PAYBUDDY_ENV=production alchemy deploy",
-    "destroy": "PAYBUDDY_ENV=production alchemy destroy"
+    "dev": "TDS_NIVARAN_ENV=local alchemy dev",
+    "deploy": "TDS_NIVARAN_ENV=production alchemy deploy",
+    "destroy": "TDS_NIVARAN_ENV=production alchemy destroy"
   },
   "dependencies": {
     "dotenv": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@paybuddy/config": "workspace:*",
+    "@tds-nivaran/config": "workspace:*",
     "alchemy": "catalog:",
     "typescript": "catalog:"
   }

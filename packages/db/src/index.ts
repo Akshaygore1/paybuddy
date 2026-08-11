@@ -1,4 +1,4 @@
-import { env } from "@paybuddy/env/server";
+import { env } from "@tds-nivaran/env/server";
 import { drizzle } from "drizzle-orm/d1";
 
 import * as schema from "./schema";

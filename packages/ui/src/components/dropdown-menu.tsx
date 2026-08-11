@@ -1,7 +1,7 @@
 "use client";
 
 import { Menu as MenuPrimitive } from "@base-ui/react/menu";
-import { cn } from "@paybuddy/ui/lib/utils";
+import { cn } from "@tds-nivaran/ui/lib/utils";
 import { ChevronRightIcon, CheckIcon } from "lucide-react";
 import * as React from "react";
 

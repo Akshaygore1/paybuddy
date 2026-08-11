@@ -1,5 +1,5 @@
 {
-  "name": "@paybuddy/db",
+  "name": "@tds-nivaran/db",
   "type": "module",
   "exports": {
     ".": {
@@ -14,14 +14,14 @@
   },
   "dependencies": {
     "@libsql/client": "0.15.15",
-    "@paybuddy/env": "workspace:*",
+    "@tds-nivaran/env": "workspace:*",
     "dotenv": "catalog:",
     "drizzle-orm": "catalog:",
     "libsql": "0.5.22",
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@paybuddy/config": "workspace:*",
+    "@tds-nivaran/config": "workspace:*",
     "drizzle-kit": "^0.31.8",
     "typescript": "catalog:"
   }

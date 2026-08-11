@@ -1,5 +1,5 @@
 {
-  "name": "paybuddy",
+  "name": "tds-nivaran",
   "private": true,
   "workspaces": {
     "packages": [
@@ -39,21 +39,21 @@
     "dev:web": "vp run --filter web dev",
     "dev:server": "vp run --filter server dev",
     "seed:admin": "bun scripts/seed-admin.ts",
-    "db:generate": "vp run --filter @paybuddy/db db:generate",
+    "db:generate": "vp run --filter @tds-nivaran/db db:generate",
     "test:e2e": "bun run --cwd e2e test",
     "test:e2e:ui": "bun run --cwd e2e test:ui",
     "test:e2e:headed": "bun run --cwd e2e test:headed",
-    "deploy": "vp run --filter @paybuddy/infra deploy",
-    "destroy": "vp run --filter @paybuddy/infra destroy"
+    "deploy": "vp run --filter @tds-nivaran/infra deploy",
+    "destroy": "vp run --filter @tds-nivaran/infra destroy"
   },
   "dependencies": {
-    "@paybuddy/env": "workspace:*",
+    "@tds-nivaran/env": "workspace:*",
     "dotenv": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "catalog:",
-    "@paybuddy/config": "workspace:*",
+    "@tds-nivaran/config": "workspace:*",
     "@types/node": "^22.13.14",
     "rolldown": "1.1.0",
     "typescript": "catalog:",

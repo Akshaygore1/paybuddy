@@ -9,10 +9,10 @@
     "dev:bare": "react-router dev"
   },
   "dependencies": {
-    "@paybuddy/api": "workspace:*",
-    "@paybuddy/auth": "workspace:*",
-    "@paybuddy/env": "workspace:*",
-    "@paybuddy/ui": "workspace:*",
+    "@tds-nivaran/api": "workspace:*",
+    "@tds-nivaran/auth": "workspace:*",
+    "@tds-nivaran/env": "workspace:*",
+    "@tds-nivaran/ui": "workspace:*",
     "@react-pdf/renderer": "^4.5.1",
     "@react-router/fs-routes": "^7.14.1",
     "@react-router/node": "^7.14.1",
@@ -34,7 +34,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@paybuddy/config": "workspace:*",
+    "@tds-nivaran/config": "workspace:*",
     "@react-router/dev": "^7.14.1",
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/react-query-devtools": "^5.91.1",

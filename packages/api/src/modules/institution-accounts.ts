@@ -1,6 +1,6 @@
-import { createAuth } from "@paybuddy/auth";
-import { createDb } from "@paybuddy/db";
-import { institutions, user } from "@paybuddy/db/schema/index";
+import { createAuth } from "@tds-nivaran/auth";
+import { createDb } from "@tds-nivaran/db";
+import { institutions, user } from "@tds-nivaran/db/schema/index";
 import { TRPCError } from "@trpc/server";
 import { and, desc, eq } from "drizzle-orm";
 import type { z } from "zod";
@@ -60,7 +60,7 @@ export function buildInstitutionEmail(username: string) {
     return normalizedUsername;
   }
 
-  return `${normalizedUsername}@institution.paybuddy.local`;
+  return `${normalizedUsername}@institution.tds-nivaran.local`;
 }
 
 export function normalizeBetterAuthError(error: unknown, fallbackMessage: string): never {

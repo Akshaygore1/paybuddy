@@ -1,11 +1,11 @@
 {
-  "extends": "@paybuddy/config/tsconfig.base.json",
+  "extends": "@tds-nivaran/config/tsconfig.base.json",
   "compilerOptions": {
     "jsx": "react-jsx",
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "types": [],
     "paths": {
-      "@paybuddy/ui/*": ["./src/*"]
+      "@tds-nivaran/ui/*": ["./src/*"]
     }
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"],

@@ -1,10 +1,10 @@
-import { Button } from "@paybuddy/ui/components/button";
+import { Button } from "@tds-nivaran/ui/components/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@paybuddy/ui/components/dropdown-menu";
+} from "@tds-nivaran/ui/components/dropdown-menu";
 import { Moon, Sun } from "lucide-react";
 
 import { useTheme } from "@/components/theme-provider";

@@ -4,10 +4,10 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@paybuddy/ui/components/card";
-import { resetInstitutionPasswordSchema } from "@paybuddy/api/schemas/institutions";
-import { Button } from "@paybuddy/ui/components/button";
-import { Input } from "@paybuddy/ui/components/input";
+} from "@tds-nivaran/ui/components/card";
+import { resetInstitutionPasswordSchema } from "@tds-nivaran/api/schemas/institutions";
+import { Button } from "@tds-nivaran/ui/components/button";
+import { Input } from "@tds-nivaran/ui/components/input";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useParams } from "react-router";

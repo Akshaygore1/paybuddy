@@ -8,7 +8,7 @@ export default function Header() {
       <div className="flex w-full items-center justify-between gap-4 md:flex-1 md:flex-col md:items-stretch md:justify-start">
         <div className="space-y-1">
           <p className="text-xs font-medium uppercase tracking-[0.24em] text-muted-foreground">
-            Paybuddy
+            TDS Nivaran
           </p>
           <nav className="flex gap-2 md:flex-col">
             <NavLink

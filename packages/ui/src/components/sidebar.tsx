@@ -6,24 +6,24 @@ import { useRender } from "@base-ui/react/use-render";
 import { cva, type VariantProps } from "class-variance-authority";
 import { PanelLeftIcon } from "lucide-react";
 
-import { Button } from "@paybuddy/ui/components/button";
-import { Input } from "@paybuddy/ui/components/input";
-import { Separator } from "@paybuddy/ui/components/separator";
+import { Button } from "@tds-nivaran/ui/components/button";
+import { Input } from "@tds-nivaran/ui/components/input";
+import { Separator } from "@tds-nivaran/ui/components/separator";
 import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
-} from "@paybuddy/ui/components/sheet";
-import { Skeleton } from "@paybuddy/ui/components/skeleton";
+} from "@tds-nivaran/ui/components/sheet";
+import { Skeleton } from "@tds-nivaran/ui/components/skeleton";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@paybuddy/ui/components/tooltip";
-import { useIsMobile } from "@paybuddy/ui/hooks/use-mobile";
-import { cn } from "@paybuddy/ui/lib/utils";
+} from "@tds-nivaran/ui/components/tooltip";
+import { useIsMobile } from "@tds-nivaran/ui/hooks/use-mobile";
+import { cn } from "@tds-nivaran/ui/lib/utils";
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state";
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;

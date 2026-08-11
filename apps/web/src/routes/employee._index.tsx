@@ -1,12 +1,12 @@
 import * as React from "react";
-import { Button } from "@paybuddy/ui/components/button";
+import { Button } from "@tds-nivaran/ui/components/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@paybuddy/ui/components/card";
+} from "@tds-nivaran/ui/components/card";
 import {
   Dialog,
   DialogContent,
@@ -14,7 +14,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@paybuddy/ui/components/dialog";
+} from "@tds-nivaran/ui/components/dialog";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -23,16 +23,16 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@paybuddy/ui/components/dropdown-menu";
+} from "@tds-nivaran/ui/components/dropdown-menu";
 import {
   Pagination,
   PaginationContent,
   PaginationItem,
   PaginationNext,
   PaginationPrevious,
-} from "@paybuddy/ui/components/pagination";
-import { Input } from "@paybuddy/ui/components/input";
-import { Skeleton } from "@paybuddy/ui/components/skeleton";
+} from "@tds-nivaran/ui/components/pagination";
+import { Input } from "@tds-nivaran/ui/components/input";
+import { Skeleton } from "@tds-nivaran/ui/components/skeleton";
 import {
   Table,
   TableBody,
@@ -40,7 +40,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@paybuddy/ui/components/table";
+} from "@tds-nivaran/ui/components/table";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { MoreHorizontalIcon } from "lucide-react";
 import { useNavigate } from "react-router";

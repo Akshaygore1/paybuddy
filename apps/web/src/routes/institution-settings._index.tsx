@@ -1,23 +1,23 @@
-import { Button } from "@paybuddy/ui/components/button";
+import { Button } from "@tds-nivaran/ui/components/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@paybuddy/ui/components/card";
+} from "@tds-nivaran/ui/components/card";
 import {
   Field,
   FieldError,
   FieldGroup,
   FieldLabel,
-} from "@paybuddy/ui/components/field";
-import { Input } from "@paybuddy/ui/components/input";
+} from "@tds-nivaran/ui/components/field";
+import { Input } from "@tds-nivaran/ui/components/input";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@paybuddy/ui/components/tooltip";
+} from "@tds-nivaran/ui/components/tooltip";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { ArrowDownIcon, ArrowUpIcon, InfoIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import { useState } from "react";

@@ -1,8 +1,8 @@
 export const financialYearOptions = [
   2023, 2024, 2025, 2026, 2027, 2028,
 ] as const;
-export const financialYearStorageKey = "paybuddy:selectedFinancialYearStart";
-export const financialYearChangeEvent = "paybuddy:financial-year-change";
+export const financialYearStorageKey = "tds-nivaran:selectedFinancialYearStart";
+export const financialYearChangeEvent = "tds-nivaran:financial-year-change";
 
 export type FinancialYearStart = (typeof financialYearOptions)[number];
 

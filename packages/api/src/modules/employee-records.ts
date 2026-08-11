@@ -1,10 +1,10 @@
-import { createDb } from "@paybuddy/db";
+import { createDb } from "@tds-nivaran/db";
 import {
   employeeCustomFieldDefinitions,
   employeeCustomFieldValues,
   employeeDesignations,
   employees,
-} from "@paybuddy/db/schema/index";
+} from "@tds-nivaran/db/schema/index";
 import { TRPCError } from "@trpc/server";
 import { and, asc, eq, inArray } from "drizzle-orm";
 
