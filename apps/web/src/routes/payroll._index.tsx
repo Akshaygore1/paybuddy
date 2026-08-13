@@ -190,26 +190,164 @@ function PayrollTable({
   section,
   lineItems,
   onAmountChange,
+  onAddField,
+  onArchiveField,
+  selectedMonthLabel,
+  isAddFieldPending,
+  isArchivingField,
 }: {
   section: PayrollSection;
   lineItems: PayrollLineItemState[];
   onAmountChange: (lineItemKey: string, value: string) => void;
+  onAddField: (section: PayrollSection, label: string) => Promise<string | null>;
+  onArchiveField: (fieldId: string) => Promise<void>;
+  selectedMonthLabel: string;
+  isAddFieldPending: boolean;
+  isArchivingField: boolean;
 }) {
+  const [isAddFieldFormOpen, setIsAddFieldFormOpen] = React.useState(false);
+  const [fieldLabel, setFieldLabel] = React.useState("");
+  const [fieldError, setFieldError] = React.useState<string | null>(null);
+  const [lineItemKeyToFocus, setLineItemKeyToFocus] = React.useState<string | null>(null);
+  const fieldNameInputRef = React.useRef<HTMLInputElement>(null);
+  const amountInputRefs = React.useRef(new Map<string, HTMLInputElement>());
   const visibleItems = lineItems.filter((item) => item.section === section);
   const totalPaise = visibleItems.reduce((total, item) => {
     const amountPaise = parseInputToPaise(item.amount);
     return total + (Number.isFinite(amountPaise) ? amountPaise : 0);
   }, 0);
 
+  React.useEffect(() => {
+    if (isAddFieldFormOpen) {
+      fieldNameInputRef.current?.focus();
+    }
+  }, [isAddFieldFormOpen]);
+
+  React.useEffect(() => {
+    if (!lineItemKeyToFocus) {
+      return;
+    }
+
+    const input = amountInputRefs.current.get(lineItemKeyToFocus);
+    if (input) {
+      input.focus();
+      setLineItemKeyToFocus(null);
+    }
+  }, [lineItemKeyToFocus, visibleItems]);
+
+  function closeAddFieldForm() {
+    setIsAddFieldFormOpen(false);
+    setFieldLabel("");
+    setFieldError(null);
+  }
+
+  async function submitField(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const normalizedLabel = fieldLabel.trim();
+
+    if (!normalizedLabel) {
+      setFieldError("Field name is required");
+      return;
+    }
+
+    if (normalizedLabel.length > 120) {
+      setFieldError("Field name must be 120 characters or fewer");
+      return;
+    }
+
+    try {
+      const lineItemKey = await onAddField(section, normalizedLabel);
+      if (!lineItemKey) {
+        return;
+      }
+
+      closeAddFieldForm();
+      setLineItemKeyToFocus(lineItemKey);
+    } catch (error) {
+      setFieldError(error instanceof Error ? error.message : "Unable to add payroll field");
+    }
+  }
+
+  async function removeField(field: PayrollLineItemState) {
+    if (
+      !field.customFieldDefinitionId ||
+      !window.confirm(`Remove ‘${field.label}’ from ${selectedMonthLabel} onward?`)
+    ) {
+      return;
+    }
+
+    try {
+      await onArchiveField(field.customFieldDefinitionId);
+    } catch {
+      // The mutation displays the server error as a toast.
+    }
+  }
+
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>{sectionLabels[section]}</CardTitle>
-        <CardDescription>
-          Monthly {sectionLabels[section].toLowerCase()} for the selected financial year.
-        </CardDescription>
+      <CardHeader className="flex flex-row items-start justify-between gap-4">
+        <div className="min-w-0 space-y-1.5">
+          <CardTitle>{sectionLabels[section]}</CardTitle>
+          <CardDescription>
+            Monthly {sectionLabels[section].toLowerCase()} for the selected financial year.
+          </CardDescription>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="shrink-0"
+          aria-expanded={isAddFieldFormOpen}
+          onClick={() => {
+            if (isAddFieldFormOpen) {
+              closeAddFieldForm();
+            } else {
+              setIsAddFieldFormOpen(true);
+            }
+          }}
+        >
+          <PlusIcon data-icon="inline-start" />
+          Add field
+        </Button>
       </CardHeader>
       <CardContent className="space-y-4">
+        {isAddFieldFormOpen ? (
+          <form
+            className="flex flex-col gap-3 border-b pb-4 sm:flex-row sm:items-start"
+            onSubmit={submitField}
+          >
+            <Field className="min-w-0 flex-1" data-invalid={Boolean(fieldError) || undefined}>
+              <FieldLabel htmlFor={`${section}-field-name`}>Field name</FieldLabel>
+              <Input
+                ref={fieldNameInputRef}
+                id={`${section}-field-name`}
+                value={fieldLabel}
+                aria-invalid={Boolean(fieldError)}
+                aria-describedby={fieldError ? `${section}-field-name-error` : undefined}
+                placeholder={section === "earnings" ? "Allowance name" : "Deduction name"}
+                onChange={(event) => {
+                  setFieldLabel(event.target.value);
+                  setFieldError(null);
+                }}
+              />
+              <FieldError id={`${section}-field-name-error`}>{fieldError}</FieldError>
+            </Field>
+            <div className="flex gap-2 sm:pt-6">
+              <Button type="submit" size="sm" disabled={isAddFieldPending}>
+                {isAddFieldPending ? "Adding..." : "Add"}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                disabled={isAddFieldPending}
+                onClick={closeAddFieldForm}
+              >
+                Cancel
+              </Button>
+            </div>
+          </form>
+        ) : null}
         <Table aria-label={`${sectionLabels[section]} payroll fields`}>
           <TableHeader>
             <TableRow>
@@ -232,10 +370,30 @@ function PayrollTable({
                       {item.isArchivedCustomField ? (
                         <Badge variant="outline">Archived</Badge>
                       ) : null}
+                      {item.customFieldDefinitionId && !item.isArchivedCustomField ? (
+                        <Button
+                          type="button"
+                          size="icon-sm"
+                          variant="ghost"
+                          className="text-muted-foreground"
+                          aria-label={`Remove ${item.label}`}
+                          disabled={isArchivingField}
+                          onClick={() => void removeField(item)}
+                        >
+                          <Trash2Icon />
+                        </Button>
+                      ) : null}
                     </div>
                   </TableCell>
                   <TableCell>
                     <Input
+                      ref={(input) => {
+                        if (input) {
+                          amountInputRefs.current.set(key, input);
+                        } else {
+                          amountInputRefs.current.delete(key);
+                        }
+                      }}
                       aria-label={`${item.label} amount`}
                       inputMode="decimal"
                       className="text-right"
@@ -277,9 +435,6 @@ export default function PayrollIndexPage() {
     financialYearStart: FinancialYearStart;
   } | null>(null);
   const [lineItems, setLineItems] = React.useState<PayrollLineItemState[]>([]);
-  const [customFieldSection, setCustomFieldSection] = React.useState<PayrollSection>("earnings");
-  const [customFieldLabel, setCustomFieldLabel] = React.useState("");
-  const [customFieldError, setCustomFieldError] = React.useState<string | null>(null);
   const [isDirty, setIsDirty] = React.useState(false);
 
   const employeesQuery = useQuery(trpc.payroll.getEmployees.queryOptions());
@@ -322,11 +477,8 @@ export default function PayrollIndexPage() {
     trpc.payroll.addCustomField.mutationOptions({
       onSuccess: async () => {
         toast.success("Payroll field added");
-        setCustomFieldLabel("");
-        setCustomFieldError(null);
         await queryClient.invalidateQueries();
       },
-      onError: (error) => toast.error(error.message),
     }),
   );
 
@@ -346,9 +498,6 @@ export default function PayrollIndexPage() {
   );
   const selectedMonthDefinition =
     months.find((month) => month.value === selectedMonth) ?? months[0];
-  const selectedEmployee = employeesQuery.data?.find(
-    (employee) => employee.id === selectedEmployeeId,
-  );
   const employeeLabelById = React.useMemo(
     () =>
       Object.fromEntries(
@@ -499,24 +648,41 @@ export default function PayrollIndexPage() {
     });
   }
 
-  async function addCustomField(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const normalizedLabel = customFieldLabel.trim();
-
-    if (!normalizedLabel) {
-      setCustomFieldError("Field label is required");
-      return;
-    }
-
+  async function addCustomField(section: PayrollSection, label: string) {
     if (!confirmDiscardChanges()) {
-      return;
+      return null;
     }
 
-    await addCustomFieldMutation.mutateAsync({
+    const field = await addCustomFieldMutation.mutateAsync({
       financialYearStart,
       month: selectedMonth,
-      section: customFieldSection,
-      label: normalizedLabel,
+      section,
+      label,
+    });
+
+    setLineItems((current) => {
+      if (current.some((item) => item.customFieldDefinitionId === field.id)) {
+        return current;
+      }
+
+      return [
+        ...current,
+        {
+          section: field.section,
+          fixedFieldKey: null,
+          customFieldDefinitionId: field.id,
+          label: field.label,
+          amount: "",
+          sortOrder: 1000 + field.sortOrder,
+          isArchivedCustomField: false,
+        },
+      ];
+    });
+
+    return getLineItemKey({
+      section: field.section,
+      fixedFieldKey: null,
+      customFieldDefinitionId: field.id,
     });
   }
 
@@ -1005,128 +1171,36 @@ export default function PayrollIndexPage() {
 
       {formKey ? (
         <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>
-                {selectedEmployee ? employeeLabelById[selectedEmployee.id] : "Employee payroll"}
-              </CardTitle>
-              <CardDescription>
-                Values saved for {selectedMonthDefinition.label} remain in effect until a later
-                month changes them.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-3 md:grid-cols-3">
-              <div className="border p-3">
-                <p className="text-xs text-muted-foreground">Total earnings</p>
-                <p className="text-lg font-semibold">{formatCurrency(totals.earningsPaise)}</p>
-              </div>
-              <div className="border p-3">
-                <p className="text-xs text-muted-foreground">Total deductions</p>
-                <p className="text-lg font-semibold">{formatCurrency(totals.deductionsPaise)}</p>
-              </div>
-              <div className="border p-3">
-                <p className="text-xs text-muted-foreground">Net pay</p>
-                <p className="text-lg font-semibold">{formatCurrency(totals.netPayPaise)}</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="grid gap-6 xl:grid-cols-2">
-            <PayrollTable section="earnings" lineItems={lineItems} onAmountChange={updateAmount} />
-            <PayrollTable
-              section="deductions"
-              lineItems={lineItems}
-              onAmountChange={updateAmount}
-            />
+          <div className="space-y-3">
+            <div className="grid gap-6 xl:grid-cols-2">
+              <PayrollTable
+                section="earnings"
+                lineItems={lineItems}
+                onAmountChange={updateAmount}
+                onAddField={addCustomField}
+                onArchiveField={archiveCustomField}
+                selectedMonthLabel={selectedMonthDefinition.label}
+                isAddFieldPending={addCustomFieldMutation.isPending}
+                isArchivingField={archiveCustomFieldMutation.isPending}
+              />
+              <PayrollTable
+                section="deductions"
+                lineItems={lineItems}
+                onAmountChange={updateAmount}
+                onAddField={addCustomField}
+                onArchiveField={archiveCustomField}
+                selectedMonthLabel={selectedMonthDefinition.label}
+                isAddFieldPending={addCustomFieldMutation.isPending}
+                isArchivingField={archiveCustomFieldMutation.isPending}
+              />
+            </div>
+            <div className="space-y-1 px-4 py-2">
+              <p className="text-xs text-muted-foreground">Net pay</p>
+              <p className="text-lg font-semibold tabular-nums">
+                {formatCurrency(totals.netPayPaise)}
+              </p>
+            </div>
           </div>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Custom payroll fields</CardTitle>
-              <CardDescription>
-                Labels are shared across the institution from the selected month; amounts remain
-                employee-specific.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-5">
-              <form className="grid gap-3 md:grid-cols-[180px_1fr_auto]" onSubmit={addCustomField}>
-                <Field>
-                  <FieldLabel>Section</FieldLabel>
-                  <Select
-                    value={customFieldSection}
-                    onValueChange={(value) =>
-                      setCustomFieldSection((value ?? "earnings") as PayrollSection)
-                    }
-                  >
-                    <SelectTrigger aria-label="Select custom payroll field section">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        <SelectItem value="earnings">Earnings</SelectItem>
-                        <SelectItem value="deductions">Deductions</SelectItem>
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
-                </Field>
-                <Field data-invalid={Boolean(customFieldError) || undefined}>
-                  <FieldLabel>Field label</FieldLabel>
-                  <Input
-                    value={customFieldLabel}
-                    onChange={(event) => {
-                      setCustomFieldLabel(event.target.value);
-                      setCustomFieldError(null);
-                    }}
-                    aria-invalid={Boolean(customFieldError)}
-                    placeholder="Allowance name"
-                  />
-                  <FieldError>{customFieldError}</FieldError>
-                </Field>
-                <div className="flex items-end">
-                  <Button type="submit" disabled={addCustomFieldMutation.isPending}>
-                    <PlusIcon data-icon="inline-start" />
-                    {addCustomFieldMutation.isPending ? "Adding..." : "Add Field"}
-                  </Button>
-                </div>
-              </form>
-
-              <div className="grid gap-3 md:grid-cols-2">
-                {(["earnings", "deductions"] as const).map((section) => (
-                  <div className="space-y-2 border p-3" key={section}>
-                    <h3 className="text-sm font-medium">{sectionLabels[section]}</h3>
-                    {(formQuery.data?.customFields ?? []).filter(
-                      (field) => field.section === section,
-                    ).length ? (
-                      (formQuery.data?.customFields ?? [])
-                        .filter((field) => field.section === section)
-                        .map((field) => (
-                          <div
-                            className="flex items-center justify-between gap-3 text-sm"
-                            key={field.id}
-                          >
-                            <span>{field.label}</span>
-                            <Button
-                              type="button"
-                              size="icon-sm"
-                              variant="outline"
-                              aria-label={`Archive ${field.label}`}
-                              disabled={archiveCustomFieldMutation.isPending}
-                              onClick={() => {
-                                void archiveCustomField(field.id);
-                              }}
-                            >
-                              <Trash2Icon />
-                            </Button>
-                          </div>
-                        ))
-                    ) : (
-                      <p className="text-sm text-muted-foreground">No custom fields.</p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
 
           <div className="flex justify-end">
             <Button

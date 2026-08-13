@@ -213,6 +213,7 @@ test.describe("institution user flows", () => {
       run.employees.headmaster.surname,
     ].join(" ");
     const customPayrollFieldLabel = `Test Allowance ${run.suffix}`;
+    const customDeductionFieldLabel = `Test Deduction ${run.suffix}`;
 
     await selectOption(page, "Select employee", employeeName);
     await expect(
@@ -222,20 +223,87 @@ test.describe("institution user flows", () => {
     await selectOption(page, "Select payroll financial year", "2026-2027");
     await selectOption(page, "Select payroll month", "June 2026");
 
+    const earningsAddFieldButton = page
+      .getByRole("button", { name: "Add field", exact: true })
+      .first();
+    await earningsAddFieldButton.click();
+    await page.getByLabel("Field name").fill("Cancelled allowance");
+    await page.getByRole("button", { name: "Cancel", exact: true }).click();
+    await expect(page.getByLabel("Field name")).toHaveCount(0);
+
+    await earningsAddFieldButton.click();
+    await page.getByRole("button", { name: "Add", exact: true }).click();
+    await expect(page.getByText("Field name is required", { exact: true })).toBeVisible();
+    await page.getByLabel("Field name").fill("x".repeat(121));
+    await page.getByRole("button", { name: "Add", exact: true }).click();
+    await expect(
+      page.getByText("Field name must be 120 characters or fewer", { exact: true }),
+    ).toBeVisible();
+    await page.getByLabel("Field name").fill(customPayrollFieldLabel);
+    await page.getByRole("button", { name: "Add", exact: true }).click();
+    await expect(page.getByText("Payroll field added", { exact: true })).toBeVisible();
+    const customPayrollAmount = page.getByLabel(
+      `${customPayrollFieldLabel} amount`,
+    );
+    await expect(customPayrollAmount).toBeFocused();
+    await expect(page.getByRole("button", { name: "Remove Basic Pay" })).toHaveCount(0);
+
+    await earningsAddFieldButton.click();
+    await page.getByLabel("Field name").fill(customPayrollFieldLabel.toLowerCase());
+    await page.getByRole("button", { name: "Add", exact: true }).click();
+    await expect(
+      page.getByText("A payroll field with this label already exists in this section", {
+        exact: true,
+      }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Cancel", exact: true }).click();
+
+    const deductionsAddFieldButton = page
+      .getByRole("button", { name: "Add field", exact: true })
+      .nth(1);
+    await deductionsAddFieldButton.click();
+    await page.getByLabel("Field name").fill(customDeductionFieldLabel);
+    await page.getByRole("button", { name: "Add", exact: true }).click();
+    await expect(page.getByLabel(`${customDeductionFieldLabel} amount`)).toBeFocused();
+    page.once("dialog", async (dialog) => {
+      expect(dialog.message()).toBe(
+        `Remove ‘${customDeductionFieldLabel}’ from June 2026 onward?`,
+      );
+      await dialog.accept();
+    });
+    await page.getByRole("button", { name: `Remove ${customDeductionFieldLabel}` }).click();
+    await expect(page.getByLabel(`${customDeductionFieldLabel} amount`)).toHaveCount(0);
+
     await page.getByLabel("Basic Pay amount").fill("1000");
     await page.getByLabel("Recovery amount").fill("100");
-    await page.getByLabel("Field label").fill(customPayrollFieldLabel);
-    await page.getByRole("button", { name: "Add Field" }).click();
-    await expect(
-      page.getByLabel(`${customPayrollFieldLabel} amount`),
-    ).toBeVisible();
-    await page.getByLabel(`${customPayrollFieldLabel} amount`).fill("250");
+    await customPayrollAmount.fill("250");
+
+    await deductionsAddFieldButton.click();
+    await page.getByLabel("Field name").fill("Should not be added");
+    page.once("dialog", async (dialog) => {
+      expect(dialog.message()).toBe("Discard your unsaved payroll changes?");
+      await dialog.dismiss();
+    });
+    await page.getByRole("button", { name: "Add", exact: true }).click();
+    await expect(page.getByLabel("Basic Pay amount")).toHaveValue("1000");
+    await expect(page.getByLabel("Field name")).toHaveValue("Should not be added");
+    await page.getByRole("button", { name: "Cancel", exact: true }).click();
 
     await expect(page.getByText("₹1,250.00")).toBeVisible();
     await expect(page.getByText("₹100.00")).toBeVisible();
     await expect(page.getByText("₹1,150.00")).toBeVisible();
     await page.getByRole("button", { name: "Save Payroll" }).click();
     await expect(page.getByText("Payroll saved")).toBeVisible();
+
+    const secondEmployeeName = [
+      run.employees.teacherA.firstName,
+      run.employees.teacherA.middleName,
+      run.employees.teacherA.surname,
+    ].join(" ");
+    await selectOption(page, "Select employee", secondEmployeeName);
+    await expect(page.getByLabel(`${customPayrollFieldLabel} amount`)).toHaveValue("");
+    await selectOption(page, "Select employee", employeeName);
+    await expect(page.getByLabel(`${customPayrollFieldLabel} amount`)).toHaveValue("250.00");
 
     await selectOption(page, "Select payroll financial year", "2025-2026");
     await expect(page.getByLabel("Basic Pay amount")).toHaveValue("");
@@ -271,6 +339,20 @@ test.describe("institution user flows", () => {
     await expect((await annualDownload).suggestedFilename()).toMatch(
       /^annual-payslip-.*2026-2027\.pdf$/,
     );
+
+    page.once("dialog", async (dialog) => {
+      expect(dialog.message()).toBe(
+        `Remove ‘${customPayrollFieldLabel}’ from June 2026 onward?`,
+      );
+      await dialog.accept();
+    });
+    await page.getByRole("button", { name: `Remove ${customPayrollFieldLabel}` }).click();
+    await expect(page.getByText("Archived", { exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: `Remove ${customPayrollFieldLabel}` }),
+    ).toHaveCount(0);
+    await selectOption(page, "Select payroll month", "July 2026");
+    await expect(page.getByLabel(`${customPayrollFieldLabel} amount`)).toHaveCount(0);
   });
 
   test("shows reports for the signed-in institution user", async ({
