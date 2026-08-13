@@ -7,12 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@tds-nivaran/ui/components/card";
-import {
-  Field,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-} from "@tds-nivaran/ui/components/field";
+import { Field, FieldError, FieldGroup, FieldLabel } from "@tds-nivaran/ui/components/field";
 import { Input } from "@tds-nivaran/ui/components/input";
 import {
   Select,
@@ -37,6 +32,7 @@ import { toast } from "sonner";
 
 import { PageHeader } from "@/components/page-header";
 import {
+  financialYearBeforeChangeEvent,
   financialYearChangeEvent,
   financialYearOptions,
   getFinancialYearLabel,
@@ -44,10 +40,7 @@ import {
   type FinancialYearStart,
   writeSelectedFinancialYearStart,
 } from "@/lib/financial-year";
-import {
-  buildPayrollPdfTableModel,
-  formatPayrollPdfCurrency,
-} from "@/lib/payroll-pdf";
+import { buildPayrollPdfTableModel, formatPayrollPdfCurrency } from "@/lib/payroll-pdf";
 import { queryClient, trpc } from "@/utils/trpc";
 
 type PayrollSection = "earnings" | "deductions";
@@ -96,9 +89,7 @@ function getCurrentFinancialYearMonth(financialYearStart: number) {
   const now = new Date();
   const currentValue = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
-  return months.some((month) => month.value === currentValue)
-    ? currentValue
-    : months[0].value;
+  return months.some((month) => month.value === currentValue) ? currentValue : months[0].value;
 }
 
 function getLineItemKey(item: {
@@ -171,9 +162,7 @@ function calculateTotals(lineItems: PayrollLineItemState[]) {
   return totals;
 }
 
-function createLineItemsFromForm(
-  form: NonNullable<ReturnType<typeof useQuery>["data"]>,
-) {
+function createLineItemsFromForm(form: NonNullable<ReturnType<typeof useQuery>["data"]>) {
   const data = form as {
     lineItems: Array<{
       section: PayrollSection;
@@ -217,8 +206,7 @@ function PayrollTable({
       <CardHeader>
         <CardTitle>{sectionLabels[section]}</CardTitle>
         <CardDescription>
-          Monthly {sectionLabels[section].toLowerCase()} for the selected
-          financial year.
+          Monthly {sectionLabels[section].toLowerCase()} for the selected financial year.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -253,9 +241,7 @@ function PayrollTable({
                       className="text-right"
                       value={item.amount}
                       aria-invalid={invalidAmount}
-                      onChange={(event) =>
-                        onAmountChange(key, event.target.value)
-                      }
+                      onChange={(event) => onAmountChange(key, event.target.value)}
                       placeholder="0.00"
                     />
                     {invalidAmount ? (
@@ -279,8 +265,9 @@ function PayrollTable({
 }
 
 export default function PayrollIndexPage() {
-  const [financialYearStart, setFinancialYearStart] =
-    React.useState<FinancialYearStart>(() => readSelectedFinancialYearStart());
+  const [financialYearStart, setFinancialYearStart] = React.useState<FinancialYearStart>(() =>
+    readSelectedFinancialYearStart(),
+  );
   const [selectedEmployeeId, setSelectedEmployeeId] = React.useState("");
   const [selectedMonth, setSelectedMonth] = React.useState(() =>
     getCurrentFinancialYearMonth(readSelectedFinancialYearStart()),
@@ -290,12 +277,9 @@ export default function PayrollIndexPage() {
     financialYearStart: FinancialYearStart;
   } | null>(null);
   const [lineItems, setLineItems] = React.useState<PayrollLineItemState[]>([]);
-  const [customFieldSection, setCustomFieldSection] =
-    React.useState<PayrollSection>("earnings");
+  const [customFieldSection, setCustomFieldSection] = React.useState<PayrollSection>("earnings");
   const [customFieldLabel, setCustomFieldLabel] = React.useState("");
-  const [customFieldError, setCustomFieldError] = React.useState<string | null>(
-    null,
-  );
+  const [customFieldError, setCustomFieldError] = React.useState<string | null>(null);
   const [isDirty, setIsDirty] = React.useState(false);
 
   const employeesQuery = useQuery(trpc.payroll.getEmployees.queryOptions());
@@ -305,10 +289,12 @@ export default function PayrollIndexPage() {
         ? {
             employeeId: formKey.employeeId,
             financialYearStart: formKey.financialYearStart,
+            month: selectedMonth,
           }
         : {
             employeeId: "__pending__",
             financialYearStart,
+            month: selectedMonth,
           },
     ),
     enabled: Boolean(formKey),
@@ -324,6 +310,7 @@ export default function PayrollIndexPage() {
           queryKey: trpc.payroll.getForm.queryKey({
             employeeId: data.employee.id,
             financialYearStart: data.financialYearStart,
+            month: data.month,
           }),
         });
       },
@@ -367,18 +354,27 @@ export default function PayrollIndexPage() {
       Object.fromEntries(
         (employeesQuery.data ?? []).map((employee) => [
           employee.id,
-          [employee.firstName, employee.middleName, employee.surname]
-            .filter(Boolean)
-            .join(" "),
+          [employee.firstName, employee.middleName, employee.surname].filter(Boolean).join(" "),
         ]),
       ),
     [employeesQuery.data],
   );
   const totals = React.useMemo(() => calculateTotals(lineItems), [lineItems]);
   const hasInvalidAmounts = lineItems.some(
-    (item) =>
-      item.amount.trim() && Number.isNaN(parseInputToPaise(item.amount)),
+    (item) => item.amount.trim() && Number.isNaN(parseInputToPaise(item.amount)),
   );
+
+  React.useEffect(() => {
+    function confirmFinancialYearChange(event: Event) {
+      if (isDirty && !window.confirm("Discard your unsaved payroll changes?")) {
+        event.preventDefault();
+      }
+    }
+
+    window.addEventListener(financialYearBeforeChangeEvent, confirmFinancialYearChange);
+    return () =>
+      window.removeEventListener(financialYearBeforeChangeEvent, confirmFinancialYearChange);
+  }, [isDirty]);
 
   React.useEffect(() => {
     function syncFinancialYear(event: Event) {
@@ -386,8 +382,11 @@ export default function PayrollIndexPage() {
         financialYearStart: FinancialYearStart;
       }>;
       const nextFinancialYearStart =
-        customEvent.detail?.financialYearStart ??
-        readSelectedFinancialYearStart();
+        customEvent.detail?.financialYearStart ?? readSelectedFinancialYearStart();
+
+      if (nextFinancialYearStart === financialYearStart) {
+        return;
+      }
 
       setFinancialYearStart(nextFinancialYearStart);
       setSelectedMonth(getCurrentFinancialYearMonth(nextFinancialYearStart));
@@ -404,9 +403,8 @@ export default function PayrollIndexPage() {
     }
 
     window.addEventListener(financialYearChangeEvent, syncFinancialYear);
-    return () =>
-      window.removeEventListener(financialYearChangeEvent, syncFinancialYear);
-  }, []);
+    return () => window.removeEventListener(financialYearChangeEvent, syncFinancialYear);
+  }, [financialYearStart]);
 
   React.useEffect(() => {
     if (formQuery.data) {
@@ -418,7 +416,14 @@ export default function PayrollIndexPage() {
   function updateFinancialYear(value: string | null) {
     const nextFinancialYearStart = Number(value) as FinancialYearStart;
 
-    if (!financialYearOptions.includes(nextFinancialYearStart)) {
+    if (
+      !financialYearOptions.includes(nextFinancialYearStart) ||
+      nextFinancialYearStart === financialYearStart
+    ) {
+      return;
+    }
+
+    if (!writeSelectedFinancialYearStart(nextFinancialYearStart)) {
       return;
     }
 
@@ -434,7 +439,27 @@ export default function PayrollIndexPage() {
     );
     setLineItems([]);
     setIsDirty(false);
-    writeSelectedFinancialYearStart(nextFinancialYearStart);
+  }
+
+  function confirmDiscardChanges() {
+    if (isDirty && !window.confirm("Discard your unsaved payroll changes?")) {
+      return false;
+    }
+
+    if (isDirty && formQuery.data) {
+      setLineItems(createLineItemsFromForm(formQuery.data));
+    }
+    setIsDirty(false);
+    return true;
+  }
+
+  function updateMonth(value: string | null) {
+    if (!value || value === selectedMonth || !confirmDiscardChanges()) {
+      return;
+    }
+
+    setSelectedMonth(value);
+    setLineItems([]);
   }
 
   function updateAmount(lineItemKey: string, value: string) {
@@ -462,6 +487,7 @@ export default function PayrollIndexPage() {
     await savePayrollMutation.mutateAsync({
       employeeId: formKey.employeeId,
       financialYearStart: formKey.financialYearStart,
+      month: selectedMonth,
       lineItems: lineItems
         .filter((item) => !item.isArchivedCustomField)
         .map((item) => ({
@@ -482,14 +508,28 @@ export default function PayrollIndexPage() {
       return;
     }
 
+    if (!confirmDiscardChanges()) {
+      return;
+    }
+
     await addCustomFieldMutation.mutateAsync({
+      financialYearStart,
+      month: selectedMonth,
       section: customFieldSection,
       label: normalizedLabel,
     });
   }
 
   async function archiveCustomField(fieldId: string) {
-    await archiveCustomFieldMutation.mutateAsync({ id: fieldId });
+    if (!confirmDiscardChanges()) {
+      return;
+    }
+
+    await archiveCustomFieldMutation.mutateAsync({
+      id: fieldId,
+      financialYearStart,
+      month: selectedMonth,
+    });
   }
 
   function requireSavedPayroll() {
@@ -511,8 +551,7 @@ export default function PayrollIndexPage() {
       return;
     }
 
-    const { Document, Page, Text, View, StyleSheet, pdf } =
-      await import("@react-pdf/renderer");
+    const { Document, Page, Text, View, StyleSheet, pdf } = await import("@react-pdf/renderer");
     const savedLineItems = lineItems
       .filter((item) => !item.isArchivedCustomField)
       .map((item) => {
@@ -526,11 +565,23 @@ export default function PayrollIndexPage() {
     const tableModel = buildPayrollPdfTableModel({
       kind,
       financialYearLabel: getFinancialYearLabel(financialYearStart),
+      selectedMonthValue: selectedMonth,
       selectedMonthLabel: selectedMonthDefinition.shortLabel,
       months: months.map((month) => ({
         value: month.value,
         label: month.label,
         shortLabel: month.shortLabel,
+        lineItems:
+          formQuery.data.monthlyPayroll
+            .find((payroll) => payroll.month === month.value)
+            ?.lineItems.map((item) => ({
+              section: item.section,
+              fixedFieldKey: item.fixedFieldKey,
+              customFieldDefinitionId: item.customFieldDefinitionId,
+              label: item.label,
+              amountPaise: item.amountPaise,
+              sortOrder: item.sortOrder,
+            })) ?? [],
       })),
       lineItems: savedLineItems.map((item) => ({
         section: item.section,
@@ -623,6 +674,10 @@ export default function PayrollIndexPage() {
       alternateRow: {
         backgroundColor: "#f8fafc",
       },
+      projectedRow: {
+        backgroundColor: "#f3f4f6",
+        color: "#9ca3af",
+      },
       cell: {
         paddingTop: 3,
         paddingRight: 3,
@@ -646,22 +701,15 @@ export default function PayrollIndexPage() {
         backgroundColor: "#e2e8f0",
       },
     });
-    const institutionName =
-      tableModel.header.leftLines[0]?.replace(/^School:\s*/u, "") ?? "";
-    const institutionAddress =
-      tableModel.header.leftLines[1]?.replace(/^Address:\s*/u, "") ?? "";
-    const institutionTan =
-      tableModel.header.leftLines[2]?.replace(/^TAN No\.\s*:\s*/u, "") ?? "";
+    const institutionName = tableModel.header.leftLines[0]?.replace(/^School:\s*/u, "") ?? "";
+    const institutionAddress = tableModel.header.leftLines[1]?.replace(/^Address:\s*/u, "") ?? "";
+    const institutionTan = tableModel.header.leftLines[2]?.replace(/^TAN No\.\s*:\s*/u, "") ?? "";
     function renderMetaLine(line: string) {
       const [label, ...valueParts] = line.split(": ");
       const value = valueParts.join(": ");
 
       if (!value) {
-        return React.createElement(
-          Text,
-          { key: line, style: styles.metaText },
-          line,
-        );
+        return React.createElement(Text, { key: line, style: styles.metaText }, line);
       }
 
       return React.createElement(
@@ -727,9 +775,7 @@ export default function PayrollIndexPage() {
         React.createElement(
           Text,
           {
-            style: options?.isHeader
-              ? styles.headerCellText
-              : styles.bodyCellText,
+            style: options?.isHeader ? styles.headerCellText : styles.bodyCellText,
           },
           text,
         ),
@@ -747,26 +793,10 @@ export default function PayrollIndexPage() {
         React.createElement(
           View,
           { style: styles.headerBlock },
-          React.createElement(
-            Text,
-            { style: styles.institutionName },
-            institutionName,
-          ),
-          React.createElement(
-            Text,
-            { style: styles.institutionAddress },
-            institutionAddress,
-          ),
-          React.createElement(
-            Text,
-            { style: styles.institutionTan },
-            `TAN No.: ${institutionTan}`,
-          ),
-          React.createElement(
-            Text,
-            { style: styles.title },
-            tableModel.header.title,
-          ),
+          React.createElement(Text, { style: styles.institutionName }, institutionName),
+          React.createElement(Text, { style: styles.institutionAddress }, institutionAddress),
+          React.createElement(Text, { style: styles.institutionTan }, `TAN No.: ${institutionTan}`),
+          React.createElement(Text, { style: styles.title }, tableModel.header.title),
           React.createElement(
             View,
             { style: styles.headerMetaRow },
@@ -789,10 +819,7 @@ export default function PayrollIndexPage() {
         React.createElement(
           View,
           {
-            style: [
-              styles.tableWrap,
-              { width: tableModel.widthFit.tableWidth },
-            ],
+            style: [styles.tableWrap, { width: tableModel.widthFit.tableWidth }],
           },
           React.createElement(
             View,
@@ -810,13 +837,15 @@ export default function PayrollIndexPage() {
               View,
               {
                 key: row.key,
-                style:
+                style: [
+                  styles.tableRow,
                   row.rowLabel === "Total"
-                    ? [styles.tableRow, styles.totalRow]
-                    : row.key === "selected-month" ||
-                        Number(row.serialNumber) % 2 === 1
-                      ? [styles.tableRow, styles.alternateRow]
-                      : styles.tableRow,
+                    ? styles.totalRow
+                    : row.key === "selected-month" || Number(row.serialNumber) % 2 === 1
+                      ? styles.alternateRow
+                      : {},
+                  row.isProjected ? styles.projectedRow : {},
+                ],
               },
               ...tableModel.columns.map((column, columnIndex) => {
                 const value =
@@ -897,6 +926,10 @@ export default function PayrollIndexPage() {
                 onValueChange={(value) => {
                   const nextEmployeeId = value ?? "";
 
+                  if (nextEmployeeId === selectedEmployeeId || !confirmDiscardChanges()) {
+                    return;
+                  }
+
                   setSelectedEmployeeId(nextEmployeeId);
                   setFormKey(
                     nextEmployeeId
@@ -913,8 +946,7 @@ export default function PayrollIndexPage() {
                 <SelectTrigger aria-label="Select employee">
                   <SelectValue placeholder="Select employee">
                     {selectedEmployeeId
-                      ? (employeeLabelById[selectedEmployeeId] ??
-                        "Select employee")
+                      ? (employeeLabelById[selectedEmployeeId] ?? "Select employee")
                       : "Select employee"}
                   </SelectValue>
                 </SelectTrigger>
@@ -931,10 +963,7 @@ export default function PayrollIndexPage() {
             </Field>
             <Field>
               <FieldLabel>Financial year</FieldLabel>
-              <Select
-                value={String(financialYearStart)}
-                onValueChange={updateFinancialYear}
-              >
+              <Select value={String(financialYearStart)} onValueChange={updateFinancialYear}>
                 <SelectTrigger aria-label="Select payroll financial year">
                   <SelectValue placeholder="Select financial year">
                     {getFinancialYearLabel(financialYearStart)}
@@ -953,10 +982,7 @@ export default function PayrollIndexPage() {
             </Field>
             <Field>
               <FieldLabel>Month</FieldLabel>
-              <Select
-                value={selectedMonth}
-                onValueChange={(value) => value && setSelectedMonth(value)}
-              >
+              <Select value={selectedMonth} onValueChange={updateMonth}>
                 <SelectTrigger aria-label="Select payroll month">
                   <SelectValue placeholder="Select month">
                     {selectedMonthDefinition.label}
@@ -982,46 +1008,31 @@ export default function PayrollIndexPage() {
           <Card>
             <CardHeader>
               <CardTitle>
-                {selectedEmployee
-                  ? employeeLabelById[selectedEmployee.id]
-                  : "Employee payroll"}
+                {selectedEmployee ? employeeLabelById[selectedEmployee.id] : "Employee payroll"}
               </CardTitle>
               <CardDescription>
-                Amounts are saved once for{" "}
-                {getFinancialYearLabel(financialYearStart)} and reused for every
-                month.
+                Values saved for {selectedMonthDefinition.label} remain in effect until a later
+                month changes them.
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-3 md:grid-cols-3">
               <div className="border p-3">
                 <p className="text-xs text-muted-foreground">Total earnings</p>
-                <p className="text-lg font-semibold">
-                  {formatCurrency(totals.earningsPaise)}
-                </p>
+                <p className="text-lg font-semibold">{formatCurrency(totals.earningsPaise)}</p>
               </div>
               <div className="border p-3">
-                <p className="text-xs text-muted-foreground">
-                  Total deductions
-                </p>
-                <p className="text-lg font-semibold">
-                  {formatCurrency(totals.deductionsPaise)}
-                </p>
+                <p className="text-xs text-muted-foreground">Total deductions</p>
+                <p className="text-lg font-semibold">{formatCurrency(totals.deductionsPaise)}</p>
               </div>
               <div className="border p-3">
                 <p className="text-xs text-muted-foreground">Net pay</p>
-                <p className="text-lg font-semibold">
-                  {formatCurrency(totals.netPayPaise)}
-                </p>
+                <p className="text-lg font-semibold">{formatCurrency(totals.netPayPaise)}</p>
               </div>
             </CardContent>
           </Card>
 
           <div className="grid gap-6 xl:grid-cols-2">
-            <PayrollTable
-              section="earnings"
-              lineItems={lineItems}
-              onAmountChange={updateAmount}
-            />
+            <PayrollTable section="earnings" lineItems={lineItems} onAmountChange={updateAmount} />
             <PayrollTable
               section="deductions"
               lineItems={lineItems}
@@ -1033,23 +1044,18 @@ export default function PayrollIndexPage() {
             <CardHeader>
               <CardTitle>Custom payroll fields</CardTitle>
               <CardDescription>
-                Labels are shared across the institution; amounts remain
+                Labels are shared across the institution from the selected month; amounts remain
                 employee-specific.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
-              <form
-                className="grid gap-3 md:grid-cols-[180px_1fr_auto]"
-                onSubmit={addCustomField}
-              >
+              <form className="grid gap-3 md:grid-cols-[180px_1fr_auto]" onSubmit={addCustomField}>
                 <Field>
                   <FieldLabel>Section</FieldLabel>
                   <Select
                     value={customFieldSection}
                     onValueChange={(value) =>
-                      setCustomFieldSection(
-                        (value ?? "earnings") as PayrollSection,
-                      )
+                      setCustomFieldSection((value ?? "earnings") as PayrollSection)
                     }
                   >
                     <SelectTrigger aria-label="Select custom payroll field section">
@@ -1077,14 +1083,9 @@ export default function PayrollIndexPage() {
                   <FieldError>{customFieldError}</FieldError>
                 </Field>
                 <div className="flex items-end">
-                  <Button
-                    type="submit"
-                    disabled={addCustomFieldMutation.isPending}
-                  >
+                  <Button type="submit" disabled={addCustomFieldMutation.isPending}>
                     <PlusIcon data-icon="inline-start" />
-                    {addCustomFieldMutation.isPending
-                      ? "Adding..."
-                      : "Add Field"}
+                    {addCustomFieldMutation.isPending ? "Adding..." : "Add Field"}
                   </Button>
                 </div>
               </form>
@@ -1092,9 +1093,7 @@ export default function PayrollIndexPage() {
               <div className="grid gap-3 md:grid-cols-2">
                 {(["earnings", "deductions"] as const).map((section) => (
                   <div className="space-y-2 border p-3" key={section}>
-                    <h3 className="text-sm font-medium">
-                      {sectionLabels[section]}
-                    </h3>
+                    <h3 className="text-sm font-medium">{sectionLabels[section]}</h3>
                     {(formQuery.data?.customFields ?? []).filter(
                       (field) => field.section === section,
                     ).length ? (
@@ -1121,9 +1120,7 @@ export default function PayrollIndexPage() {
                           </div>
                         ))
                     ) : (
-                      <p className="text-sm text-muted-foreground">
-                        No custom fields.
-                      </p>
+                      <p className="text-sm text-muted-foreground">No custom fields.</p>
                     )}
                   </div>
                 ))}

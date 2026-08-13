@@ -13,6 +13,7 @@ export type PayrollPdfMonth = {
   value: string;
   label: string;
   shortLabel?: string;
+  lineItems?: PayrollPdfLineItem[];
 };
 
 export type PayrollPdfColumn = {
@@ -29,6 +30,7 @@ export type PayrollPdfRow = {
   serialNumber: string;
   rowLabel: string;
   values: Record<string, number>;
+  isProjected?: boolean;
 };
 
 export type PayrollPdfTableModel = {
@@ -114,22 +116,14 @@ function getMinimumWidth(column: PayrollPdfColumn) {
     return MIN_COLUMN_WIDTH.rowLabel;
   }
 
-  return column.kind === "total"
-    ? MIN_COLUMN_WIDTH.total
-    : MIN_COLUMN_WIDTH.amount;
+  return column.kind === "total" ? MIN_COLUMN_WIDTH.total : MIN_COLUMN_WIDTH.amount;
 }
 
 function fitColumnsToPage(columns: PayrollPdfColumn[]) {
   const leadingColumns = columns.filter((column) => column.kind === "leading");
   const valueColumns = columns.filter((column) => column.kind !== "leading");
-  const leadingBaseWidth = leadingColumns.reduce(
-    (sum, column) => sum + column.width,
-    0,
-  );
-  const leadingMinWidth = leadingColumns.reduce(
-    (sum, column) => sum + getMinimumWidth(column),
-    0,
-  );
+  const leadingBaseWidth = leadingColumns.reduce((sum, column) => sum + column.width, 0);
+  const leadingMinWidth = leadingColumns.reduce((sum, column) => sum + getMinimumWidth(column), 0);
   const tableBaseWidth = columns.reduce((sum, column) => sum + column.width, 0);
 
   if (tableBaseWidth <= PDF_PAGE_CONTENT_WIDTH) {
@@ -150,9 +144,7 @@ function fitColumnsToPage(columns: PayrollPdfColumn[]) {
   const remainingValueWidthBudget = PDF_PAGE_CONTENT_WIDTH - adjustedLeadingWidth;
   const valueBaseWidth = valueColumns.reduce((sum, column) => sum + column.width, 0);
   const valueScale =
-    valueBaseWidth > 0
-      ? Math.min(1, remainingValueWidthBudget / valueBaseWidth)
-      : 1;
+    valueBaseWidth > 0 ? Math.min(1, remainingValueWidthBudget / valueBaseWidth) : 1;
 
   const fittedLeadingColumns = leadingColumns.map((column) => {
     const ratio = leadingBaseWidth > 0 ? column.width / leadingBaseWidth : 0;
@@ -177,10 +169,7 @@ function fitColumnsToPage(columns: PayrollPdfColumn[]) {
     return fittedValueColumns.shift() as PayrollPdfColumn;
   });
 
-  const fittedTableWidth = fittedColumns.reduce(
-    (sum, column) => sum + column.width,
-    0,
-  );
+  const fittedTableWidth = fittedColumns.reduce((sum, column) => sum + column.width, 0);
 
   if (fittedTableWidth <= PDF_PAGE_CONTENT_WIDTH) {
     return {
@@ -198,8 +187,7 @@ function fitColumnsToPage(columns: PayrollPdfColumn[]) {
 
   while (remainingShrink > 0.01) {
     const shrinkableColumns = normalizedValueColumns.filter(
-      (column) =>
-        column.kind !== "leading" && column.width - getMinimumWidth(column) > 0.01,
+      (column) => column.kind !== "leading" && column.width - getMinimumWidth(column) > 0.01,
     );
 
     if (shrinkableColumns.length === 0) {
@@ -233,19 +221,14 @@ function fitColumnsToPage(columns: PayrollPdfColumn[]) {
   if (remainingOverflow > 0.0001) {
     const lastShrinkableColumn = [...normalizedValueColumns]
       .reverse()
-      .find(
-        (column) => column.width - getMinimumWidth(column) >= remainingOverflow,
-      );
+      .find((column) => column.width - getMinimumWidth(column) >= remainingOverflow);
 
     if (lastShrinkableColumn) {
       lastShrinkableColumn.width -= remainingOverflow;
     }
   }
 
-  const finalTableWidth = normalizedValueColumns.reduce(
-    (sum, column) => sum + column.width,
-    0,
-  );
+  const finalTableWidth = normalizedValueColumns.reduce((sum, column) => sum + column.width, 0);
 
   return {
     columns: normalizedValueColumns,
@@ -272,6 +255,7 @@ export function formatPayrollPdfCurrency(amountPaise: number) {
 export function buildPayrollPdfTableModel(input: {
   kind: "monthly" | "annual";
   financialYearLabel: string;
+  selectedMonthValue: string;
   selectedMonthLabel: string;
   months: PayrollPdfMonth[];
   lineItems: PayrollPdfLineItem[];
@@ -284,13 +268,19 @@ export function buildPayrollPdfTableModel(input: {
     name: string;
   };
 }) {
-  const orderedLineItems = sortLineItems(input.lineItems);
-  const earningsItems = orderedLineItems.filter(
-    (item) => item.section === "earnings",
-  );
-  const deductionItems = orderedLineItems.filter(
-    (item) => item.section === "deductions",
-  );
+  const allLineItems =
+    input.kind === "annual"
+      ? input.months.flatMap((month) => month.lineItems ?? [])
+      : input.lineItems;
+  const lineItemByKey = new Map<string, PayrollPdfLineItem>();
+
+  for (const item of sortLineItems(allLineItems)) {
+    lineItemByKey.set(buildItemColumnKey(item), item);
+  }
+
+  const orderedLineItems = sortLineItems([...lineItemByKey.values()]);
+  const earningsItems = orderedLineItems.filter((item) => item.section === "earnings");
+  const deductionItems = orderedLineItems.filter((item) => item.section === "deductions");
   const valueColumns: PayrollPdfColumn[] = [
     ...earningsItems.map((item) => ({
       key: buildItemColumnKey(item),
@@ -332,6 +322,20 @@ export function buildPayrollPdfTableModel(input: {
       align: "right" as const,
     },
   ];
+  const monthlyRows: PayrollPdfRow[] = input.months.map((month, index) => ({
+    key: month.value,
+    serialNumber: String(index + 1),
+    rowLabel: month.shortLabel ?? month.label,
+    values: buildRowValues(month.lineItems ?? [], 1),
+    isProjected: month.value > input.selectedMonthValue,
+  }));
+  const annualTotalValues = monthlyRows.reduce<Record<string, number>>((totals, row) => {
+    for (const [key, value] of Object.entries(row.values)) {
+      totals[key] = (totals[key] ?? 0) + value;
+    }
+
+    return totals;
+  }, {});
   const rows: PayrollPdfRow[] =
     input.kind === "monthly"
       ? [
@@ -349,17 +353,12 @@ export function buildPayrollPdfTableModel(input: {
           },
         ]
       : [
-          ...input.months.map((month, index) => ({
-            key: month.value,
-            serialNumber: String(index + 1),
-            rowLabel: month.shortLabel ?? month.label,
-            values: buildRowValues(orderedLineItems, 1),
-          })),
+          ...monthlyRows,
           {
             key: "total",
             serialNumber: "",
             rowLabel: "Total",
-            values: buildRowValues(orderedLineItems, input.months.length),
+            values: annualTotalValues,
           },
         ];
 
@@ -400,7 +399,7 @@ export function buildPayrollPdfTableModel(input: {
           : [
               `Employee: ${input.employee.name}`,
               `Statement Type: Annual`,
-              "Payroll Baseline: repeated for all 12 months",
+              `Projection as of: ${input.selectedMonthLabel}`,
             ],
     },
     columns: fittedTable.columns,

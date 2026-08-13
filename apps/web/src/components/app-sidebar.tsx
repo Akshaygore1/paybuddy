@@ -73,8 +73,9 @@ const navigationItems = [
 export default function AppSidebar() {
   const location = useLocation();
   const { data: session } = authClient.useSession();
-  const [financialYearStart, setFinancialYearStart] =
-    React.useState<FinancialYearStart>(() => readSelectedFinancialYearStart());
+  const [financialYearStart, setFinancialYearStart] = React.useState<FinancialYearStart>(() =>
+    readSelectedFinancialYearStart(),
+  );
   const visibleNavigationItems = (() => {
     if (session?.user.role === "admin") {
       return [
@@ -98,8 +99,9 @@ export default function AppSidebar() {
       return;
     }
 
-    setFinancialYearStart(nextFinancialYearStart);
-    writeSelectedFinancialYearStart(nextFinancialYearStart);
+    if (writeSelectedFinancialYearStart(nextFinancialYearStart)) {
+      setFinancialYearStart(nextFinancialYearStart);
+    }
   }
 
   return (
@@ -107,12 +109,8 @@ export default function AppSidebar() {
       <SidebarHeader className="gap-3 p-3">
         <div className="flex items-center gap-3 overflow-hidden group-data-[collapsible=icon]:justify-center">
           <div className="min-w-0 group-data-[collapsible=icon]:hidden">
-            <p className="truncate font-semibold tracking-tight">
-              TDS Nivaran Payroll Portal
-            </p>
-            <p className="truncate text-xs text-sidebar-foreground/70">
-              Workspace
-            </p>
+            <p className="truncate font-semibold tracking-tight">TDS Nivaran Payroll Portal</p>
+            <p className="truncate text-xs text-sidebar-foreground/70">Workspace</p>
           </div>
         </div>
       </SidebarHeader>
@@ -142,10 +140,7 @@ export default function AppSidebar() {
             <SidebarGroup className="group-data-[collapsible=icon]:hidden">
               <SidebarGroupLabel>Financial Year</SidebarGroupLabel>
               <SidebarGroupContent className="px-2">
-                <Select
-                  value={String(financialYearStart)}
-                  onValueChange={updateFinancialYear}
-                >
+                <Select value={String(financialYearStart)} onValueChange={updateFinancialYear}>
                   <SelectTrigger aria-label="Select financial year">
                     <SelectValue />
                   </SelectTrigger>

@@ -57,6 +57,13 @@
       "when": 1782651959663,
       "tag": "0007_monthly_payroll",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1786592718103,
+      "tag": "0008_rainy_cyclops",
+      "breakpoints": true
     }
   ]
 }

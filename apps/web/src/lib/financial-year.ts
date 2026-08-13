@@ -1,7 +1,6 @@
-export const financialYearOptions = [
-  2023, 2024, 2025, 2026, 2027, 2028,
-] as const;
+export const financialYearOptions = [2023, 2024, 2025, 2026, 2027, 2028] as const;
 export const financialYearStorageKey = "tds-nivaran:selectedFinancialYearStart";
+export const financialYearBeforeChangeEvent = "tds-nivaran:before-financial-year-change";
 export const financialYearChangeEvent = "tds-nivaran:financial-year-change";
 
 export type FinancialYearStart = (typeof financialYearOptions)[number];
@@ -27,9 +26,7 @@ export function readSelectedFinancialYearStart() {
     return getCurrentFinancialYearStart();
   }
 
-  const storedValue = Number(
-    window.localStorage.getItem(financialYearStorageKey),
-  );
+  const storedValue = Number(window.localStorage.getItem(financialYearStorageKey));
 
   if (financialYearOptions.includes(storedValue as FinancialYearStart)) {
     return storedValue as FinancialYearStart;
@@ -38,16 +35,22 @@ export function readSelectedFinancialYearStart() {
   return getCurrentFinancialYearStart();
 }
 
-export function writeSelectedFinancialYearStart(
-  financialYearStart: FinancialYearStart,
-) {
-  window.localStorage.setItem(
-    financialYearStorageKey,
-    String(financialYearStart),
-  );
+export function writeSelectedFinancialYearStart(financialYearStart: FinancialYearStart) {
+  const beforeChangeEvent = new CustomEvent(financialYearBeforeChangeEvent, {
+    cancelable: true,
+    detail: { financialYearStart },
+  });
+
+  if (!window.dispatchEvent(beforeChangeEvent)) {
+    return false;
+  }
+
+  window.localStorage.setItem(financialYearStorageKey, String(financialYearStart));
   window.dispatchEvent(
     new CustomEvent(financialYearChangeEvent, {
       detail: { financialYearStart },
     }),
   );
+
+  return true;
 }

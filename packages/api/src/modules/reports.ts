@@ -1,15 +1,23 @@
 import { createDb } from "@tds-nivaran/db";
 import {
   employeePayrollProfiles,
+  employeePayrollVersions,
   employees,
   institutions,
+  payrollCustomFieldDefinitions,
+  payrollCustomFieldPeriods,
   payrollLineItems,
 } from "@tds-nivaran/db/schema/index";
 import { TRPCError } from "@trpc/server";
 import { and, asc, eq, inArray } from "drizzle-orm";
 
 import type { ReportInput } from "../schemas/reports";
-import { calculateAnnualTotals, calculatePayrollTotals } from "./payroll";
+import {
+  calculatePayrollTotals,
+  filterSavedLineItemsForCustomFieldPeriods,
+  getFinancialYearMonths,
+  resolvePayrollVersionForMonth,
+} from "./payroll";
 
 type Db = ReturnType<typeof createDb>;
 
@@ -36,10 +44,23 @@ type PayrollProfileRecord = {
 };
 
 type PayrollLineItemRecord = {
-  payrollProfileId: string;
+  payrollVersionId: string;
   section: "earnings" | "deductions";
   fixedFieldKey: string | null;
+  customFieldDefinitionId: string | null;
   amountPaise: number;
+};
+
+type PayrollCustomFieldPeriodRecord = {
+  customFieldDefinitionId: string;
+  effectiveFromMonth: string;
+  effectiveToMonth: string | null;
+};
+
+type PayrollVersionRecord = {
+  id: string;
+  payrollProfileId: string;
+  effectiveMonth: string;
 };
 
 const INCOME_TAX_DEDUCTION_KEY = "incomeTax";
@@ -81,10 +102,7 @@ export function calculateNewRegimeTaxPaise(
   assertSupportedFinancialYear(financialYearStart);
 
   const constants = fy2026NewRegimeTaxConstants;
-  const taxableIncomePaise = Math.max(
-    annualGrossSalaryPaise - constants.standardDeductionPaise,
-    0,
-  );
+  const taxableIncomePaise = Math.max(annualGrossSalaryPaise - constants.standardDeductionPaise, 0);
   let previousLimitPaise = 0;
   let taxBeforeRebatePaise = 0;
 
@@ -111,11 +129,7 @@ export function calculateNewRegimeTaxPaise(
   return Math.round(taxAfterRebatePaise * (1 + constants.cessRate));
 }
 
-function getEmployeeName(employee: {
-  firstName: string;
-  middleName: string;
-  surname: string;
-}) {
+function getEmployeeName(employee: { firstName: string; middleName: string; surname: string }) {
   return [employee.firstName, employee.middleName, employee.surname]
     .map((part) => part.trim())
     .filter(Boolean)
@@ -145,10 +159,7 @@ export function resolveReportInstitutionId(input: {
     });
   }
 
-  if (
-    input.requestedInstitutionId &&
-    input.requestedInstitutionId !== input.userInstitutionId
-  ) {
+  if (input.requestedInstitutionId && input.requestedInstitutionId !== input.userInstitutionId) {
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "School users cannot view another institute's report",
@@ -161,34 +172,61 @@ export function resolveReportInstitutionId(input: {
 export function buildReportRows(input: {
   employees: EmployeeRecord[];
   profiles: PayrollProfileRecord[];
+  versions: PayrollVersionRecord[];
+  customFieldPeriods: PayrollCustomFieldPeriodRecord[];
   lineItems: PayrollLineItemRecord[];
   financialYearStart: number;
 }) {
   const profileByEmployeeId = new Map(
     input.profiles.map((profile) => [profile.employeeId, profile]),
   );
-  const lineItemsByProfileId = new Map<string, PayrollLineItemRecord[]>();
+  const versionsByProfileId = new Map<string, PayrollVersionRecord[]>();
+  const lineItemsByVersionId = new Map<string, PayrollLineItemRecord[]>();
+
+  for (const version of input.versions) {
+    const current = versionsByProfileId.get(version.payrollProfileId) ?? [];
+    current.push(version);
+    versionsByProfileId.set(version.payrollProfileId, current);
+  }
 
   for (const lineItem of input.lineItems) {
-    const current = lineItemsByProfileId.get(lineItem.payrollProfileId) ?? [];
+    const current = lineItemsByVersionId.get(lineItem.payrollVersionId) ?? [];
     current.push(lineItem);
-    lineItemsByProfileId.set(lineItem.payrollProfileId, current);
+    lineItemsByVersionId.set(lineItem.payrollVersionId, current);
   }
 
   return input.employees.map((employee) => {
     const profile = profileByEmployeeId.get(employee.id);
-    const lineItems = profile
-      ? (lineItemsByProfileId.get(profile.id) ?? [])
-      : [];
-    const totals = calculateAnnualTotals(calculatePayrollTotals(lineItems));
-    const tdsDeductedTillNowPaise =
-      lineItems
+    const versions = profile ? (versionsByProfileId.get(profile.id) ?? []) : [];
+    const totals = {
+      earningsPaise: 0,
+      deductionsPaise: 0,
+      netPayPaise: 0,
+    };
+    let tdsDeductedTillNowPaise = 0;
+
+    for (const month of getFinancialYearMonths(input.financialYearStart)) {
+      const version = resolvePayrollVersionForMonth(versions, month.value);
+      const versionLineItems = version ? (lineItemsByVersionId.get(version.id) ?? []) : [];
+      const lineItems = version
+        ? filterSavedLineItemsForCustomFieldPeriods({
+            savedLineItems: versionLineItems,
+            versionEffectiveMonth: version.effectiveMonth,
+            month: month.value,
+            periods: input.customFieldPeriods,
+          })
+        : [];
+      const monthTotals = calculatePayrollTotals(lineItems);
+      totals.earningsPaise += monthTotals.earningsPaise;
+      totals.deductionsPaise += monthTotals.deductionsPaise;
+      totals.netPayPaise += monthTotals.netPayPaise;
+      tdsDeductedTillNowPaise += lineItems
         .filter(
           (item) =>
-            item.section === "deductions" &&
-            item.fixedFieldKey === INCOME_TAX_DEDUCTION_KEY,
+            item.section === "deductions" && item.fixedFieldKey === INCOME_TAX_DEDUCTION_KEY,
         )
-        .reduce((total, item) => total + item.amountPaise, 0) * 12;
+        .reduce((total, item) => total + item.amountPaise, 0);
+    }
     const totalTaxPaise = calculateNewRegimeTaxPaise(
       totals.earningsPaise,
       input.financialYearStart,
@@ -244,17 +282,14 @@ export function buildReportsModule(options: ReportsModuleOptions = {}) {
   async function getReport(input: ReportInput, user: ReportUser) {
     assertSupportedFinancialYear(input.financialYearStart);
 
-    const userInstitution =
-      user.role === "user" ? await getInstitutionForUser(user.id) : undefined;
+    const userInstitution = user.role === "user" ? await getInstitutionForUser(user.id) : undefined;
     const institutionId = resolveReportInstitutionId({
       user,
       requestedInstitutionId: input.institutionId,
       userInstitutionId: userInstitution?.id,
     });
     const institution =
-      userInstitution?.id === institutionId
-        ? userInstitution
-        : await getInstitution(institutionId);
+      userInstitution?.id === institutionId ? userInstitution : await getInstitution(institutionId);
 
     const employeeRows = await db
       .select({
@@ -266,11 +301,7 @@ export function buildReportsModule(options: ReportsModuleOptions = {}) {
       })
       .from(employees)
       .where(eq(employees.institutionId, institutionId))
-      .orderBy(
-        asc(employees.seniorityRank),
-        asc(employees.surname),
-        asc(employees.firstName),
-      );
+      .orderBy(asc(employees.seniorityRank), asc(employees.surname), asc(employees.firstName));
     const profileRows = await db
       .select({
         id: employeePayrollProfiles.id,
@@ -280,24 +311,46 @@ export function buildReportsModule(options: ReportsModuleOptions = {}) {
       .where(
         and(
           eq(employeePayrollProfiles.institutionId, institutionId),
-          eq(
-            employeePayrollProfiles.financialYearStart,
-            input.financialYearStart,
-          ),
+          eq(employeePayrollProfiles.financialYearStart, input.financialYearStart),
         ),
       );
     const profileIds = profileRows.map((profile) => profile.id);
-    const lineItemRows =
+    const versionRows =
       profileIds.length > 0
         ? await db
             .select({
-              payrollProfileId: payrollLineItems.payrollProfileId,
+              id: employeePayrollVersions.id,
+              payrollProfileId: employeePayrollVersions.payrollProfileId,
+              effectiveMonth: employeePayrollVersions.effectiveMonth,
+            })
+            .from(employeePayrollVersions)
+            .where(inArray(employeePayrollVersions.payrollProfileId, profileIds))
+        : [];
+    const versionIds = versionRows.map((version) => version.id);
+    const customFieldPeriodRows = await db
+      .select({
+        customFieldDefinitionId: payrollCustomFieldPeriods.customFieldDefinitionId,
+        effectiveFromMonth: payrollCustomFieldPeriods.effectiveFromMonth,
+        effectiveToMonth: payrollCustomFieldPeriods.effectiveToMonth,
+      })
+      .from(payrollCustomFieldPeriods)
+      .innerJoin(
+        payrollCustomFieldDefinitions,
+        eq(payrollCustomFieldPeriods.customFieldDefinitionId, payrollCustomFieldDefinitions.id),
+      )
+      .where(eq(payrollCustomFieldDefinitions.institutionId, institutionId));
+    const lineItemRows =
+      versionIds.length > 0
+        ? await db
+            .select({
+              payrollVersionId: payrollLineItems.payrollVersionId,
               section: payrollLineItems.section,
               fixedFieldKey: payrollLineItems.fixedFieldKey,
+              customFieldDefinitionId: payrollLineItems.customFieldDefinitionId,
               amountPaise: payrollLineItems.amountPaise,
             })
             .from(payrollLineItems)
-            .where(inArray(payrollLineItems.payrollProfileId, profileIds))
+            .where(inArray(payrollLineItems.payrollVersionId, versionIds))
         : [];
 
     return {
@@ -306,6 +359,8 @@ export function buildReportsModule(options: ReportsModuleOptions = {}) {
       rows: buildReportRows({
         employees: employeeRows,
         profiles: profileRows,
+        versions: versionRows,
+        customFieldPeriods: customFieldPeriodRows,
         lineItems: lineItemRows,
         financialYearStart: input.financialYearStart,
       }),

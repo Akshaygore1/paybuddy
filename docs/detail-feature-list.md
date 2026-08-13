@@ -372,7 +372,7 @@ The available months are:
 
 April, May, June, July, August, September, October, November, December, January, February, and March.
 
-The current Payroll screen saves one set of amounts for an employee for each financial year. These saved amounts are used for all months in that financial year.
+Payroll values are effective by month. A saved set remains in use for later months until another month introduces a change. Editing an older month does not replace changes that already exist in later months.
 
 ### Payroll totals
 
@@ -435,18 +435,20 @@ To add one:
 
 Custom payroll fields:
 
-- Are available in payroll for the institute.
+- Are available to every employee in the institute from the selected month.
 - Can have a different amount for each employee.
-- Can be removed when no longer needed.
+- Can be removed from a selected month while remaining visible in older months.
+- Can be restored later with empty employee amounts.
 
 ### Save payroll
 
-Select **Save Payroll** to save the amounts for the selected employee and financial year.
+Select **Save Payroll** to save the amounts for the selected employee and month. The saved values continue into later months until another saved month changes them.
 
 The portal:
 
 - Stops the user from saving an incorrect amount.
-- Shows saved amounts when the employee and financial year are selected again.
+- Shows the values effective for the selected employee, financial year, and month.
+- Warns before discarding unsaved changes when switching the employee, financial year, or month.
 - Shows a success message after saving.
 
 ### Download payslips
@@ -469,7 +471,7 @@ Each payslip includes:
 - Net Salary
 - Total row
 
-The Annual Payslip shows all 12 months. The saved financial-year amounts are used for each month.
+The Annual Payslip shows the values effective in each of the 12 months. Months after the selected month are shown in gray as projections and remain included in the annual total.
 
 The user must save payroll before downloading a payslip. The user must also save any changes made after the last save.
 
@@ -490,6 +492,8 @@ The report shows one row for each employee:
 | TDS Deducted Till Now | Income tax/TDS already entered.                |
 | Total Tax             | Calculated tax for the year.                   |
 | Pending TDS           | Tax still remaining after TDS already entered. |
+
+Yearly earnings, deductions, net salary, and TDS are calculated by summing the values effective in each of the 12 payroll months.
 
 The user can:
 
@@ -518,7 +522,6 @@ The current version does not include:
 - Updating or deleting many employees at one time.
 - Uploading employee photos or documents.
 - Changing the name or Required setting of an existing custom employee field.
-- Entering different payroll amounts for every month of the same financial year. The saved financial-year amounts are reused across the months.
 - Manually changing the tax amount or choosing a different tax method.
 
 ## 8. Quick view: who can use what

@@ -13,20 +13,17 @@ export const payrollRouter = router({
   getEmployees: institutionProcedure.query(async ({ ctx }) => {
     return payroll.getEmployees(ctx.institution.id);
   }),
-  getForm: institutionProcedure
-    .input(payrollEmployeeFormSchema)
-    .query(async ({ ctx, input }) => {
-      return payroll.getForm(
-        ctx.institution.id,
-        input.employeeId,
-        input.financialYearStart,
-      );
-    }),
-  save: institutionProcedure
-    .input(savePayrollSchema)
-    .mutation(async ({ ctx, input }) => {
-      return payroll.save(ctx.institution.id, input);
-    }),
+  getForm: institutionProcedure.input(payrollEmployeeFormSchema).query(async ({ ctx, input }) => {
+    return payroll.getForm(
+      ctx.institution.id,
+      input.employeeId,
+      input.financialYearStart,
+      input.month,
+    );
+  }),
+  save: institutionProcedure.input(savePayrollSchema).mutation(async ({ ctx, input }) => {
+    return payroll.save(ctx.institution.id, input);
+  }),
   addCustomField: institutionProcedure
     .input(addPayrollCustomFieldSchema)
     .mutation(async ({ ctx, input }) => {
@@ -35,6 +32,6 @@ export const payrollRouter = router({
   archiveCustomField: institutionProcedure
     .input(archivePayrollCustomFieldSchema)
     .mutation(async ({ ctx, input }) => {
-      return payroll.archiveCustomField(ctx.institution.id, input.id);
+      return payroll.archiveCustomField(ctx.institution.id, input);
     }),
 });

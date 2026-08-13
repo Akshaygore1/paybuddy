@@ -1,14 +1,18 @@
 import { TRPCError } from "@trpc/server";
 import { describe, expect, it } from "vitest";
 
+import { payrollEmployeeFormSchema } from "../schemas/payroll";
+
 import {
   assertNoDuplicateActivePayrollLabel,
-  calculateAnnualTotals,
   calculatePayrollTotals,
   fixedPayrollFields,
   formatPaiseAsMoney,
+  filterSavedLineItemsForCustomFieldPeriods,
   getFinancialYearMonths,
+  getInitialPayrollEffectiveMonths,
   parseMoneyToPaise,
+  resolvePayrollVersionForMonth,
 } from "./payroll";
 
 describe("Payroll money helpers", () => {
@@ -41,6 +45,58 @@ describe("Payroll financial year helpers", () => {
       year: 2027,
     });
   });
+
+  it("resolves the latest payroll version without crossing later changes", () => {
+    const versions = [
+      { id: "april", effectiveMonth: "2026-04" },
+      { id: "june", effectiveMonth: "2026-06" },
+      { id: "september", effectiveMonth: "2026-09" },
+    ];
+
+    expect(resolvePayrollVersionForMonth(versions, "2026-05")?.id).toBe("april");
+    expect(resolvePayrollVersionForMonth(versions, "2026-08")?.id).toBe("june");
+    expect(resolvePayrollVersionForMonth(versions, "2026-09")?.id).toBe("september");
+    expect(resolvePayrollVersionForMonth(versions, "2026-03")).toBeNull();
+  });
+
+  it("rejects a payroll month outside the selected financial year", () => {
+    expect(
+      payrollEmployeeFormSchema.safeParse({
+        employeeId: "employee-1",
+        financialYearStart: 2026,
+        month: "2027-04",
+      }).success,
+    ).toBe(false);
+    expect(
+      payrollEmployeeFormSchema.safeParse({
+        employeeId: "employee-1",
+        financialYearStart: 2026,
+        month: "2027-03",
+      }).success,
+    ).toBe(true);
+  });
+
+  it("backfills a first save to April without backdating newer custom fields", () => {
+    expect(
+      getInitialPayrollEffectiveMonths({
+        financialYearStart: 2026,
+        selectedMonth: "2026-09",
+        activeCustomFieldIds: ["june-field", "september-field"],
+        periods: [
+          {
+            customFieldDefinitionId: "june-field",
+            effectiveFromMonth: "2026-06",
+            effectiveToMonth: null,
+          },
+          {
+            customFieldDefinitionId: "september-field",
+            effectiveFromMonth: "2026-09",
+            effectiveToMonth: null,
+          },
+        ],
+      }),
+    ).toEqual(["2026-04", "2026-06", "2026-09"]);
+  });
 });
 
 describe("Payroll field ordering and totals", () => {
@@ -64,7 +120,7 @@ describe("Payroll field ordering and totals", () => {
     ]);
   });
 
-  it("calculates monthly and annual totals from paise", () => {
+  it("calculates monthly totals from paise", () => {
     const monthlyTotals = calculatePayrollTotals([
       { section: "earnings", amountPaise: 100_25 },
       { section: "earnings", amountPaise: 200_25 },
@@ -76,15 +132,44 @@ describe("Payroll field ordering and totals", () => {
       deductionsPaise: 50_10,
       netPayPaise: 250_40,
     });
-    expect(calculateAnnualTotals(monthlyTotals)).toEqual({
-      earningsPaise: 3_606_00,
-      deductionsPaise: 601_20,
-      netPayPaise: 3_004_80,
-    });
   });
 });
 
 describe("Payroll custom field validation", () => {
+  it("does not restore an employee's old amount when a field is reactivated", () => {
+    const savedLineItems = [
+      {
+        id: "old-value",
+        section: "earnings" as const,
+        fixedFieldKey: null,
+        customFieldDefinitionId: "allowance",
+        label: "Allowance",
+        amountPaise: 5_000,
+        sortOrder: 1001,
+      },
+    ];
+
+    expect(
+      filterSavedLineItemsForCustomFieldPeriods({
+        savedLineItems,
+        versionEffectiveMonth: "2026-04",
+        month: "2026-12",
+        periods: [
+          {
+            customFieldDefinitionId: "allowance",
+            effectiveFromMonth: "2026-04",
+            effectiveToMonth: "2026-09",
+          },
+          {
+            customFieldDefinitionId: "allowance",
+            effectiveFromMonth: "2026-12",
+            effectiveToMonth: null,
+          },
+        ],
+      }),
+    ).toEqual([]);
+  });
+
   it("rejects duplicate active labels in the same section", () => {
     expect(() =>
       assertNoDuplicateActivePayrollLabel(

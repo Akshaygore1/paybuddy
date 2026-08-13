@@ -41,8 +41,9 @@ describe("buildPayrollPdfTableModel", () => {
     return buildPayrollPdfTableModel({
       kind,
       financialYearLabel: "2026-2027",
+      selectedMonthValue: "2026-06",
       selectedMonthLabel: "Jun 2026",
-      months,
+      months: months.map((month) => ({ ...month, lineItems })),
       institution: {
         name: "TDS Nivaran Public School",
         address: "123 Lake Road",
@@ -154,6 +155,39 @@ describe("buildPayrollPdfTableModel", () => {
     expect(model.rows[12]?.values.netSalary).toBe(1_080_000);
   });
 
+  it("uses each month's effective values and marks later rows as projected", () => {
+    const basicPay = (amountPaise: number) => [
+      createLineItem({
+        fixedFieldKey: "basicPay",
+        label: "Basic Pay",
+        amountPaise,
+      }),
+    ];
+    const model = buildPayrollPdfTableModel({
+      kind: "annual",
+      financialYearLabel: "2026-2027",
+      selectedMonthValue: "2026-06",
+      selectedMonthLabel: "Jun 2026",
+      months: months.map((month, index) => ({
+        ...month,
+        lineItems: basicPay(index < 2 ? 100_000 : 120_000),
+      })),
+      institution: {
+        name: "TDS Nivaran Public School",
+        address: "123 Lake Road",
+        tanNumber: "ABCD12345E",
+      },
+      employee: { name: "Asha Kumar" },
+      lineItems: basicPay(120_000),
+    });
+
+    expect(model.rows[0]?.values["earnings:fixed:basicPay"]).toBe(100_000);
+    expect(model.rows[2]?.values["earnings:fixed:basicPay"]).toBe(120_000);
+    expect(model.rows[2]?.isProjected).toBe(false);
+    expect(model.rows[3]?.isProjected).toBe(true);
+    expect(model.rows[12]?.values.totalEarnings).toBe(1_400_000);
+  });
+
   it("renders zero values as blank cells while keeping totals numeric", () => {
     const model = buildModel([
       createLineItem({
@@ -202,9 +236,7 @@ describe("buildPayrollPdfTableModel", () => {
       "Net Salary",
     ]);
     expect(totalWidth).toBeLessThanOrEqual(PDF_PAGE_CONTENT_WIDTH);
-    expect(model.widthFit.tableWidth).toBeLessThanOrEqual(
-      model.widthFit.availableWidth,
-    );
+    expect(model.widthFit.tableWidth).toBeLessThanOrEqual(model.widthFit.availableWidth);
     expect(model.widthFit.valueScale).toBeLessThan(1);
   });
 
@@ -217,9 +249,7 @@ describe("buildPayrollPdfTableModel", () => {
       }),
     ]);
 
-    expect(model.header.title).toBe(
-      "PAY STATEMENT FOR THE FINANCIAL YEAR 2026-2027",
-    );
+    expect(model.header.title).toBe("PAY STATEMENT FOR THE FINANCIAL YEAR 2026-2027");
     expect(model.header.leftLines).toEqual([
       "School: TDS Nivaran Public School",
       "Address: 123 Lake Road",
@@ -246,20 +276,10 @@ describe("buildPayrollPdfTableModel", () => {
       }),
     ]);
 
-    expect(model.columns.find((column) => column.key === "serialNumber")?.align).toBe(
-      "center",
-    );
-    expect(model.columns.find((column) => column.key === "rowLabel")?.align).toBe(
-      "left",
-    );
-    expect(
-      model.columns.find((column) => column.label === "Basic Pay")?.align,
-    ).toBe("right");
-    expect(
-      model.columns.find((column) => column.key === "netSalary")?.align,
-    ).toBe("right");
-    expect(
-      model.columns.find((column) => column.key === "serialNumber")?.width,
-    ).toBeGreaterThan(0);
+    expect(model.columns.find((column) => column.key === "serialNumber")?.align).toBe("center");
+    expect(model.columns.find((column) => column.key === "rowLabel")?.align).toBe("left");
+    expect(model.columns.find((column) => column.label === "Basic Pay")?.align).toBe("right");
+    expect(model.columns.find((column) => column.key === "netSalary")?.align).toBe("right");
+    expect(model.columns.find((column) => column.key === "serialNumber")?.width).toBeGreaterThan(0);
   });
 });
