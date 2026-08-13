@@ -1,4 +1,5 @@
 import { createDb } from "@tds-nivaran/db";
+import { chunkForD1, PAYROLL_LINE_ITEM_BOUND_PARAMETERS } from "@tds-nivaran/db/d1";
 import {
   employeePayrollProfiles,
   employeePayrollVersions,
@@ -10,7 +11,7 @@ import {
 } from "@tds-nivaran/db/schema/index";
 import { TRPCError } from "@trpc/server";
 import type { BatchItem } from "drizzle-orm/batch";
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq } from "drizzle-orm";
 
 import type { AddPayrollCustomFieldInput, SavePayrollInput } from "../schemas/payroll";
 
@@ -356,6 +357,23 @@ function toLineItemsWithDefaults(input: {
 export function buildPayrollModule(options: PayrollModuleOptions = {}) {
   const db = options.db ?? createDb();
 
+  function getCustomFieldPeriods(institutionId: string) {
+    return db
+      .select({
+        id: payrollCustomFieldPeriods.id,
+        customFieldDefinitionId: payrollCustomFieldPeriods.customFieldDefinitionId,
+        effectiveFromMonth: payrollCustomFieldPeriods.effectiveFromMonth,
+        effectiveToMonth: payrollCustomFieldPeriods.effectiveToMonth,
+      })
+      .from(payrollCustomFieldPeriods)
+      .innerJoin(
+        payrollCustomFieldDefinitions,
+        eq(payrollCustomFieldDefinitions.id, payrollCustomFieldPeriods.customFieldDefinitionId),
+      )
+      .where(eq(payrollCustomFieldDefinitions.institutionId, institutionId))
+      .orderBy(asc(payrollCustomFieldPeriods.effectiveFromMonth));
+  }
+
   async function getEmployees(institutionId: string) {
     return db
       .select({
@@ -411,20 +429,7 @@ export function buildPayrollModule(options: PayrollModuleOptions = {}) {
         asc(payrollCustomFieldDefinitions.sortOrder),
         asc(payrollCustomFieldDefinitions.label),
       );
-    const fieldIds = fields.map((field) => field.id);
-    const periods =
-      fieldIds.length > 0
-        ? await db
-            .select({
-              id: payrollCustomFieldPeriods.id,
-              customFieldDefinitionId: payrollCustomFieldPeriods.customFieldDefinitionId,
-              effectiveFromMonth: payrollCustomFieldPeriods.effectiveFromMonth,
-              effectiveToMonth: payrollCustomFieldPeriods.effectiveToMonth,
-            })
-            .from(payrollCustomFieldPeriods)
-            .where(inArray(payrollCustomFieldPeriods.customFieldDefinitionId, fieldIds))
-            .orderBy(asc(payrollCustomFieldPeriods.effectiveFromMonth))
-        : [];
+    const periods = await getCustomFieldPeriods(institutionId);
 
     return { fields, periods };
   }
@@ -750,10 +755,10 @@ export function buildPayrollModule(options: PayrollModuleOptions = {}) {
         );
       }
 
-      if (items.length > 0) {
+      for (const itemChunk of chunkForD1(items, PAYROLL_LINE_ITEM_BOUND_PARAMETERS)) {
         queries.push(
           db.insert(payrollLineItems).values(
-            items.map((item) => ({
+            itemChunk.map((item) => ({
               id: crypto.randomUUID(),
               payrollVersionId,
               ...item,
@@ -831,23 +836,7 @@ export function buildPayrollModule(options: PayrollModuleOptions = {}) {
       .from(payrollCustomFieldDefinitions)
       .where(eq(payrollCustomFieldDefinitions.institutionId, institutionId));
 
-    const periods =
-      existingFields.length > 0
-        ? await db
-            .select({
-              id: payrollCustomFieldPeriods.id,
-              customFieldDefinitionId: payrollCustomFieldPeriods.customFieldDefinitionId,
-              effectiveFromMonth: payrollCustomFieldPeriods.effectiveFromMonth,
-              effectiveToMonth: payrollCustomFieldPeriods.effectiveToMonth,
-            })
-            .from(payrollCustomFieldPeriods)
-            .where(
-              inArray(
-                payrollCustomFieldPeriods.customFieldDefinitionId,
-                existingFields.map((field) => field.id),
-              ),
-            )
-        : [];
+    const periods = await getCustomFieldPeriods(institutionId);
     const matchingFields = existingFields.filter(
       (field) =>
         field.section === input.section &&

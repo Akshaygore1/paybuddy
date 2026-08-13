@@ -1,4 +1,5 @@
 import { createDb } from "@tds-nivaran/db";
+import { chunkForD1, EMPLOYEE_CUSTOM_FIELD_VALUE_BOUND_PARAMETERS } from "@tds-nivaran/db/d1";
 import {
   employeeCustomFieldDefinitions,
   employeeCustomFieldValues,
@@ -87,17 +88,59 @@ export type EmployeeFormDefinition = {
 };
 
 const fixedDirectoryColumns: EmployeeDirectoryColumn[] = [
-  { key: "employee", label: "Employee", defaultVisible: true, kind: "fixed", fieldDefinitionId: null },
+  {
+    key: "employee",
+    label: "Employee",
+    defaultVisible: true,
+    kind: "fixed",
+    fieldDefinitionId: null,
+  },
   { key: "rank", label: "Rank", defaultVisible: true, kind: "fixed", fieldDefinitionId: null },
-  { key: "designation", label: "Designation", defaultVisible: true, kind: "fixed", fieldDefinitionId: null },
-  { key: "dateOfBirth", label: "Date of Birth", defaultVisible: false, kind: "fixed", fieldDefinitionId: null },
+  {
+    key: "designation",
+    label: "Designation",
+    defaultVisible: true,
+    kind: "fixed",
+    fieldDefinitionId: null,
+  },
+  {
+    key: "dateOfBirth",
+    label: "Date of Birth",
+    defaultVisible: false,
+    kind: "fixed",
+    fieldDefinitionId: null,
+  },
   { key: "gender", label: "Gender", defaultVisible: false, kind: "fixed", fieldDefinitionId: null },
-  { key: "contactNumber", label: "Contact", defaultVisible: true, kind: "fixed", fieldDefinitionId: null },
-  { key: "whatsAppNumber", label: "WhatsApp", defaultVisible: false, kind: "fixed", fieldDefinitionId: null },
+  {
+    key: "contactNumber",
+    label: "Contact",
+    defaultVisible: true,
+    kind: "fixed",
+    fieldDefinitionId: null,
+  },
+  {
+    key: "whatsAppNumber",
+    label: "WhatsApp",
+    defaultVisible: false,
+    kind: "fixed",
+    fieldDefinitionId: null,
+  },
   { key: "panNumber", label: "PAN", defaultVisible: false, kind: "fixed", fieldDefinitionId: null },
   { key: "pfNumber", label: "PF", defaultVisible: false, kind: "fixed", fieldDefinitionId: null },
-  { key: "npsAccountNumber", label: "NPS", defaultVisible: false, kind: "fixed", fieldDefinitionId: null },
-  { key: "created", label: "Created", defaultVisible: true, kind: "fixed", fieldDefinitionId: null },
+  {
+    key: "npsAccountNumber",
+    label: "NPS",
+    defaultVisible: false,
+    kind: "fixed",
+    fieldDefinitionId: null,
+  },
+  {
+    key: "created",
+    label: "Created",
+    defaultVisible: true,
+    kind: "fixed",
+    fieldDefinitionId: null,
+  },
 ];
 
 export const emptyEmployeeFormInitialValues: EmployeeFormInitialValues = {
@@ -202,6 +245,19 @@ export function validateSubmittedCustomFields(
 export function buildEmployeeRecordsModule(options: EmployeeRecordModuleOptions = {}) {
   const db = options.db ?? createDb();
 
+  function getCustomValueInsertQueries(
+    values: Array<{
+      id: string;
+      employeeId: string;
+      fieldDefinitionId: string;
+      value: string;
+    }>,
+  ) {
+    return chunkForD1(values, EMPLOYEE_CUSTOM_FIELD_VALUE_BOUND_PARAMETERS).map((valueChunk) =>
+      db.insert(employeeCustomFieldValues).values(valueChunk),
+    );
+  }
+
   async function getActiveDesignations(institutionId: string) {
     return db
       .select({
@@ -210,7 +266,12 @@ export function buildEmployeeRecordsModule(options: EmployeeRecordModuleOptions 
         sortOrder: employeeDesignations.sortOrder,
       })
       .from(employeeDesignations)
-      .where(and(eq(employeeDesignations.institutionId, institutionId), eq(employeeDesignations.isActive, true)))
+      .where(
+        and(
+          eq(employeeDesignations.institutionId, institutionId),
+          eq(employeeDesignations.isActive, true),
+        ),
+      )
       .orderBy(asc(employeeDesignations.sortOrder), asc(employeeDesignations.name));
   }
 
@@ -230,7 +291,10 @@ export function buildEmployeeRecordsModule(options: EmployeeRecordModuleOptions 
           eq(employeeCustomFieldDefinitions.isActive, true),
         ),
       )
-      .orderBy(asc(employeeCustomFieldDefinitions.sortOrder), asc(employeeCustomFieldDefinitions.label));
+      .orderBy(
+        asc(employeeCustomFieldDefinitions.sortOrder),
+        asc(employeeCustomFieldDefinitions.label),
+      );
   }
 
   async function getActiveDesignation(institutionId: string, designationId: string) {
@@ -247,9 +311,14 @@ export function buildEmployeeRecordsModule(options: EmployeeRecordModuleOptions 
       .get();
   }
 
-  async function getCustomFieldRowsForEmployees(institutionId: string, employeeIds: string[]) {
-    if (employeeIds.length === 0) {
-      return [];
+  async function getCustomFieldRowsForEmployees(institutionId: string, employeeId?: string) {
+    const filters = [
+      eq(employees.institutionId, institutionId),
+      eq(employeeCustomFieldDefinitions.institutionId, institutionId),
+    ];
+
+    if (employeeId) {
+      filters.push(eq(employeeCustomFieldValues.employeeId, employeeId));
     }
 
     return db
@@ -259,17 +328,16 @@ export function buildEmployeeRecordsModule(options: EmployeeRecordModuleOptions 
         value: employeeCustomFieldValues.value,
       })
       .from(employeeCustomFieldValues)
+      .innerJoin(employees, eq(employees.id, employeeCustomFieldValues.employeeId))
       .innerJoin(
         employeeCustomFieldDefinitions,
         eq(employeeCustomFieldDefinitions.id, employeeCustomFieldValues.fieldDefinitionId),
       )
-      .where(
-        and(
-          inArray(employeeCustomFieldValues.employeeId, employeeIds),
-          eq(employeeCustomFieldDefinitions.institutionId, institutionId),
-        ),
-      )
-      .orderBy(asc(employeeCustomFieldDefinitions.sortOrder), asc(employeeCustomFieldDefinitions.label));
+      .where(and(...filters))
+      .orderBy(
+        asc(employeeCustomFieldDefinitions.sortOrder),
+        asc(employeeCustomFieldDefinitions.label),
+      );
   }
 
   async function getEmployeeBaseById(institutionId: string, employeeId: string) {
@@ -334,7 +402,7 @@ export function buildEmployeeRecordsModule(options: EmployeeRecordModuleOptions 
     ]);
 
     const customFieldsByEmployee = groupCustomFieldValues(
-      await getCustomFieldRowsForEmployees(institutionId, employeeRows.map((row) => row.id)),
+      await getCustomFieldRowsForEmployees(institutionId),
     );
 
     return {
@@ -391,7 +459,10 @@ export function buildEmployeeRecordsModule(options: EmployeeRecordModuleOptions 
     };
   }
 
-  async function getEditForm(institutionId: string, employeeId: string): Promise<EmployeeFormDefinition> {
+  async function getEditForm(
+    institutionId: string,
+    employeeId: string,
+  ): Promise<EmployeeFormDefinition> {
     const [formDefinition, employeeRow] = await Promise.all([
       getCreateForm(institutionId),
       getEmployeeBaseById(institutionId, employeeId),
@@ -405,7 +476,7 @@ export function buildEmployeeRecordsModule(options: EmployeeRecordModuleOptions 
     }
 
     const customFieldsByEmployee = groupCustomFieldValues(
-      await getCustomFieldRowsForEmployees(institutionId, [employeeRow.id]),
+      await getCustomFieldRowsForEmployees(institutionId, employeeRow.id),
     );
 
     return {
@@ -471,7 +542,12 @@ export function buildEmployeeRecordsModule(options: EmployeeRecordModuleOptions 
       }));
 
     if (customFieldValuesToInsert.length > 0) {
-      await db.insert(employeeCustomFieldValues).values(customFieldValuesToInsert);
+      const insertQueries = getCustomValueInsertQueries(customFieldValuesToInsert);
+      const [firstInsertQuery, ...remainingInsertQueries] = insertQueries;
+
+      if (firstInsertQuery) {
+        await db.batch([firstInsertQuery, ...remainingInsertQueries]);
+      }
     }
 
     return createdEmployee;
@@ -503,7 +579,6 @@ export function buildEmployeeRecordsModule(options: EmployeeRecordModuleOptions 
     const fieldDefinitions = await getActiveCustomFieldDefinitions(institutionId);
     validateSubmittedCustomFields(fieldDefinitions, input.customFieldValues);
 
-    const activeFieldDefinitionIds = fieldDefinitions.map((field) => field.id);
     const customFieldValuesToInsert = fieldDefinitions
       .map((field) => ({
         fieldDefinitionId: field.id,
@@ -543,20 +618,26 @@ export function buildEmployeeRecordsModule(options: EmployeeRecordModuleOptions 
       });
     }
 
-    if (activeFieldDefinitionIds.length > 0) {
-      await db
-        .delete(employeeCustomFieldValues)
-        .where(
-          and(
-            eq(employeeCustomFieldValues.employeeId, input.employeeId),
-            inArray(employeeCustomFieldValues.fieldDefinitionId, activeFieldDefinitionIds),
-          ),
-        );
-    }
+    const activeFieldDefinitionIds = db
+      .select({ id: employeeCustomFieldDefinitions.id })
+      .from(employeeCustomFieldDefinitions)
+      .where(
+        and(
+          eq(employeeCustomFieldDefinitions.institutionId, institutionId),
+          eq(employeeCustomFieldDefinitions.isActive, true),
+        ),
+      );
+    const deleteValuesQuery = db
+      .delete(employeeCustomFieldValues)
+      .where(
+        and(
+          eq(employeeCustomFieldValues.employeeId, input.employeeId),
+          inArray(employeeCustomFieldValues.fieldDefinitionId, activeFieldDefinitionIds),
+        ),
+      );
+    const insertValueQueries = getCustomValueInsertQueries(customFieldValuesToInsert);
 
-    if (customFieldValuesToInsert.length > 0) {
-      await db.insert(employeeCustomFieldValues).values(customFieldValuesToInsert);
-    }
+    await db.batch([deleteValuesQuery, ...insertValueQueries]);
 
     return updatedEmployee;
   }

@@ -9,7 +9,7 @@ import {
   payrollLineItems,
 } from "@tds-nivaran/db/schema/index";
 import { TRPCError } from "@trpc/server";
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 
 import type { ReportInput } from "../schemas/reports";
 import {
@@ -314,19 +314,23 @@ export function buildReportsModule(options: ReportsModuleOptions = {}) {
           eq(employeePayrollProfiles.financialYearStart, input.financialYearStart),
         ),
       );
-    const profileIds = profileRows.map((profile) => profile.id);
-    const versionRows =
-      profileIds.length > 0
-        ? await db
-            .select({
-              id: employeePayrollVersions.id,
-              payrollProfileId: employeePayrollVersions.payrollProfileId,
-              effectiveMonth: employeePayrollVersions.effectiveMonth,
-            })
-            .from(employeePayrollVersions)
-            .where(inArray(employeePayrollVersions.payrollProfileId, profileIds))
-        : [];
-    const versionIds = versionRows.map((version) => version.id);
+    const versionRows = await db
+      .select({
+        id: employeePayrollVersions.id,
+        payrollProfileId: employeePayrollVersions.payrollProfileId,
+        effectiveMonth: employeePayrollVersions.effectiveMonth,
+      })
+      .from(employeePayrollVersions)
+      .innerJoin(
+        employeePayrollProfiles,
+        eq(employeePayrollProfiles.id, employeePayrollVersions.payrollProfileId),
+      )
+      .where(
+        and(
+          eq(employeePayrollProfiles.institutionId, institutionId),
+          eq(employeePayrollProfiles.financialYearStart, input.financialYearStart),
+        ),
+      );
     const customFieldPeriodRows = await db
       .select({
         customFieldDefinitionId: payrollCustomFieldPeriods.customFieldDefinitionId,
@@ -339,19 +343,29 @@ export function buildReportsModule(options: ReportsModuleOptions = {}) {
         eq(payrollCustomFieldPeriods.customFieldDefinitionId, payrollCustomFieldDefinitions.id),
       )
       .where(eq(payrollCustomFieldDefinitions.institutionId, institutionId));
-    const lineItemRows =
-      versionIds.length > 0
-        ? await db
-            .select({
-              payrollVersionId: payrollLineItems.payrollVersionId,
-              section: payrollLineItems.section,
-              fixedFieldKey: payrollLineItems.fixedFieldKey,
-              customFieldDefinitionId: payrollLineItems.customFieldDefinitionId,
-              amountPaise: payrollLineItems.amountPaise,
-            })
-            .from(payrollLineItems)
-            .where(inArray(payrollLineItems.payrollVersionId, versionIds))
-        : [];
+    const lineItemRows = await db
+      .select({
+        payrollVersionId: payrollLineItems.payrollVersionId,
+        section: payrollLineItems.section,
+        fixedFieldKey: payrollLineItems.fixedFieldKey,
+        customFieldDefinitionId: payrollLineItems.customFieldDefinitionId,
+        amountPaise: payrollLineItems.amountPaise,
+      })
+      .from(payrollLineItems)
+      .innerJoin(
+        employeePayrollVersions,
+        eq(employeePayrollVersions.id, payrollLineItems.payrollVersionId),
+      )
+      .innerJoin(
+        employeePayrollProfiles,
+        eq(employeePayrollProfiles.id, employeePayrollVersions.payrollProfileId),
+      )
+      .where(
+        and(
+          eq(employeePayrollProfiles.institutionId, institutionId),
+          eq(employeePayrollProfiles.financialYearStart, input.financialYearStart),
+        ),
+      );
 
     return {
       institution,

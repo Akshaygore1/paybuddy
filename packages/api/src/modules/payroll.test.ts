@@ -1,10 +1,15 @@
 import { TRPCError } from "@trpc/server";
+import { payrollLineItems } from "@tds-nivaran/db/schema/index";
+import * as schema from "@tds-nivaran/db/schema/index";
+import { drizzle } from "drizzle-orm/d1";
 import { describe, expect, it } from "vitest";
 
+import { chunkForD1, PAYROLL_LINE_ITEM_BOUND_PARAMETERS } from "@tds-nivaran/db/d1";
 import { payrollEmployeeFormSchema } from "../schemas/payroll";
 
 import {
   assertNoDuplicateActivePayrollLabel,
+  buildPayrollModule,
   calculatePayrollTotals,
   fixedPayrollFields,
   formatPaiseAsMoney,
@@ -14,6 +19,104 @@ import {
   parseMoneyToPaise,
   resolvePayrollVersionForMonth,
 } from "./payroll";
+import { createSqliteD1 } from "./d1-test-utils";
+
+describe("Payroll D1 statement limits", () => {
+  function getInsertParameterCounts(rowCount: number) {
+    const db = drizzle({} as D1Database);
+    const rows = Array.from({ length: rowCount }, (_, index) => ({
+      id: `line-item-${index}`,
+      payrollVersionId: "version-1",
+      section: "earnings" as const,
+      fixedFieldKey: `field-${index}`,
+      customFieldDefinitionId: null,
+      label: `Field ${index}`,
+      amountPaise: index,
+      sortOrder: index,
+    }));
+
+    return chunkForD1(rows, PAYROLL_LINE_ITEM_BOUND_PARAMETERS).map(
+      (chunk) => db.insert(payrollLineItems).values(chunk).toSQL().params.length,
+    );
+  }
+
+  it("keeps 12 payroll rows in one statement at the D1 boundary", () => {
+    expect(getInsertParameterCounts(12)).toEqual([96]);
+  });
+
+  it("splits the standard 13 payroll fields into D1-safe statements", () => {
+    const parameterCounts = getInsertParameterCounts(13);
+
+    expect(parameterCounts).toEqual([96, 8]);
+    expect(Math.max(...parameterCounts)).toBeLessThanOrEqual(100);
+  });
+
+  it("rolls back version line-item replacement when a later batch statement fails", async () => {
+    const sqlite = await createSqliteD1({ failBatchAt: 2 });
+    await sqlite.executeMultiple(`
+      create table employees (
+        id text primary key, institution_id text not null, first_name text not null,
+        middle_name text not null, surname text not null
+      );
+      create table payroll_custom_field_definitions (
+        id text primary key, institution_id text not null, section text not null,
+        label text not null, key text not null, is_active integer not null,
+        sort_order integer not null
+      );
+      create table payroll_custom_field_periods (
+        id text primary key, custom_field_definition_id text not null,
+        effective_from_month text not null, effective_to_month text
+      );
+      create table employee_payroll_profiles (
+        id text primary key, institution_id text not null, employee_id text not null,
+        financial_year_start integer not null
+      );
+      create table employee_payroll_versions (
+        id text primary key, payroll_profile_id text not null, effective_month text not null
+      );
+      create table payroll_line_items (
+        id text primary key, payroll_version_id text not null, section text not null,
+        fixed_field_key text, custom_field_definition_id text, label text not null,
+        amount_paise integer not null, sort_order integer not null,
+        created_at integer default 0 not null, updated_at integer default 0 not null
+      );
+      insert into employees values ('employee-1', 'institution-1', 'Asha', '', 'Patel');
+      insert into employee_payroll_profiles values ('profile-1', 'institution-1', 'employee-1', 2026);
+      insert into employee_payroll_versions values ('version-1', 'profile-1', '2026-04');
+      insert into payroll_line_items values (
+        'old-item', 'version-1', 'earnings', 'basicPay', null, 'Basic Pay', 50000, 1, 0, 0
+      );
+    `);
+    const db = drizzle(sqlite.client, { schema });
+    const payroll = buildPayrollModule({ db: db as never });
+    const lineItems = Object.entries(fixedPayrollFields).flatMap(([section, fields]) =>
+      fields.map((field) => ({
+        section: section as "earnings" | "deductions",
+        fixedFieldKey: field.key,
+        customFieldDefinitionId: null,
+        amount: "100.00",
+      })),
+    );
+
+    await expect(
+      payroll.save("institution-1", {
+        employeeId: "employee-1",
+        financialYearStart: 2026,
+        month: "2026-04",
+        lineItems,
+      }),
+    ).rejects.toThrow("__forced_batch_failure");
+
+    const versions = await sqlite.execute("select id from employee_payroll_versions");
+    const lineItemsAfterFailure = await sqlite.execute(
+      "select id, amount_paise from payroll_line_items",
+    );
+
+    expect(versions.rows).toEqual([{ id: "version-1" }]);
+    expect(lineItemsAfterFailure.rows).toEqual([{ id: "old-item", amount_paise: 50_000 }]);
+    sqlite.close();
+  });
+});
 
 describe("Payroll money helpers", () => {
   it("parses and formats paise without floating point drift", () => {
