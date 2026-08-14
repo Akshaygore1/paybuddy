@@ -21,7 +21,6 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@libsql/client": "0.15.15",
     "@tds-nivaran/config": "workspace:*",
     "hono": "catalog:",
     "typescript": "catalog:"
