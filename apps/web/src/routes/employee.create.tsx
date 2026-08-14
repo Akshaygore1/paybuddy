@@ -6,90 +6,25 @@ import {
   CardHeader,
   CardTitle,
 } from "@tds-nivaran/ui/components/card";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import * as React from "react";
-import { useNavigate } from "react-router";
-import { toast } from "sonner";
 
-import {
-  EmployeeForm,
-  type EmployeeSubmitValues,
-  emptyEmployeeFormValues,
-} from "@/components/employee-form";
+import { EmployeeForm } from "@/components/employee-form";
 import { PageHeader } from "@/components/page-header";
-import { queryClient, trpc } from "@/utils/trpc";
+import { useEmployeeRecordEditor } from "@/hooks/use-employee-record-editor";
 
 export default function EmployeeCreatePage() {
-  const navigate = useNavigate();
-  const [fieldLabel, setFieldLabel] = React.useState("");
-  const [fieldRequired, setFieldRequired] = React.useState(false);
-  const [fieldError, setFieldError] = React.useState<string | null>(null);
-
-  const formOptionsQuery = useQuery(trpc.employees.getCreateForm.queryOptions());
-
-  const createEmployeeMutation = useMutation(
-    trpc.employees.create.mutationOptions({
-      onSuccess: async () => {
-        toast.success("Employee created");
-        await queryClient.invalidateQueries();
-        navigate("/employee");
-      },
-      onError: (error) => {
-        toast.error(error.message);
-      },
-    }),
-  );
-
-  const addCustomFieldMutation = useMutation(
-    trpc.employeeSettings.addCustomField.mutationOptions({
-      onSuccess: async () => {
-        toast.success("Custom field added");
-        setFieldLabel("");
-        setFieldRequired(false);
-        setFieldError(null);
-        await queryClient.invalidateQueries();
-      },
-      onError: (error) => {
-        toast.error(error.message);
-      },
-    }),
-  );
-
-  const archiveCustomFieldMutation = useMutation(
-    trpc.employeeSettings.archiveCustomField.mutationOptions({
-      onSuccess: async () => {
-        toast.success("Custom field removed");
-        await queryClient.invalidateQueries();
-      },
-      onError: (error) => {
-        toast.error(error.message);
-      },
-    }),
-  );
-
-  async function handleSubmit(values: EmployeeSubmitValues) {
-    try {
-      await createEmployeeMutation.mutateAsync(values);
-    } catch {}
-  }
-
-  async function handleAddCustomField() {
-    const normalizedLabel = fieldLabel.trim();
-
-    if (!normalizedLabel) {
-      setFieldError("Field label is required");
-      return;
-    }
-
-    await addCustomFieldMutation.mutateAsync({
-      label: normalizedLabel,
-      isRequired: fieldRequired,
-    });
-  }
-
-  async function handleArchiveCustomField(fieldId: string) {
-    await archiveCustomFieldMutation.mutateAsync({ id: fieldId });
-  }
+  const { view, status, actions } = useEmployeeRecordEditor({ mode: "create" });
+  const customFieldManager =
+    view.customFieldManager && actions.customFields
+      ? {
+          ...view.customFieldManager,
+          isAddingField: status.addField.isPending,
+          isArchivingField: status.archiveField.isPending,
+          onFieldLabelChange: actions.customFields.setLabel,
+          onFieldRequiredChange: actions.customFields.setRequired,
+          onAddField: () => void actions.customFields?.add(),
+          onArchiveField: (fieldId: string) => void actions.customFields?.archive(fieldId),
+        }
+      : undefined;
 
   return (
     <section className="space-y-6 p-6">
@@ -97,7 +32,7 @@ export default function EmployeeCreatePage() {
         title="Create Employee"
         description="Default payroll fields appear first. Add institution-specific fields here when the employee form needs them."
         action={
-          <Button variant="outline" onClick={() => navigate("/employee")}>
+          <Button variant="outline" onClick={actions.cancel}>
             Cancel
           </Button>
         }
@@ -116,31 +51,16 @@ export default function EmployeeCreatePage() {
             mode="create"
             submitLabel="Create Employee"
             submittingLabel="Saving..."
-            resetKey="create"
-            initialValues={emptyEmployeeFormValues}
-            formOptions={formOptionsQuery.data}
-            isLoading={formOptionsQuery.isPending}
-            isSubmitting={createEmployeeMutation.isPending}
-            onSubmit={handleSubmit}
-            onCancel={() => navigate("/employee")}
-            customFieldManager={{
-              fieldLabel,
-              fieldRequired,
-              fieldError,
-              isAddingField: addCustomFieldMutation.isPending,
-              isArchivingField: archiveCustomFieldMutation.isPending,
-              onFieldLabelChange: (value) => {
-                setFieldLabel(value);
-                setFieldError(null);
-              },
-              onFieldRequiredChange: setFieldRequired,
-              onAddField: () => {
-                void handleAddCustomField();
-              },
-              onArchiveField: (fieldId) => {
-                void handleArchiveCustomField(fieldId);
-              },
-            }}
+            values={view.draft}
+            errors={view.errors}
+            formOptions={view.formDefinition}
+            isLoading={status.form.isPending}
+            isSubmitting={status.submit.isPending}
+            onFieldChange={actions.updateField}
+            onCustomFieldChange={actions.updateCustomField}
+            onSubmit={actions.submit}
+            onCancel={actions.cancel}
+            customFieldManager={customFieldManager}
           />
         </CardContent>
       </Card>

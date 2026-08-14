@@ -4,16 +4,14 @@ import * as schema from "@tds-nivaran/db/schema/index";
 import { drizzle } from "drizzle-orm/d1";
 import { describe, expect, it } from "vitest";
 
-import { chunkForD1, PAYROLL_LINE_ITEM_BOUND_PARAMETERS } from "@tds-nivaran/db/d1";
+import { planD1Statements } from "@tds-nivaran/db/d1";
 import { payrollEmployeeFormSchema } from "../schemas/payroll";
 
 import {
-  assertNoDuplicateActivePayrollLabel,
   buildPayrollModule,
   calculatePayrollTotals,
   fixedPayrollFields,
   formatPaiseAsMoney,
-  filterSavedLineItemsForCustomFieldPeriods,
   getFinancialYearMonths,
   getInitialPayrollEffectiveMonths,
   parseMoneyToPaise,
@@ -35,8 +33,8 @@ describe("Payroll D1 statement limits", () => {
       sortOrder: index,
     }));
 
-    return chunkForD1(rows, PAYROLL_LINE_ITEM_BOUND_PARAMETERS).map(
-      (chunk) => db.insert(payrollLineItems).values(chunk).toSQL().params.length,
+    return planD1Statements(rows, (chunk) => db.insert(payrollLineItems).values(chunk)).map(
+      (statement) => statement.toSQL().params.length,
     );
   }
 
@@ -353,17 +351,14 @@ describe("Payroll financial year helpers", () => {
       getInitialPayrollEffectiveMonths({
         financialYearStart: 2026,
         selectedMonth: "2026-09",
-        activeCustomFieldIds: ["june-field", "september-field"],
-        periods: [
+        activeCustomFieldPeriods: [
           {
             customFieldDefinitionId: "june-field",
             effectiveFromMonth: "2026-06",
-            effectiveToMonth: null,
           },
           {
             customFieldDefinitionId: "september-field",
             effectiveFromMonth: "2026-09",
-            effectiveToMonth: null,
           },
         ],
       }),
@@ -404,67 +399,5 @@ describe("Payroll field ordering and totals", () => {
       deductionsPaise: 50_10,
       netPayPaise: 250_40,
     });
-  });
-});
-
-describe("Payroll custom field validation", () => {
-  it("does not restore an employee's old amount when a field is reactivated", () => {
-    const savedLineItems = [
-      {
-        id: "old-value",
-        section: "earnings" as const,
-        fixedFieldKey: null,
-        customFieldDefinitionId: "allowance",
-        label: "Allowance",
-        amountPaise: 5_000,
-        sortOrder: 1001,
-      },
-    ];
-
-    expect(
-      filterSavedLineItemsForCustomFieldPeriods({
-        savedLineItems,
-        versionEffectiveMonth: "2026-04",
-        month: "2026-12",
-        periods: [
-          {
-            customFieldDefinitionId: "allowance",
-            effectiveFromMonth: "2026-04",
-            effectiveToMonth: "2026-09",
-          },
-          {
-            customFieldDefinitionId: "allowance",
-            effectiveFromMonth: "2026-12",
-            effectiveToMonth: null,
-          },
-        ],
-      }),
-    ).toEqual([]);
-  });
-
-  it("rejects duplicate active labels in the same section", () => {
-    expect(() =>
-      assertNoDuplicateActivePayrollLabel(
-        [
-          { label: "Special Allowance", section: "earnings", isActive: true },
-          { label: "Special Allowance", section: "deductions", isActive: true },
-        ],
-        "earnings",
-        " special allowance ",
-      ),
-    ).toThrow("A payroll field with this label already exists in this section");
-  });
-
-  it("allows matching labels in different sections or archived fields", () => {
-    expect(() =>
-      assertNoDuplicateActivePayrollLabel(
-        [
-          { label: "Special Allowance", section: "deductions", isActive: true },
-          { label: "Old Allowance", section: "earnings", isActive: false },
-        ],
-        "earnings",
-        "Special Allowance",
-      ),
-    ).not.toThrow();
   });
 });

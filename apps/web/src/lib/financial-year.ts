@@ -1,56 +1,66 @@
-export const financialYearOptions = [2023, 2024, 2025, 2026, 2027, 2028] as const;
-export const financialYearStorageKey = "tds-nivaran:selectedFinancialYearStart";
-export const financialYearBeforeChangeEvent = "tds-nivaran:before-financial-year-change";
-export const financialYearChangeEvent = "tds-nivaran:financial-year-change";
+import {
+  getCurrentPayrollFinancialYearStart,
+  isPayrollFinancialYearStart,
+  type PayrollFinancialYearStart,
+} from "@tds-nivaran/api/payroll-financial-year";
 
-export type FinancialYearStart = (typeof financialYearOptions)[number];
+const financialYearStorageKey = "tds-nivaran:selectedFinancialYearStart";
+const listeners = new Set<() => void>();
+const changeGuards = new Set<(financialYearStart: PayrollFinancialYearStart) => boolean>();
+let cachedWindow: Window | undefined;
+let cachedFinancialYearStart: PayrollFinancialYearStart | undefined;
 
-export function getFinancialYearLabel(financialYearStart: number) {
-  return `${financialYearStart}-${financialYearStart + 1}`;
-}
+export type FinancialYearStart = PayrollFinancialYearStart;
 
-export function getCurrentFinancialYearStart(date = new Date()) {
-  const year = date.getFullYear();
-  const month = date.getMonth();
-  const financialYearStart = month >= 3 ? year : year - 1;
-
-  if (financialYearOptions.includes(financialYearStart as FinancialYearStart)) {
-    return financialYearStart as FinancialYearStart;
+export function getSelectedFinancialYearStart(): PayrollFinancialYearStart {
+  if (typeof window === "undefined") {
+    return getCurrentPayrollFinancialYearStart();
   }
 
-  return financialYearOptions[0];
-}
-
-export function readSelectedFinancialYearStart() {
-  if (typeof window === "undefined") {
-    return getCurrentFinancialYearStart();
+  if (cachedWindow === window && cachedFinancialYearStart !== undefined) {
+    return cachedFinancialYearStart;
   }
 
   const storedValue = Number(window.localStorage.getItem(financialYearStorageKey));
-
-  if (financialYearOptions.includes(storedValue as FinancialYearStart)) {
-    return storedValue as FinancialYearStart;
-  }
-
-  return getCurrentFinancialYearStart();
+  cachedWindow = window;
+  cachedFinancialYearStart = isPayrollFinancialYearStart(storedValue)
+    ? storedValue
+    : getCurrentPayrollFinancialYearStart();
+  return cachedFinancialYearStart;
 }
 
-export function writeSelectedFinancialYearStart(financialYearStart: FinancialYearStart) {
-  const beforeChangeEvent = new CustomEvent(financialYearBeforeChangeEvent, {
-    cancelable: true,
-    detail: { financialYearStart },
-  });
+export function setSelectedFinancialYearStart(financialYearStart: PayrollFinancialYearStart) {
+  if (financialYearStart === getSelectedFinancialYearStart()) {
+    return true;
+  }
 
-  if (!window.dispatchEvent(beforeChangeEvent)) {
+  if ([...changeGuards].some((guard) => !guard(financialYearStart))) {
+    return false;
+  }
+
+  if (typeof window === "undefined") {
     return false;
   }
 
   window.localStorage.setItem(financialYearStorageKey, String(financialYearStart));
-  window.dispatchEvent(
-    new CustomEvent(financialYearChangeEvent, {
-      detail: { financialYearStart },
-    }),
-  );
-
+  cachedWindow = window;
+  cachedFinancialYearStart = financialYearStart;
+  for (const listener of listeners) listener();
   return true;
+}
+
+export function subscribeSelectedFinancialYear(listener: () => void) {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+export function registerSelectedFinancialYearChangeGuard(
+  guard: (financialYearStart: PayrollFinancialYearStart) => boolean,
+) {
+  changeGuards.add(guard);
+  return () => {
+    changeGuards.delete(guard);
+  };
 }

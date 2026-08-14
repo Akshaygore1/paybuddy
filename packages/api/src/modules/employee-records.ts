@@ -1,5 +1,5 @@
 import { createDb } from "@tds-nivaran/db";
-import { chunkForD1, EMPLOYEE_CUSTOM_FIELD_VALUE_BOUND_PARAMETERS } from "@tds-nivaran/db/d1";
+import { executeD1Batch, planD1Statements } from "@tds-nivaran/db/d1";
 import {
   employeeCustomFieldDefinitions,
   employeeCustomFieldValues,
@@ -328,7 +328,7 @@ export function buildEmployeeRecordsModule(options: EmployeeRecordModuleOptions 
       value: string;
     }>,
   ) {
-    return chunkForD1(values, EMPLOYEE_CUSTOM_FIELD_VALUE_BOUND_PARAMETERS).map((valueChunk) =>
+    return planD1Statements(values, (valueChunk) =>
       db.insert(employeeCustomFieldValues).values(valueChunk),
     );
   }
@@ -384,6 +384,34 @@ export function buildEmployeeRecordsModule(options: EmployeeRecordModuleOptions 
         ),
       )
       .get();
+  }
+
+  async function prepareEmployeeRecordWrite(input: {
+    institutionId: string;
+    employeeId: string;
+    values: EmployeeWriteInput;
+  }) {
+    const [designation, fieldDefinitions] = await Promise.all([
+      getActiveDesignation(input.institutionId, input.values.designationId),
+      getActiveCustomFieldDefinitions(input.institutionId),
+    ]);
+
+    if (!designation) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Please select a valid designation",
+      });
+    }
+
+    validateSubmittedCustomFields(fieldDefinitions, input.values.customFieldValues);
+    return {
+      baseValues: normalizeEmployeeBaseValues(input.values),
+      customFieldValues: planEmployeeCustomFieldValues({
+        employeeId: input.employeeId,
+        fieldDefinitions,
+        customFieldValues: input.values.customFieldValues,
+      }),
+    };
   }
 
   async function getCustomFieldRowsForEmployees(institutionId: string, employeeId?: string) {
@@ -565,31 +593,18 @@ export function buildEmployeeRecordsModule(options: EmployeeRecordModuleOptions 
   }
 
   async function createEmployee(institutionId: string, input: CreateEmployeeInput) {
-    const designation = await getActiveDesignation(institutionId, input.designationId);
-
-    if (!designation) {
-      throw new TRPCError({
-        code: "BAD_REQUEST",
-        message: "Please select a valid designation",
-      });
-    }
-
-    const fieldDefinitions = await getActiveCustomFieldDefinitions(institutionId);
-    validateSubmittedCustomFields(fieldDefinitions, input.customFieldValues);
-
     const employeeId = crypto.randomUUID();
-    const customFieldValuesToInsert = planEmployeeCustomFieldValues({
+    const prepared = await prepareEmployeeRecordWrite({
+      institutionId,
       employeeId,
-      fieldDefinitions,
-      customFieldValues: input.customFieldValues,
+      values: input,
     });
-    await db.batch([
+    await executeD1Batch(db, getCustomValueInsertQueries(prepared.customFieldValues), [
       db.insert(employees).values({
         id: employeeId,
         institutionId,
-        ...normalizeEmployeeBaseValues(input),
+        ...prepared.baseValues,
       }),
-      ...getCustomValueInsertQueries(customFieldValuesToInsert),
     ]);
 
     const createdEmployee = await db
@@ -618,22 +633,10 @@ export function buildEmployeeRecordsModule(options: EmployeeRecordModuleOptions 
       });
     }
 
-    const designation = await getActiveDesignation(institutionId, input.designationId);
-
-    if (!designation) {
-      throw new TRPCError({
-        code: "BAD_REQUEST",
-        message: "Please select a valid designation",
-      });
-    }
-
-    const fieldDefinitions = await getActiveCustomFieldDefinitions(institutionId);
-    validateSubmittedCustomFields(fieldDefinitions, input.customFieldValues);
-
-    const customFieldValuesToInsert = planEmployeeCustomFieldValues({
+    const prepared = await prepareEmployeeRecordWrite({
+      institutionId,
       employeeId: input.employeeId,
-      fieldDefinitions,
-      customFieldValues: input.customFieldValues,
+      values: input,
     });
 
     const activeFieldDefinitionIds = db
@@ -653,15 +656,14 @@ export function buildEmployeeRecordsModule(options: EmployeeRecordModuleOptions 
           inArray(employeeCustomFieldValues.fieldDefinitionId, activeFieldDefinitionIds),
         ),
       );
-    const insertValueQueries = getCustomValueInsertQueries(customFieldValuesToInsert);
+    const insertValueQueries = getCustomValueInsertQueries(prepared.customFieldValues);
 
-    await db.batch([
-      db
-        .update(employees)
-        .set(normalizeEmployeeBaseValues(input))
+    await executeD1Batch(db, insertValueQueries, [
+        db
+          .update(employees)
+          .set(prepared.baseValues)
         .where(and(eq(employees.id, input.employeeId), eq(employees.institutionId, institutionId))),
       deleteValuesQuery,
-      ...insertValueQueries,
     ]);
 
     const updatedEmployee = await db

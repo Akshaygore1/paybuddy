@@ -1,40 +1,40 @@
 import { createDb } from "@tds-nivaran/db";
-import { chunkForD1, PAYROLL_LINE_ITEM_BOUND_PARAMETERS } from "@tds-nivaran/db/d1";
+import { executeD1Batch, planD1Statements } from "@tds-nivaran/db/d1";
 import {
   employeePayrollProfiles,
   employeePayrollVersions,
   employees,
-  payrollCustomFieldDefinitions,
-  payrollCustomFieldPeriods,
   payrollLineItems,
 } from "@tds-nivaran/db/schema/index";
 import { TRPCError } from "@trpc/server";
 import type { BatchItem } from "drizzle-orm/batch";
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 
 import type { AddPayrollCustomFieldInput, SavePayrollInput } from "../schemas/payroll";
 import {
   buildPayrollHistoryModule,
   fixedPayrollFields,
-  getActiveCustomFieldsForMonth,
-  type PayrollCustomFieldPeriod,
-  type PayrollSection,
 } from "./payroll-history";
+import {
+  buildPayrollFieldTimelineModule,
+  type PayrollFieldTimelineModule,
+  type PayrollSection,
+} from "./payroll-field-timeline";
 
 export {
   calculatePayrollTotals,
-  filterSavedLineItemsForCustomFieldPeriods,
   fixedPayrollFields,
   getFinancialYearMonths,
   resolvePayrollVersionForMonth,
   type PayrollLineItem,
-  type PayrollSection,
 } from "./payroll-history";
+export type { PayrollSection } from "./payroll-field-timeline";
 
 type Db = ReturnType<typeof createDb>;
 
 type PayrollModuleOptions = {
   db?: Db;
+  fieldTimeline?: PayrollFieldTimelineModule;
 };
 
 const fixedFieldLookup = new Map(
@@ -49,34 +49,6 @@ const fixedFieldLookup = new Map(
     ]),
   ),
 );
-
-function normalizeText(value: string) {
-  return value.trim().replace(/\s+/g, " ").toLowerCase();
-}
-
-export function buildPayrollFieldKeyBase(label: string) {
-  const slug = label
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "");
-
-  return slug || "field";
-}
-
-export function buildUniquePayrollFieldKey(label: string, existingKeys: Iterable<string>) {
-  const baseKey = buildPayrollFieldKeyBase(label);
-  const unavailableKeys = new Set(existingKeys);
-  let key = baseKey;
-  let suffix = 2;
-
-  while (unavailableKeys.has(key)) {
-    key = `${baseKey}_${suffix}`;
-    suffix += 1;
-  }
-
-  return key;
-}
 
 export function parseMoneyToPaise(value: string) {
   const normalized = value.trim();
@@ -108,55 +80,19 @@ export function formatPaiseAsMoney(amountPaise: number) {
 export function getInitialPayrollEffectiveMonths(input: {
   financialYearStart: number;
   selectedMonth: string;
-  activeCustomFieldIds: string[];
-  periods: Array<{
+  activeCustomFieldPeriods: Array<{
     customFieldDefinitionId: string;
     effectiveFromMonth: string;
-    effectiveToMonth: string | null;
   }>;
 }) {
   const aprilMonth = `${input.financialYearStart}-04`;
-  const customFieldStarts = input.activeCustomFieldIds.map((fieldId) => {
-    const periodStart =
-      input.periods.find(
-        (period) =>
-          period.customFieldDefinitionId === fieldId &&
-          period.effectiveFromMonth <= input.selectedMonth &&
-          (!period.effectiveToMonth || input.selectedMonth < period.effectiveToMonth),
-      )?.effectiveFromMonth ?? input.selectedMonth;
-
-    return periodStart < aprilMonth ? aprilMonth : periodStart;
-  });
+  const customFieldStarts = input.activeCustomFieldPeriods.map((period) =>
+    period.effectiveFromMonth < aprilMonth ? aprilMonth : period.effectiveFromMonth,
+  );
 
   return [...new Set([aprilMonth, ...customFieldStarts])]
     .filter((effectiveMonth) => effectiveMonth <= input.selectedMonth)
     .sort();
-}
-
-export function assertNoDuplicateActivePayrollLabel(
-  existingFields: Array<{
-    label: string;
-    section: PayrollSection;
-    isActive: boolean;
-  }>,
-  section: PayrollSection,
-  label: string,
-) {
-  const normalizedLabel = normalizeText(label);
-
-  if (
-    existingFields.some(
-      (field) =>
-        field.section === section &&
-        field.isActive &&
-        normalizeText(field.label) === normalizedLabel,
-    )
-  ) {
-    throw new TRPCError({
-      code: "CONFLICT",
-      message: "A payroll field with this label already exists in this section",
-    });
-  }
 }
 
 function getEmployeeName(employee: { firstName: string; middleName: string; surname: string }) {
@@ -176,24 +112,8 @@ function getFixedField(section: PayrollSection, fixedFieldKey: string | null | u
 
 export function buildPayrollModule(options: PayrollModuleOptions = {}) {
   const db = options.db ?? createDb();
-  const payrollHistory = buildPayrollHistoryModule({ db });
-
-  function getCustomFieldPeriods(institutionId: string) {
-    return db
-      .select({
-        id: payrollCustomFieldPeriods.id,
-        customFieldDefinitionId: payrollCustomFieldPeriods.customFieldDefinitionId,
-        effectiveFromMonth: payrollCustomFieldPeriods.effectiveFromMonth,
-        effectiveToMonth: payrollCustomFieldPeriods.effectiveToMonth,
-      })
-      .from(payrollCustomFieldPeriods)
-      .innerJoin(
-        payrollCustomFieldDefinitions,
-        eq(payrollCustomFieldDefinitions.id, payrollCustomFieldPeriods.customFieldDefinitionId),
-      )
-      .where(eq(payrollCustomFieldDefinitions.institutionId, institutionId))
-      .orderBy(asc(payrollCustomFieldPeriods.effectiveFromMonth));
-  }
+  const fieldTimeline = options.fieldTimeline ?? buildPayrollFieldTimelineModule({ db });
+  const payrollHistory = buildPayrollHistoryModule({ db, fieldTimeline });
 
   async function getEmployees(institutionId: string) {
     return db
@@ -232,42 +152,6 @@ export function buildPayrollModule(options: PayrollModuleOptions = {}) {
       ...employee,
       name: getEmployeeName(employee),
     };
-  }
-
-  async function getCustomFieldTimeline(institutionId: string) {
-    const fields = await db
-      .select({
-        id: payrollCustomFieldDefinitions.id,
-        section: payrollCustomFieldDefinitions.section,
-        label: payrollCustomFieldDefinitions.label,
-        key: payrollCustomFieldDefinitions.key,
-        sortOrder: payrollCustomFieldDefinitions.sortOrder,
-      })
-      .from(payrollCustomFieldDefinitions)
-      .where(eq(payrollCustomFieldDefinitions.institutionId, institutionId))
-      .orderBy(
-        asc(payrollCustomFieldDefinitions.section),
-        asc(payrollCustomFieldDefinitions.sortOrder),
-        asc(payrollCustomFieldDefinitions.label),
-      );
-    const periods = await getCustomFieldPeriods(institutionId);
-
-    return { fields, periods };
-  }
-
-  function getActiveCustomFieldPeriodForMonth(
-    periods: PayrollCustomFieldPeriod[],
-    customFieldDefinitionId: string,
-    month: string,
-  ) {
-    return (
-      periods.find(
-        (period) =>
-          period.customFieldDefinitionId === customFieldDefinitionId &&
-          period.effectiveFromMonth <= month &&
-          (!period.effectiveToMonth || month < period.effectiveToMonth),
-      ) ?? null
-    );
   }
 
   async function getProfile(employeeId: string, financialYearStart: number) {
@@ -321,9 +205,8 @@ export function buildPayrollModule(options: PayrollModuleOptions = {}) {
         message: "Month must belong to the financial year",
       });
     }
-    const activeCustomFields = getActiveCustomFieldsForMonth(
-      history.fields,
-      history.periods,
+    const activeCustomFields = fieldTimeline.getActiveFieldsForMonth(
+      { fields: history.fields, periods: history.periods },
       month,
     );
 
@@ -349,12 +232,8 @@ export function buildPayrollModule(options: PayrollModuleOptions = {}) {
   async function save(institutionId: string, input: SavePayrollInput) {
     await getEmployee(institutionId, input.employeeId);
 
-    const customFieldTimeline = await getCustomFieldTimeline(institutionId);
-    const activeCustomFields = getActiveCustomFieldsForMonth(
-      customFieldTimeline.fields,
-      customFieldTimeline.periods,
-      input.month,
-    );
+    const customFieldTimeline = await fieldTimeline.load(institutionId);
+    const activeCustomFields = fieldTimeline.getActiveFieldsForMonth(customFieldTimeline, input.month);
     const activeCustomFieldIds = new Set(activeCustomFields.map((field) => field.id));
     const activeCustomFieldsById = new Map(activeCustomFields.map((field) => [field.id, field]));
 
@@ -471,26 +350,43 @@ export function buildPayrollModule(options: PayrollModuleOptions = {}) {
         );
       }
 
-      for (const itemChunk of chunkForD1(items, PAYROLL_LINE_ITEM_BOUND_PARAMETERS)) {
-        queries.push(
-          db.insert(payrollLineItems).values(
-            itemChunk.map((item) => ({
-              id: crypto.randomUUID(),
-              payrollVersionId,
-              ...item,
-            })),
-          ),
-        );
-      }
+      const lineItems = items.map((item) => ({
+        id: crypto.randomUUID(),
+        payrollVersionId,
+        ...item,
+      }));
+      queries.push(
+        ...planD1Statements(lineItems, (itemChunk) =>
+          db.insert(payrollLineItems).values(itemChunk),
+        ),
+      );
     }
 
     if (existingVersions.length === 0) {
+      const activeCustomFieldPeriods = activeCustomFields.map((field) => {
+        const period = fieldTimeline.getActivePeriodForMonth(
+          customFieldTimeline,
+          field.id,
+          input.month,
+        );
+
+        if (!period) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Unable to resolve active Payroll field period",
+          });
+        }
+
+        return period;
+      });
       const effectiveMonths = getInitialPayrollEffectiveMonths({
         financialYearStart: input.financialYearStart,
         selectedMonth: input.month,
-        activeCustomFieldIds: activeCustomFields.map((field) => field.id),
-        periods: customFieldTimeline.periods,
+        activeCustomFieldPeriods,
       });
+      const activePeriodByFieldId = new Map(
+        activeCustomFieldPeriods.map((period) => [period.customFieldDefinitionId, period]),
+      );
 
       for (const effectiveMonth of effectiveMonths) {
         queueVersionReplacement(
@@ -498,11 +394,8 @@ export function buildPayrollModule(options: PayrollModuleOptions = {}) {
           normalizedLineItems.filter(
             (item) =>
               !item.customFieldDefinitionId ||
-              (getActiveCustomFieldPeriodForMonth(
-                customFieldTimeline.periods,
-                item.customFieldDefinitionId,
-                input.month,
-              )?.effectiveFromMonth ?? input.month) <= effectiveMonth,
+              (activePeriodByFieldId.get(item.customFieldDefinitionId)?.effectiveFromMonth ??
+                input.month) <= effectiveMonth,
           ),
         );
       }
@@ -510,193 +403,17 @@ export function buildPayrollModule(options: PayrollModuleOptions = {}) {
       queueVersionReplacement(input.month, normalizedLineItems);
     }
 
-    const [firstQuery, ...remainingQueries] = queries;
-
-    if (!firstQuery) {
-      throw new TRPCError({
-        code: "INTERNAL_SERVER_ERROR",
-        message: "Unable to prepare payroll save",
-      });
-    }
-
-    await db.batch([firstQuery, ...remainingQueries]);
+    await executeD1Batch(db, queries);
 
     return getForm(institutionId, input.employeeId, input.financialYearStart, input.month);
   }
 
-  async function getNextSortOrder(institutionId: string, section: PayrollSection) {
-    const current = await db
-      .select({ sortOrder: payrollCustomFieldDefinitions.sortOrder })
-      .from(payrollCustomFieldDefinitions)
-      .where(
-        and(
-          eq(payrollCustomFieldDefinitions.institutionId, institutionId),
-          eq(payrollCustomFieldDefinitions.section, section),
-        ),
-      )
-      .orderBy(desc(payrollCustomFieldDefinitions.sortOrder))
-      .get();
-
-    return (current?.sortOrder ?? 0) + 1;
-  }
-
   async function addCustomField(institutionId: string, input: AddPayrollCustomFieldInput) {
-    const existingFields = await db
-      .select({
-        id: payrollCustomFieldDefinitions.id,
-        label: payrollCustomFieldDefinitions.label,
-        key: payrollCustomFieldDefinitions.key,
-        section: payrollCustomFieldDefinitions.section,
-        sortOrder: payrollCustomFieldDefinitions.sortOrder,
-      })
-      .from(payrollCustomFieldDefinitions)
-      .where(eq(payrollCustomFieldDefinitions.institutionId, institutionId));
-
-    const periods = await getCustomFieldPeriods(institutionId);
-    const matchingFields = existingFields.filter(
-      (field) =>
-        field.section === input.section &&
-        normalizeText(field.label) === normalizeText(input.label),
-    );
-
-    if (
-      matchingFields.some((field) =>
-        getActiveCustomFieldPeriodForMonth(periods, field.id, input.month),
-      )
-    ) {
-      throw new TRPCError({
-        code: "CONFLICT",
-        message: "A payroll field with this label already exists in this section",
-      });
-    }
-
-    let field = matchingFields[0];
-    const fieldQueries: BatchItem<"sqlite">[] = [];
-
-    if (!field) {
-      field = {
-        id: crypto.randomUUID(),
-        section: input.section,
-        label: input.label.trim(),
-        key: buildUniquePayrollFieldKey(
-          input.label,
-          existingFields.map((existingField) => existingField.key),
-        ),
-        sortOrder: await getNextSortOrder(institutionId, input.section),
-      };
-      fieldQueries.push(
-        db.insert(payrollCustomFieldDefinitions).values({
-          ...field,
-          institutionId,
-        }),
-      );
-    } else {
-      fieldQueries.push(
-        db
-          .update(payrollCustomFieldDefinitions)
-          .set({ isActive: true })
-          .where(eq(payrollCustomFieldDefinitions.id, field.id)),
-      );
-    }
-
-    if (!field) {
-      throw new TRPCError({
-        code: "INTERNAL_SERVER_ERROR",
-        message: "Unable to create payroll field",
-      });
-    }
-
-    const nextPeriod = periods
-      .filter(
-        (period) =>
-          period.customFieldDefinitionId === field.id && period.effectiveFromMonth > input.month,
-      )
-      .sort((left, right) => left.effectiveFromMonth.localeCompare(right.effectiveFromMonth))[0];
-
-    fieldQueries.push(
-      db.insert(payrollCustomFieldPeriods).values({
-        id: crypto.randomUUID(),
-        customFieldDefinitionId: field.id,
-        effectiveFromMonth: input.month,
-        effectiveToMonth: nextPeriod?.effectiveFromMonth ?? null,
-      }),
-    );
-    const [firstFieldQuery, ...remainingFieldQueries] = fieldQueries;
-
-    if (!firstFieldQuery) {
-      throw new TRPCError({
-        code: "INTERNAL_SERVER_ERROR",
-        message: "Unable to prepare payroll field",
-      });
-    }
-
-    await db.batch([firstFieldQuery, ...remainingFieldQueries]);
-
-    return field;
+    return fieldTimeline.addField(institutionId, input);
   }
 
   async function archiveCustomField(institutionId: string, input: { id: string; month: string }) {
-    const field = await db
-      .select()
-      .from(payrollCustomFieldDefinitions)
-      .where(
-        and(
-          eq(payrollCustomFieldDefinitions.id, input.id),
-          eq(payrollCustomFieldDefinitions.institutionId, institutionId),
-        ),
-      )
-      .get();
-
-    if (!field) {
-      throw new TRPCError({
-        code: "NOT_FOUND",
-        message: "Payroll field was not found",
-      });
-    }
-
-    const periods = await db
-      .select({
-        id: payrollCustomFieldPeriods.id,
-        customFieldDefinitionId: payrollCustomFieldPeriods.customFieldDefinitionId,
-        effectiveFromMonth: payrollCustomFieldPeriods.effectiveFromMonth,
-        effectiveToMonth: payrollCustomFieldPeriods.effectiveToMonth,
-      })
-      .from(payrollCustomFieldPeriods)
-      .where(eq(payrollCustomFieldPeriods.customFieldDefinitionId, input.id));
-    const activePeriod = getActiveCustomFieldPeriodForMonth(periods, input.id, input.month);
-
-    if (!activePeriod) {
-      throw new TRPCError({
-        code: "NOT_FOUND",
-        message: "Payroll field was not active for this month",
-      });
-    }
-
-    const archivePeriodQuery =
-      activePeriod.effectiveFromMonth === input.month
-        ? db
-            .delete(payrollCustomFieldPeriods)
-            .where(eq(payrollCustomFieldPeriods.id, activePeriod.id))
-        : db
-            .update(payrollCustomFieldPeriods)
-            .set({ effectiveToMonth: input.month })
-            .where(eq(payrollCustomFieldPeriods.id, activePeriod.id));
-    const hasLaterOpenPeriod = periods.some(
-      (period) =>
-        period.id !== activePeriod.id &&
-        period.effectiveFromMonth > input.month &&
-        !period.effectiveToMonth,
-    );
-
-    await db.batch([
-      archivePeriodQuery,
-      db
-        .update(payrollCustomFieldDefinitions)
-        .set({ isActive: hasLaterOpenPeriod })
-        .where(eq(payrollCustomFieldDefinitions.id, input.id)),
-    ]);
-
-    return field;
+    return fieldTimeline.archiveField(institutionId, input);
   }
 
   return {

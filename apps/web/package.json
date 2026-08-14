@@ -34,14 +34,15 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@tds-nivaran/config": "workspace:*",
     "@react-router/dev": "^7.14.1",
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/react-query-devtools": "^5.91.1",
+    "@tds-nivaran/config": "workspace:*",
     "@types/node": "^20",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "alchemy": "catalog:",
+    "react-grab": "^0.1.50",
     "react-router-devtools": "^1.1.0",
     "tailwindcss": "^4.2.2",
     "typescript": "catalog:",

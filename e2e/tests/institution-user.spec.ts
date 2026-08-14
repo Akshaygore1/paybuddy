@@ -32,12 +32,8 @@ test.describe("institution user flows", () => {
 
   test("signs in to the institution workspace", async ({ page, env }) => {
     await signIn(page, env.identifier, env.password);
-    await expect(
-      page.getByRole("link", { name: "Employee Setup" }),
-    ).toBeVisible();
-    await expect(page.getByRole("link", { name: "Institution" })).toHaveCount(
-      0,
-    );
+    await expect(page.getByRole("link", { name: "Employee Setup" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Institution" })).toHaveCount(0);
   });
 
   test("resets the workspace, manages designation ordering, and creates employees", async ({
@@ -77,12 +73,8 @@ test.describe("institution user flows", () => {
     });
     await submitEmployeeCreate(page);
     await expect(page.getByRole("alert")).toHaveCount(1);
-    await expect(page.getByRole("alert")).toContainText(
-      `${run.customFieldLabel} is required`,
-    );
-    await expect(
-      page.locator('input[id^="employee-custom-create-"]'),
-    ).toHaveCount(1);
+    await expect(page.getByRole("alert")).toContainText(`${run.customFieldLabel} is required`);
+    await expect(page.locator('input[id^="employee-custom-create-"]')).toHaveCount(1);
 
     await page
       .getByLabel(`${run.customFieldLabel} *`)
@@ -106,11 +98,7 @@ test.describe("institution user flows", () => {
     }
   });
 
-  test("shows the created directory rows and ordering", async ({
-    page,
-    env,
-    run,
-  }) => {
+  test("shows the created directory rows and ordering", async ({ page, env, run }) => {
     await signIn(page, env.identifier, env.password);
     await goToEmployeeDirectory(page);
 
@@ -120,22 +108,16 @@ test.describe("institution user flows", () => {
 
     await enableCustomFieldColumn(page, run.customFieldLabel);
 
-    await expectRowValues(
-      employeeRow(page, run.employees.headmaster.displayName),
-      [
-        run.designationNames.headmaster,
-        run.employees.headmaster.seniorityRank,
-        run.employees.headmaster.customFieldValue,
-      ],
-    );
-    await expectRowValues(
-      employeeRow(page, run.employees.teacherA.displayName),
-      [
-        run.designationNames.teacher,
-        run.employees.teacherA.seniorityRank,
-        run.employees.teacherA.customFieldValue,
-      ],
-    );
+    await expectRowValues(employeeRow(page, run.employees.headmaster.displayName), [
+      run.designationNames.headmaster,
+      run.employees.headmaster.seniorityRank,
+      run.employees.headmaster.customFieldValue,
+    ]);
+    await expectRowValues(employeeRow(page, run.employees.teacherA.displayName), [
+      run.designationNames.teacher,
+      run.employees.teacherA.seniorityRank,
+      run.employees.teacherA.customFieldValue,
+    ]);
 
     await assertRunEmployeeOrder(page, run);
   });
@@ -150,9 +132,7 @@ test.describe("institution user flows", () => {
 
     await searchEmployeeDirectory(page, run.employees.teacherA.surname);
     await expectEmployeeRow(page, run.employees.teacherA.displayName);
-    await expect(employeeRow(page, run.employees.teacherB.displayName)).toHaveCount(
-      0,
-    );
+    await expect(employeeRow(page, run.employees.teacherB.displayName)).toHaveCount(0);
     await expect(page.getByText("1 matching employee records of 4")).toBeVisible();
     await expect(
       page.getByText("Showing 1-1 of 1 matches (4 total)", { exact: true }),
@@ -161,14 +141,10 @@ test.describe("institution user flows", () => {
     await enableCustomFieldColumn(page, run.customFieldLabel);
     await searchEmployeeDirectory(page, run.employees.teacherA.customFieldValue);
     await expectEmployeeRow(page, run.employees.teacherA.displayName);
-    await expect(employeeRow(page, run.employees.headmaster.displayName)).toHaveCount(
-      0,
-    );
+    await expect(employeeRow(page, run.employees.headmaster.displayName)).toHaveCount(0);
 
     await setColumnVisibility(page, run.customFieldLabel, false);
-    await expect(
-      page.getByText("No employees match your search.", { exact: true }),
-    ).toBeVisible();
+    await expect(page.getByText("No employees match your search.", { exact: true })).toBeVisible();
 
     await searchEmployeeDirectory(page, run.employees.associate.surname);
     await expectEmployeeRow(page, run.employees.associate.displayName);
@@ -197,11 +173,7 @@ test.describe("institution user flows", () => {
     expect(rows).toHaveLength(5);
   });
 
-  test("saves payroll and downloads monthly and annual payslips", async ({
-    page,
-    env,
-    run,
-  }) => {
+  test("saves payroll and downloads monthly and annual payslips", async ({ page, env, run }) => {
     await signIn(page, env.identifier, env.password);
     await page.getByRole("link", { name: "Payroll", exact: true }).click();
     await expect(page).toHaveURL(/\/payroll$/);
@@ -242,9 +214,7 @@ test.describe("institution user flows", () => {
     await page.getByLabel("Field name").fill(customPayrollFieldLabel);
     await page.getByRole("button", { name: "Add", exact: true }).click();
     await expect(page.getByText("Payroll field added", { exact: true })).toBeVisible();
-    const customPayrollAmount = page.getByLabel(
-      `${customPayrollFieldLabel} amount`,
-    );
+    const customPayrollAmount = page.getByLabel(`${customPayrollFieldLabel} amount`);
     await expect(customPayrollAmount).toBeFocused();
     await expect(page.getByRole("button", { name: "Remove Basic Pay" })).toHaveCount(0);
 
@@ -266,9 +236,7 @@ test.describe("institution user flows", () => {
     await page.getByRole("button", { name: "Add", exact: true }).click();
     await expect(page.getByLabel(`${customDeductionFieldLabel} amount`)).toBeFocused();
     page.once("dialog", async (dialog) => {
-      expect(dialog.message()).toBe(
-        `Remove ‘${customDeductionFieldLabel}’ from June 2026 onward?`,
-      );
+      expect(dialog.message()).toBe(`Remove ‘${customDeductionFieldLabel}’ from June 2026 onward?`);
       await dialog.accept();
     });
     await page.getByRole("button", { name: `Remove ${customDeductionFieldLabel}` }).click();
@@ -285,7 +253,7 @@ test.describe("institution user flows", () => {
       await dialog.dismiss();
     });
     await page.getByRole("button", { name: "Add", exact: true }).click();
-    await expect(page.getByLabel("Basic Pay amount")).toHaveValue("1000");
+    await expect(page.getByLabel("Basic Pay amount")).toHaveValue("1,000.00");
     await expect(page.getByLabel("Field name")).toHaveValue("Should not be added");
     await page.getByRole("button", { name: "Cancel", exact: true }).click();
 
@@ -308,10 +276,8 @@ test.describe("institution user flows", () => {
     await selectOption(page, "Select payroll financial year", "2025-2026");
     await expect(page.getByLabel("Basic Pay amount")).toHaveValue("");
     await selectOption(page, "Select payroll financial year", "2026-2027");
-    await expect(page.getByLabel("Basic Pay amount")).toHaveValue("1000.00");
-    await expect(
-      page.getByLabel(`${customPayrollFieldLabel} amount`),
-    ).toHaveValue("250.00");
+    await expect(page.getByLabel("Basic Pay amount")).toHaveValue("1,000.00");
+    await expect(page.getByLabel(`${customPayrollFieldLabel} amount`)).toHaveValue("250.00");
 
     await page.reload();
     await selectOption(page, "Select employee", employeeName);
@@ -321,18 +287,57 @@ test.describe("institution user flows", () => {
     await expect(page.getByLabel("Basic Pay amount")).toBeVisible();
     await selectOption(page, "Select payroll financial year", "2026-2027");
     await selectOption(page, "Select payroll month", "June 2026");
-    await expect(page.getByLabel("Basic Pay amount")).toHaveValue("1000.00");
+    await expect(page.getByLabel("Basic Pay amount")).toHaveValue("1,000.00");
+    await expect(page.getByLabel(`${customPayrollFieldLabel} amount`)).toHaveValue("250.00");
+
+    const basicPayInput = page.getByLabel("Basic Pay amount");
+    await basicPayInput.focus();
+    await expect(basicPayInput).toHaveValue("1000.00");
+    await basicPayInput.blur();
+    await expect(basicPayInput).toHaveValue("1,000.00");
+
+    await selectOption(page, "Select payroll month", "July 2026");
+    const basicPayRow = page.getByRole("row").filter({ hasText: "Basic Pay" });
+    await expect(basicPayRow.getByRole("cell").nth(1)).toHaveText("1,000.00");
+    const customPayrollRow = page.getByRole("row").filter({ hasText: customPayrollFieldLabel });
+    await expect(customPayrollRow.getByRole("cell").nth(1)).toHaveText("250.00");
+
+    await selectOption(page, "Select payroll month", "September 2026");
+    await page.getByLabel("Basic Pay amount").fill("2000");
+    await page.getByLabel(`${customPayrollFieldLabel} amount`).fill("500");
+    await page.getByRole("button", { name: "Save Payroll" }).click();
+    await expect(page.getByText("Payroll saved")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Save Payroll" })).toBeEnabled();
+
+    await selectOption(page, "Select payroll month", "August 2026");
+    await page.getByLabel("Basic Pay amount").fill("1000");
+    await page.getByLabel(`${customPayrollFieldLabel} amount`).fill("250");
+    await page.getByRole("button", { name: "Save Payroll" }).click();
+    await expect(page.getByText("Payroll saved")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Save Payroll" })).toBeEnabled();
+
+    await selectOption(page, "Select payroll month", "September 2026");
+    await expect(page.getByLabel("Basic Pay amount")).toHaveValue("1,000.00");
+    await expect(page.getByLabel(`${customPayrollFieldLabel} amount`)).toHaveValue("250.00");
     await expect(
-      page.getByLabel(`${customPayrollFieldLabel} amount`),
-    ).toHaveValue("250.00");
+      page.getByRole("row").filter({ hasText: "Basic Pay" }).getByRole("cell").nth(1),
+    ).toHaveText("1,000.00");
+    await expect(
+      page.getByRole("row").filter({ hasText: customPayrollFieldLabel }).getByRole("cell").nth(1),
+    ).toHaveText("250.00");
+
+    await selectOption(page, "Select payroll month", "April 2026");
+    await expect(
+      page.getByRole("columnheader", { name: "Previous month", exact: true }),
+    ).toHaveCount(2);
+    await expect(
+      page.getByRole("row").filter({ hasText: "Basic Pay" }).getByRole("cell").nth(1),
+    ).toHaveText("—");
+    await selectOption(page, "Select payroll month", "June 2026");
 
     const monthlyDownload = page.waitForEvent("download");
-    await page
-      .getByRole("button", { name: "Download Monthly Payslip" })
-      .click();
-    await expect((await monthlyDownload).suggestedFilename()).toMatch(
-      /^payslip-.*jun-2026\.pdf$/,
-    );
+    await page.getByRole("button", { name: "Download Monthly Payslip" }).click();
+    await expect((await monthlyDownload).suggestedFilename()).toMatch(/^payslip-.*jun-2026\.pdf$/);
 
     const annualDownload = page.waitForEvent("download");
     await page.getByRole("button", { name: "Download Annual Payslip" }).click();
@@ -341,9 +346,7 @@ test.describe("institution user flows", () => {
     );
 
     page.once("dialog", async (dialog) => {
-      expect(dialog.message()).toBe(
-        `Remove ‘${customPayrollFieldLabel}’ from June 2026 onward?`,
-      );
+      expect(dialog.message()).toBe(`Remove ‘${customPayrollFieldLabel}’ from June 2026 onward?`);
       await dialog.accept();
     });
     await page.getByRole("button", { name: `Remove ${customPayrollFieldLabel}` }).click();
@@ -355,26 +358,18 @@ test.describe("institution user flows", () => {
     await expect(page.getByLabel(`${customPayrollFieldLabel} amount`)).toHaveCount(0);
   });
 
-  test("shows reports for the signed-in institution user", async ({
-    page,
-    env,
-    run,
-  }) => {
+  test("shows reports for the signed-in institution user", async ({ page, env, run }) => {
     await signIn(page, env.identifier, env.password);
     await page.getByRole("link", { name: "Reports", exact: true }).click();
     await expect(page).toHaveURL(/\/reports$/);
     await expect(page.getByRole("heading", { name: "Reports" })).toBeVisible();
-    await expect(
-      page.getByRole("combobox", { name: "Select institute", exact: true }),
-    ).toHaveCount(0);
+    await expect(page.getByRole("combobox", { name: "Select institute", exact: true })).toHaveCount(
+      0,
+    );
 
     await expect(page.getByText("2026-2027", { exact: true })).toBeVisible();
-    await expect(
-      page.getByRole("table", { name: "Reports table" }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("columnheader", { name: "TDS Deducted Till Now" }),
-    ).toBeVisible();
+    await expect(page.getByRole("table", { name: "Reports table" })).toBeVisible();
+    await expect(page.getByRole("columnheader", { name: "TDS Deducted Till Now" })).toBeVisible();
     await expect(
       page
         .locator('table[aria-label="Reports table"] tbody tr')
@@ -382,11 +377,7 @@ test.describe("institution user flows", () => {
     ).toBeVisible();
   });
 
-  test("edits one employee and then deletes all created employees", async ({
-    page,
-    env,
-    run,
-  }) => {
+  test("edits one employee and then deletes all created employees", async ({ page, env, run }) => {
     await signIn(page, env.identifier, env.password);
     await goToEmployeeDirectory(page);
     await enableCustomFieldColumn(page, run.customFieldLabel);
@@ -403,43 +394,31 @@ test.describe("institution user flows", () => {
     await expect(page).toHaveURL(/\/employee$/);
     await enableCustomFieldColumn(page, run.customFieldLabel);
 
-    await expectRowValues(
-      employeeRow(page, run.employees.associate.displayName),
-      [
-        run.editedAssociate.designationName,
-        run.editedAssociate.seniorityRank,
-        run.editedAssociate.customFieldValue,
-      ],
-    );
+    await expectRowValues(employeeRow(page, run.employees.associate.displayName), [
+      run.editedAssociate.designationName,
+      run.editedAssociate.seniorityRank,
+      run.editedAssociate.customFieldValue,
+    ]);
 
     for (const employee of Object.values(run.employees)) {
       await deleteEmployee(page, employee.displayName);
     }
   });
 
-  test("archives the run setup and leaves the workspace clean", async ({
-    page,
-    env,
-    run,
-  }) => {
+  test("archives the run setup and leaves the workspace clean", async ({ page, env, run }) => {
     await signIn(page, env.identifier, env.password);
     await goToEmployeeCreate(page);
     await archiveCustomField(page, run.customFieldLabel);
-    await expect(
-      page.getByText("No custom fields added yet.", { exact: true }),
-    ).toBeVisible();
+    await expect(page.getByText("No custom fields added yet.", { exact: true })).toBeVisible();
 
     await goToInstitutionSettings(page);
     await archiveDesignation(page, run.designationNames.associate);
     await archiveDesignation(page, run.designationNames.teacher);
     await archiveDesignation(page, run.designationNames.headmaster);
     await expect(
-      page.getByText(
-        "No designations added yet. Create one to unlock employee creation.",
-        {
-          exact: true,
-        },
-      ),
+      page.getByText("No designations added yet. Create one to unlock employee creation.", {
+        exact: true,
+      }),
     ).toBeVisible();
 
     await goToEmployeeDirectory(page);

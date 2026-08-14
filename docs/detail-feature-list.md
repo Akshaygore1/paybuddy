@@ -146,7 +146,7 @@ The new password must have at least 8 characters. There is no second confirmatio
 
 #### Turn off institute login
 
-The Admin can select **Deactivate Login** when an institute should no longer be allowed to sign in.
+The Admin can select **Deactivate Login** to block an institute from signing in and **Activate Login** to restore access later.
 
 When a login is deactivated:
 
@@ -372,7 +372,7 @@ The available months are:
 
 April, May, June, July, August, September, October, November, December, January, February, and March.
 
-Payroll values are effective by month. A saved set remains in use for later months until another month introduces a change. Editing an older month does not replace changes that already exist in later months.
+Payroll values are effective by month. A saved set remains in use for later months until another month introduces a change. Saving an older month removes later saved payroll changes for that employee and financial year, making the older month the new baseline for every following month.
 
 ### Payroll totals
 
@@ -419,9 +419,12 @@ The section also shows **Total Deductions**.
 ### Enter payroll amounts
 
 - Amounts are entered in Indian Rupees.
+- Amount inputs use Indian digit grouping after entry, such as `1,25,000.00`.
 - Whole amounts and amounts with up to two decimal places can be entered.
 - Empty amounts are treated as zero.
 - Incorrect amounts are highlighted before saving.
+- Earnings and Deductions show the effective previous month's amount in a read-only column.
+- April shows no previous-month amount because it begins the selected financial year.
 
 ### Add custom payroll fields
 
@@ -442,7 +445,7 @@ Custom payroll fields:
 
 ### Save payroll
 
-Select **Save Payroll** to save the amounts for the selected employee and month. The saved values continue into later months until another saved month changes them.
+Select **Save Payroll** to save the amounts for the selected employee and month. The saved values continue into later months until another saved month changes them. If later months already contain saved changes, saving this month resets those later values so they inherit from this new baseline until edited again.
 
 The portal:
 
@@ -526,19 +529,19 @@ The current version does not include:
 
 ## 8. Quick view: who can use what
 
-| Feature                         |             Admin             |       Institute team       |
-| ------------------------------- | :---------------------------: | :------------------------: |
-| Sign in and sign out            |              Yes              |            Yes             |
-| Home page                       |              Yes              |            Yes             |
-| Add and manage institutes       |              Yes              |             No             |
-| View institute details          |              Yes              |             No             |
-| Reset institute password        |              Yes              |             No             |
-| Deactivate institute login      |              Yes              |             No             |
-| Add and arrange designations    |              No               |            Yes             |
-| Add, edit, and delete employees |              No               |            Yes             |
-| Add custom employee fields      |              No               |            Yes             |
-| Enter payroll                   |              No               |            Yes             |
-| Add custom payroll fields       |              No               |            Yes             |
-| Download payslips               |              No               |            Yes             |
-| View reports                    | Yes, for a selected institute | Yes, for its own institute |
-| Download reports                |              Yes              |            Yes             |
+| Feature                                |             Admin             |       Institute team       |
+| -------------------------------------- | :---------------------------: | :------------------------: |
+| Sign in and sign out                   |              Yes              |            Yes             |
+| Home page                              |              Yes              |            Yes             |
+| Add and manage institutes              |              Yes              |             No             |
+| View institute details                 |              Yes              |             No             |
+| Reset institute password               |              Yes              |             No             |
+| Activate or deactivate institute login |              Yes              |             No             |
+| Add and arrange designations           |              No               |            Yes             |
+| Add, edit, and delete employees        |              No               |            Yes             |
+| Add custom employee fields             |              No               |            Yes             |
+| Enter payroll                          |              No               |            Yes             |
+| Add custom payroll fields              |              No               |            Yes             |
+| Download payslips                      |              No               |            Yes             |
+| View reports                           | Yes, for a selected institute | Yes, for its own institute |
+| Download reports                       |              Yes              |            Yes             |

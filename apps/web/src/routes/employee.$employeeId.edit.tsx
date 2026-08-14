@@ -6,57 +6,19 @@ import {
   CardHeader,
   CardTitle,
 } from "@tds-nivaran/ui/components/card";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import * as React from "react";
-import { useNavigate, useParams } from "react-router";
-import { toast } from "sonner";
+import { useParams } from "react-router";
 
-import {
-  EmployeeForm,
-  type EmployeeSubmitValues,
-  emptyEmployeeFormValues,
-} from "@/components/employee-form";
+import { EmployeeForm } from "@/components/employee-form";
 import { PageHeader } from "@/components/page-header";
-import { queryClient, trpc } from "@/utils/trpc";
+import { useEmployeeRecordEditor } from "@/hooks/use-employee-record-editor";
 
 export default function EmployeeEditPage() {
-  const navigate = useNavigate();
   const { employeeId } = useParams();
-
   const resolvedEmployeeId = employeeId ?? "";
-  const employeeQuery = useQuery(
-    trpc.employees.getEditForm.queryOptions(
-      { employeeId: resolvedEmployeeId },
-      { enabled: resolvedEmployeeId.length > 0 },
-    ),
-  );
-
-  const updateEmployeeMutation = useMutation(
-    trpc.employees.update.mutationOptions({
-      onSuccess: async () => {
-        toast.success("Employee updated");
-        await queryClient.invalidateQueries();
-        navigate("/employee");
-      },
-      onError: (error) => {
-        toast.error(error.message);
-      },
-    }),
-  );
-
-  async function handleSubmit(values: EmployeeSubmitValues) {
-    try {
-      await updateEmployeeMutation.mutateAsync({
-        employeeId: resolvedEmployeeId,
-        ...values,
-      });
-    } catch {}
-  }
-
-  const initialValues = React.useMemo(
-    () => employeeQuery.data?.initialValues ?? emptyEmployeeFormValues,
-    [employeeQuery.data],
-  );
+  const { view, status, actions } = useEmployeeRecordEditor({
+    mode: "edit",
+    employeeId: resolvedEmployeeId,
+  });
 
   return (
     <section className="space-y-6 p-6">
@@ -64,7 +26,7 @@ export default function EmployeeEditPage() {
         title="Edit Employee"
         description="Update payroll details and institution-defined custom fields for this employee."
         action={
-          <Button variant="outline" onClick={() => navigate("/employee")}>
+          <Button variant="outline" onClick={actions.cancel}>
             Cancel
           </Button>
         }
@@ -82,13 +44,15 @@ export default function EmployeeEditPage() {
             mode="edit"
             submitLabel="Save Changes"
             submittingLabel="Saving..."
-            resetKey={resolvedEmployeeId}
-            initialValues={initialValues}
-            formOptions={employeeQuery.data}
-            isLoading={employeeQuery.isPending}
-            isSubmitting={updateEmployeeMutation.isPending}
-            onSubmit={handleSubmit}
-            onCancel={() => navigate("/employee")}
+            values={view.draft}
+            errors={view.errors}
+            formOptions={view.formDefinition}
+            isLoading={status.form.isPending}
+            isSubmitting={status.submit.isPending}
+            onFieldChange={actions.updateField}
+            onCustomFieldChange={actions.updateCustomField}
+            onSubmit={actions.submit}
+            onCancel={actions.cancel}
           />
         </CardContent>
       </Card>

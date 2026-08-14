@@ -34,15 +34,14 @@ import {
 } from "@tds-nivaran/ui/components/table";
 import { useQuery } from "@tanstack/react-query";
 import { Navigate } from "react-router";
+import { getPayrollFinancialYearLabel } from "@tds-nivaran/api/payroll-financial-year";
 
 import Loader from "@/components/loader";
 import { PageHeader } from "@/components/page-header";
 import { authClient } from "@/lib/auth-client";
 import {
-  financialYearChangeEvent,
-  getFinancialYearLabel,
-  readSelectedFinancialYearStart,
-  type FinancialYearStart,
+  getSelectedFinancialYearStart,
+  subscribeSelectedFinancialYear,
 } from "@/lib/financial-year";
 import { trpc } from "@/utils/trpc";
 
@@ -100,8 +99,11 @@ type ReportColumn = {
 
 export default function ReportsPage() {
   const { data: session, isPending } = authClient.useSession();
-  const [financialYearStart, setFinancialYearStart] =
-    React.useState<FinancialYearStart>(() => readSelectedFinancialYearStart());
+  const financialYearStart = React.useSyncExternalStore(
+    subscribeSelectedFinancialYear,
+    getSelectedFinancialYearStart,
+    getSelectedFinancialYearStart,
+  );
   const [selectedInstitutionId, setSelectedInstitutionId] = React.useState("");
   const [pageIndex, setPageIndex] = React.useState(0);
   const [searchTerm, setSearchTerm] = React.useState("");
@@ -121,22 +123,6 @@ export default function ReportsPage() {
     enabled: Boolean(shouldFetchReport),
   });
 
-  React.useEffect(() => {
-    function syncFinancialYear(event: Event) {
-      const customEvent = event as CustomEvent<{
-        financialYearStart?: FinancialYearStart;
-      }>;
-
-      setFinancialYearStart(
-        customEvent.detail?.financialYearStart ??
-          readSelectedFinancialYearStart(),
-      );
-    }
-
-    window.addEventListener(financialYearChangeEvent, syncFinancialYear);
-    return () =>
-      window.removeEventListener(financialYearChangeEvent, syncFinancialYear);
-  }, []);
   const reportRows = reportQuery.data?.rows ?? [];
   const isReportLoading = reportQuery.isPending && Boolean(shouldFetchReport);
   const selectedInstitutionName =
@@ -290,7 +276,7 @@ export default function ReportsPage() {
           <CardTitle>FY payroll report</CardTitle>
           <CardDescription>
             {selectedInstitutionName
-              ? `${selectedInstitutionName} · FY ${getFinancialYearLabel(financialYearStart)}`
+    ? `${selectedInstitutionName} · FY ${getPayrollFinancialYearLabel(financialYearStart)}`
               : "Select an institute to load report totals."}
           </CardDescription>
         </CardHeader>

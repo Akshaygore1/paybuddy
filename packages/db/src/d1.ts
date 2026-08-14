@@ -1,23 +1,76 @@
-export const D1_MAX_BOUND_PARAMETERS = 100;
-export const PAYROLL_LINE_ITEM_BOUND_PARAMETERS = 8;
-export const EMPLOYEE_CUSTOM_FIELD_VALUE_BOUND_PARAMETERS = 4;
+const D1_MAX_BOUND_PARAMETERS = 100;
 
-export function chunkForD1<T>(values: readonly T[], boundParametersPerValue: number): T[][] {
-  if (!Number.isInteger(boundParametersPerValue) || boundParametersPerValue < 1) {
-    throw new RangeError("D1 bound parameters per value must be a positive integer");
+type D1Statement = {
+  toSQL(): { params: readonly unknown[] };
+};
+
+type NonEmptyValues<T> = readonly [T, ...T[]];
+
+function throwD1BoundParameterLimitError(): never {
+  throw new RangeError("A single value exceeds D1's bound-parameter limit");
+}
+
+export function planD1Statements<TValue, TStatement extends D1Statement>(
+  values: readonly TValue[],
+  buildStatement: (values: NonEmptyValues<TValue>) => TStatement,
+): TStatement[] {
+  const statements: TStatement[] = [];
+  let currentValues: TValue[] = [];
+  let currentStatement: TStatement | undefined;
+
+  for (const value of values) {
+    const candidateValues = [...currentValues, value] as [TValue, ...TValue[]];
+    const candidateStatement = buildStatement(candidateValues);
+
+    if (candidateStatement.toSQL().params.length <= D1_MAX_BOUND_PARAMETERS) {
+      currentValues = candidateValues;
+      currentStatement = candidateStatement;
+      continue;
+    }
+
+    if (!currentStatement) {
+      throwD1BoundParameterLimitError();
+    }
+
+    statements.push(currentStatement);
+    currentValues = [value];
+    currentStatement = buildStatement(currentValues as [TValue, ...TValue[]]);
+
+    if (currentStatement.toSQL().params.length > D1_MAX_BOUND_PARAMETERS) {
+      throwD1BoundParameterLimitError();
+    }
   }
 
-  const valuesPerStatement = Math.floor(D1_MAX_BOUND_PARAMETERS / boundParametersPerValue);
-
-  if (valuesPerStatement < 1) {
-    throw new RangeError("A single value exceeds D1's bound-parameter limit");
+  if (currentStatement) {
+    statements.push(currentStatement);
   }
 
-  const chunks: T[][] = [];
+  return statements;
+}
 
-  for (let index = 0; index < values.length; index += valuesPerStatement) {
-    chunks.push(values.slice(index, index + valuesPerStatement));
+export async function queryD1InBatches<
+  TValue,
+  TResult,
+  TStatement extends D1Statement & PromiseLike<readonly TResult[]>,
+>(
+  values: readonly TValue[],
+  buildStatement: (values: NonEmptyValues<TValue>) => TStatement,
+): Promise<TResult[]> {
+  const resultSets = await Promise.all(planD1Statements(values, buildStatement));
+  return resultSets.flat();
+}
+
+export async function executeD1Batch<TStatement, TResult>(
+  db: { batch(statements: [TStatement, ...TStatement[]]): Promise<TResult> },
+  statements: readonly TStatement[],
+  requiredLeadingStatements: readonly TStatement[] = [],
+): Promise<TResult | undefined> {
+  const orderedStatements = [...requiredLeadingStatements, ...statements];
+  const [firstStatement, ...remainingStatements] = orderedStatements;
+
+  if (firstStatement === undefined) {
+    return undefined;
   }
 
-  return chunks;
+  return db.batch([firstStatement, ...remainingStatements]);
 }

@@ -33,11 +33,14 @@ import {
 
 import { authClient } from "@/lib/auth-client";
 import {
-  financialYearOptions,
-  getFinancialYearLabel,
-  readSelectedFinancialYearStart,
-  writeSelectedFinancialYearStart,
-  type FinancialYearStart,
+  getPayrollFinancialYearLabel,
+  isPayrollFinancialYearStart,
+  payrollFinancialYearStartValues,
+} from "@tds-nivaran/api/payroll-financial-year";
+import {
+  getSelectedFinancialYearStart,
+  setSelectedFinancialYearStart,
+  subscribeSelectedFinancialYear,
 } from "@/lib/financial-year";
 
 import UserMenu from "./user-menu";
@@ -73,8 +76,10 @@ const navigationItems = [
 export default function AppSidebar() {
   const location = useLocation();
   const { data: session } = authClient.useSession();
-  const [financialYearStart, setFinancialYearStart] = React.useState<FinancialYearStart>(() =>
-    readSelectedFinancialYearStart(),
+  const financialYearStart = React.useSyncExternalStore(
+    subscribeSelectedFinancialYear,
+    getSelectedFinancialYearStart,
+    getSelectedFinancialYearStart,
   );
   const visibleNavigationItems = (() => {
     if (session?.user.role === "admin") {
@@ -93,15 +98,13 @@ export default function AppSidebar() {
   })();
 
   function updateFinancialYear(value: string | null) {
-    const nextFinancialYearStart = Number(value) as FinancialYearStart;
+    const nextFinancialYearStart = Number(value);
 
-    if (!financialYearOptions.includes(nextFinancialYearStart)) {
+    if (!isPayrollFinancialYearStart(nextFinancialYearStart)) {
       return;
     }
 
-    if (writeSelectedFinancialYearStart(nextFinancialYearStart)) {
-      setFinancialYearStart(nextFinancialYearStart);
-    }
+    setSelectedFinancialYearStart(nextFinancialYearStart);
   }
 
   return (
@@ -146,9 +149,9 @@ export default function AppSidebar() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectGroup>
-                      {financialYearOptions.map((yearStart) => (
+                      {payrollFinancialYearStartValues.map((yearStart) => (
                         <SelectItem key={yearStart} value={String(yearStart)}>
-                          {getFinancialYearLabel(yearStart)}
+                          {getPayrollFinancialYearLabel(yearStart)}
                         </SelectItem>
                       ))}
                     </SelectGroup>

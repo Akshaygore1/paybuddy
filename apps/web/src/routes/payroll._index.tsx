@@ -27,21 +27,16 @@ import {
 } from "@tds-nivaran/ui/components/table";
 import { Badge } from "@tds-nivaran/ui/components/badge";
 import { DownloadIcon, PlusIcon, Trash2Icon } from "lucide-react";
-import { toast } from "sonner";
 
 import { PageHeader } from "@/components/page-header";
 import { usePayrollWorkspace } from "@/hooks/use-payroll-workspace";
-import { financialYearOptions, getFinancialYearLabel } from "@/lib/financial-year";
 import {
   formatPaiseForDisplay,
-  parsePayrollInputToPaise,
   removeMoneyGrouping,
 } from "@/lib/payroll-money";
-import { downloadPayrollDocument } from "@/lib/payroll-document";
-import { buildPayrollPdfTableModel } from "@/lib/payroll-pdf";
 import {
   getPayrollLineItemKey as getLineItemKey,
-  type PayrollLineItemState,
+  type PayrollLineItemView,
   type PayrollSection,
 } from "@/lib/payroll-workspace";
 
@@ -50,65 +45,12 @@ const sectionLabels: Record<PayrollSection, string> = {
   deductions: "Deductions",
 };
 
-function buildFinancialYearMonths(financialYearStart: number) {
-  return Array.from({ length: 12 }, (_, index) => {
-    const monthIndex = (3 + index) % 12;
-    const year = index < 9 ? financialYearStart : financialYearStart + 1;
-    const date = new Date(Date.UTC(year, monthIndex, 1));
-
-    return {
-      value: `${year}-${String(monthIndex + 1).padStart(2, "0")}`,
-      label: new Intl.DateTimeFormat("en-IN", {
-        month: "long",
-        year: "numeric",
-        timeZone: "UTC",
-      }).format(date),
-      shortLabel: new Intl.DateTimeFormat("en-IN", {
-        month: "short",
-        year: "numeric",
-        timeZone: "UTC",
-      }).format(date),
-      year,
-      monthIndex,
-    };
-  });
-}
-
 function formatCurrency(amountPaise: number) {
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",
     minimumFractionDigits: 2,
   }).format(amountPaise / 100);
-}
-
-function slugify(value: string) {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
-
-function calculateTotals(lineItems: PayrollLineItemState[]) {
-  const totals = { earningsPaise: 0, deductionsPaise: 0, netPayPaise: 0 };
-
-  for (const item of lineItems) {
-    const amountPaise = parsePayrollInputToPaise(item.amount);
-
-    if (!Number.isFinite(amountPaise)) {
-      continue;
-    }
-
-    if (item.section === "earnings") {
-      totals.earningsPaise += amountPaise;
-    } else {
-      totals.deductionsPaise += amountPaise;
-    }
-  }
-
-  totals.netPayPaise = totals.earningsPaise - totals.deductionsPaise;
-  return totals;
 }
 
 function PayrollTable({
@@ -121,11 +63,12 @@ function PayrollTable({
   selectedMonthLabel,
   previousMonthLabel,
   previousMonthAmounts,
+  totalPaise,
   isAddFieldPending,
   isArchivingField,
 }: {
   section: PayrollSection;
-  lineItems: PayrollLineItemState[];
+  lineItems: PayrollLineItemView[];
   onAmountChange: (lineItemKey: string, value: string) => void;
   onAmountBlur: (lineItemKey: string) => void;
   onAddField: (section: PayrollSection, label: string) => Promise<string | null>;
@@ -133,6 +76,7 @@ function PayrollTable({
   selectedMonthLabel: string;
   previousMonthLabel: string | null;
   previousMonthAmounts: ReadonlyMap<string, number>;
+  totalPaise: number;
   isAddFieldPending: boolean;
   isArchivingField: boolean;
 }) {
@@ -144,11 +88,6 @@ function PayrollTable({
   const fieldNameInputRef = React.useRef<HTMLInputElement>(null);
   const amountInputRefs = React.useRef(new Map<string, HTMLInputElement>());
   const visibleItems = lineItems.filter((item) => item.section === section);
-  const totalPaise = visibleItems.reduce((total, item) => {
-    const amountPaise = parsePayrollInputToPaise(item.amount);
-    return total + (Number.isFinite(amountPaise) ? amountPaise : 0);
-  }, 0);
-
   React.useEffect(() => {
     if (isAddFieldFormOpen) {
       fieldNameInputRef.current?.focus();
@@ -200,7 +139,7 @@ function PayrollTable({
     }
   }
 
-  async function removeField(field: PayrollLineItemState) {
+  async function removeField(field: PayrollLineItemView) {
     if (
       !field.customFieldDefinitionId ||
       !window.confirm(`Remove ‘${field.label}’ from ${selectedMonthLabel} onward?`)
@@ -293,9 +232,6 @@ function PayrollTable({
           <TableBody>
             {visibleItems.map((item) => {
               const key = getLineItemKey(item);
-              const invalidAmount = item.amount.trim()
-                ? Number.isNaN(parsePayrollInputToPaise(item.amount))
-                : false;
 
               return (
                 <TableRow key={key}>
@@ -340,7 +276,7 @@ function PayrollTable({
                       value={
                         focusedAmountKey === key ? removeMoneyGrouping(item.amount) : item.amount
                       }
-                      aria-invalid={invalidAmount}
+                      aria-invalid={item.isInvalidAmount}
                       onFocus={() => setFocusedAmountKey(key)}
                       onChange={(event) => onAmountChange(key, event.target.value)}
                       onBlur={() => {
@@ -349,7 +285,7 @@ function PayrollTable({
                       }}
                       placeholder="0.00"
                     />
-                    {invalidAmount ? (
+                    {item.isInvalidAmount ? (
                       <p className="mt-1 text-right text-xs text-destructive">
                         Enter a valid amount.
                       </p>
@@ -370,128 +306,28 @@ function PayrollTable({
 }
 
 export default function PayrollIndexPage() {
-  const workspace = usePayrollWorkspace();
   const {
-    state: { financialYearStart, employeeId: selectedEmployeeId, month: selectedMonth, lineItems },
-    validation: { hasInvalidAmounts, canDownload },
-    employeesQuery,
-    formQuery,
-    saveMutation: savePayrollMutation,
-    addCustomFieldMutation,
-    archiveCustomFieldMutation,
-    updateAmount,
-    formatAmount,
-    addCustomField,
-    archiveCustomField,
-  } = workspace;
-
-  const months = React.useMemo(
-    () => buildFinancialYearMonths(financialYearStart),
-    [financialYearStart],
-  );
-  const selectedMonthDefinition =
-    months.find((month) => month.value === selectedMonth) ?? months[0];
-  const selectedMonthIndex = months.findIndex((month) => month.value === selectedMonth);
-  const previousMonthDefinition = selectedMonthIndex > 0 ? months[selectedMonthIndex - 1] : null;
-  const previousMonthAmounts = React.useMemo(() => {
-    if (!previousMonthDefinition || !formQuery.data) {
-      return new Map<string, number>();
-    }
-
-    const previousPayroll = formQuery.data.monthlyPayroll.find(
-      (payroll) => payroll.month === previousMonthDefinition.value,
-    );
-
-    return new Map(
-      (previousPayroll?.lineItems ?? []).map((item) => [getLineItemKey(item), item.amountPaise]),
-    );
-  }, [formQuery.data, previousMonthDefinition]);
-  const employeeLabelById = React.useMemo(
-    () =>
-      Object.fromEntries(
-        (employeesQuery.data ?? []).map((employee) => [
-          employee.id,
-          [employee.firstName, employee.middleName, employee.surname].filter(Boolean).join(" "),
-        ]),
-      ),
-    [employeesQuery.data],
-  );
-  const totals = React.useMemo(() => calculateTotals(lineItems), [lineItems]);
-
-  function requireSavedPayroll() {
-    if (!formQuery.data?.hasSavedPayroll) {
-      toast.error("Save payroll before downloading a payslip");
-      return false;
-    }
-
-    if (!canDownload) {
-      toast.error("Save payroll changes before downloading a payslip");
-      return false;
-    }
-
-    return true;
-  }
-
-  async function downloadPdf(kind: "monthly" | "annual") {
-    if (!formQuery.data || !requireSavedPayroll()) {
-      return;
-    }
-
-    const savedLineItems = lineItems
-      .filter((item) => !item.isArchivedCustomField)
-      .map((item) => {
-        const amountPaise = parsePayrollInputToPaise(item.amount);
-
-        return {
-          ...item,
-          amountPaise: Number.isFinite(amountPaise) ? amountPaise : 0,
-        };
-      });
-    const tableModel = buildPayrollPdfTableModel({
-      kind,
-      financialYearLabel: getFinancialYearLabel(financialYearStart),
-      selectedMonthValue: selectedMonth,
-      selectedMonthLabel: selectedMonthDefinition.shortLabel,
-      months: months.map((month) => ({
-        value: month.value,
-        label: month.label,
-        shortLabel: month.shortLabel,
-        lineItems:
-          formQuery.data.monthlyPayroll
-            .find((payroll) => payroll.month === month.value)
-            ?.lineItems.map((item) => ({
-              section: item.section,
-              fixedFieldKey: item.fixedFieldKey,
-              customFieldDefinitionId: item.customFieldDefinitionId,
-              label: item.label,
-              amountPaise: item.amountPaise,
-              sortOrder: item.sortOrder,
-            })) ?? [],
-      })),
-      lineItems: savedLineItems.map((item) => ({
-        section: item.section,
-        fixedFieldKey: item.fixedFieldKey,
-        customFieldDefinitionId: item.customFieldDefinitionId,
-        label: item.label,
-        amountPaise: item.amountPaise,
-        sortOrder: item.sortOrder,
-      })),
-      institution: {
-        name: formQuery.data.institution.name,
-        address: formQuery.data.institution.address,
-        tanNumber: formQuery.data.institution.tanNumber,
+    view: {
+      selection: {
+        financialYearStart,
+        financialYearLabel,
+        employeeId: selectedEmployeeId,
+        month: selectedMonth,
+        selectedMonth: selectedMonthDefinition,
+        previousMonth: previousMonthDefinition,
       },
-      employee: {
-        name: formQuery.data.employee.name,
-      },
-    });
-    const employeeSlug = slugify(formQuery.data.employee.name);
-    const fileName =
-      kind === "monthly"
-        ? `payslip-${employeeSlug}-${slugify(selectedMonthDefinition.shortLabel)}.pdf`
-        : `annual-payslip-${employeeSlug}-${getFinancialYearLabel(financialYearStart)}.pdf`;
-    await downloadPayrollDocument({ tableModel, fileName });
-  }
+      months,
+      financialYears,
+      employees,
+      employeeLabelById,
+      lineItems,
+      previousMonthAmounts,
+      totals,
+      capabilities: { hasInvalidAmounts },
+    },
+    status,
+    actions,
+  } = usePayrollWorkspace();
 
   return (
     <section className="space-y-6 p-6">
@@ -509,8 +345,8 @@ export default function PayrollIndexPage() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => void downloadPdf("monthly")}
-                  disabled={formQuery.isFetching}
+                  onClick={() => void actions.downloadMonthly()}
+                  disabled={status.form.isFetching || status.download.isPending}
                 >
                   <DownloadIcon data-icon="inline-start" />
                   Download Monthly Payslip
@@ -518,8 +354,8 @@ export default function PayrollIndexPage() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => void downloadPdf("annual")}
-                  disabled={formQuery.isFetching}
+                  onClick={() => void actions.downloadAnnual()}
+                  disabled={status.form.isFetching || status.download.isPending}
                 >
                   <DownloadIcon data-icon="inline-start" />
                   Download Annual Payslip
@@ -539,7 +375,7 @@ export default function PayrollIndexPage() {
                 value={selectedEmployeeId}
                 onValueChange={(value) => {
                   const nextEmployeeId = value ?? "";
-                  workspace.selectEmployee(nextEmployeeId);
+                  actions.selectEmployee(nextEmployeeId);
                 }}
               >
                 <SelectTrigger aria-label="Select employee">
@@ -551,7 +387,7 @@ export default function PayrollIndexPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
-                    {(employeesQuery.data ?? []).map((employee) => (
+                    {employees.map((employee) => (
                       <SelectItem key={employee.id} value={employee.id}>
                         {employeeLabelById[employee.id]}
                       </SelectItem>
@@ -564,18 +400,18 @@ export default function PayrollIndexPage() {
               <FieldLabel>Financial year</FieldLabel>
               <Select
                 value={String(financialYearStart)}
-                onValueChange={workspace.selectFinancialYear}
+                onValueChange={actions.selectFinancialYear}
               >
                 <SelectTrigger aria-label="Select payroll financial year">
                   <SelectValue placeholder="Select financial year">
-                    {getFinancialYearLabel(financialYearStart)}
+                    {financialYearLabel}
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
-                    {financialYearOptions.map((yearStart) => (
-                      <SelectItem key={yearStart} value={String(yearStart)}>
-                        {getFinancialYearLabel(yearStart)}
+                    {financialYears.map((financialYear) => (
+                      <SelectItem key={financialYear.value} value={String(financialYear.value)}>
+                        {financialYear.label}
                       </SelectItem>
                     ))}
                   </SelectGroup>
@@ -587,7 +423,7 @@ export default function PayrollIndexPage() {
               <Select
                 value={selectedMonth}
                 onValueChange={(value) => {
-                  if (value) workspace.selectMonth(value);
+                  if (value) actions.selectMonth(value);
                 }}
               >
                 <SelectTrigger aria-label="Select payroll month">
@@ -617,28 +453,30 @@ export default function PayrollIndexPage() {
               <PayrollTable
                 section="earnings"
                 lineItems={lineItems}
-                onAmountChange={updateAmount}
-                onAmountBlur={formatAmount}
-                onAddField={addCustomField}
-                onArchiveField={archiveCustomField}
+                onAmountChange={actions.updateAmount}
+                onAmountBlur={actions.formatAmount}
+                onAddField={actions.addCustomField}
+                onArchiveField={actions.archiveCustomField}
                 selectedMonthLabel={selectedMonthDefinition.label}
                 previousMonthLabel={previousMonthDefinition?.shortLabel ?? null}
                 previousMonthAmounts={previousMonthAmounts}
-                isAddFieldPending={addCustomFieldMutation.isPending}
-                isArchivingField={archiveCustomFieldMutation.isPending}
+                totalPaise={totals.earningsPaise}
+                isAddFieldPending={status.addField.isPending}
+                isArchivingField={status.archiveField.isPending}
               />
               <PayrollTable
                 section="deductions"
                 lineItems={lineItems}
-                onAmountChange={updateAmount}
-                onAmountBlur={formatAmount}
-                onAddField={addCustomField}
-                onArchiveField={archiveCustomField}
+                onAmountChange={actions.updateAmount}
+                onAmountBlur={actions.formatAmount}
+                onAddField={actions.addCustomField}
+                onArchiveField={actions.archiveCustomField}
                 selectedMonthLabel={selectedMonthDefinition.label}
                 previousMonthLabel={previousMonthDefinition?.shortLabel ?? null}
                 previousMonthAmounts={previousMonthAmounts}
-                isAddFieldPending={addCustomFieldMutation.isPending}
-                isArchivingField={archiveCustomFieldMutation.isPending}
+                totalPaise={totals.deductionsPaise}
+                isAddFieldPending={status.addField.isPending}
+                isArchivingField={status.archiveField.isPending}
               />
             </div>
             <div className="space-y-1 px-4 py-2">
@@ -652,10 +490,10 @@ export default function PayrollIndexPage() {
           <div className="flex justify-end">
             <Button
               type="button"
-              onClick={() => void workspace.save()}
-              disabled={savePayrollMutation.isPending || hasInvalidAmounts}
+              onClick={() => void actions.save()}
+              disabled={status.save.isPending || hasInvalidAmounts}
             >
-              {savePayrollMutation.isPending ? "Saving..." : "Save Payroll"}
+              {status.save.isPending ? "Saving..." : "Save Payroll"}
             </Button>
           </div>
         </div>

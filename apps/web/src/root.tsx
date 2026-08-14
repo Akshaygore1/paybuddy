@@ -24,6 +24,10 @@ import Loader from "./components/loader";
 import { ThemeProvider } from "./components/theme-provider";
 import { queryClient } from "./utils/trpc";
 
+if (import.meta.env.DEV) {
+  import("react-grab");
+}
+
 export const links: Route.LinksFunction = () => [];
 
 export function Layout({ children }: { children: React.ReactNode }) {

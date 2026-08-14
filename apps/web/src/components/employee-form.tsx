@@ -1,7 +1,4 @@
-import {
-  createEmployeeSchema,
-  employeeGenderValues,
-} from "@tds-nivaran/api/schemas/employees";
+import { employeeGenderValues } from "@tds-nivaran/api/schemas/employees";
 import { Button } from "@tds-nivaran/ui/components/button";
 import { Checkbox } from "@tds-nivaran/ui/components/checkbox";
 import {
@@ -23,61 +20,12 @@ import {
 import { PlusIcon, Trash2Icon } from "lucide-react";
 import * as React from "react";
 
-export type EmployeeFormValues = {
-  firstName: string;
-  middleName: string;
-  surname: string;
-  dateOfBirth: string;
-  gender: (typeof employeeGenderValues)[number] | "";
-  designationId: string;
-  seniorityRank: string;
-  panNumber: string;
-  pfNumber: string;
-  npsAccountNumber: string;
-  whatsAppNumber: string;
-  contactNumber: string;
-  customFieldValues: Record<string, string>;
-};
-
-export type EmployeeFormErrors = Partial<
-  Record<
-    | "firstName"
-    | "middleName"
-    | "surname"
-    | "dateOfBirth"
-    | "gender"
-    | "designationId"
-    | "seniorityRank"
-    | "panNumber"
-    | "pfNumber"
-    | "npsAccountNumber"
-    | "whatsAppNumber"
-    | "contactNumber",
-    string
-  >
-> & {
-  customFieldValues?: Record<string, string>;
-};
-
-export type EmployeeFormOptions = {
-  designations: Array<{
-    id: string;
-    name: string;
-    sortOrder: number;
-  }>;
-  customFields: Array<{
-    id: string;
-    label: string;
-    key: string;
-    isRequired: boolean;
-    sortOrder: number;
-  }>;
-};
-
-export type EmployeeSubmitValues = Omit<EmployeeFormValues, "seniorityRank" | "gender"> & {
-  gender: (typeof employeeGenderValues)[number];
-  seniorityRank: number;
-};
+import type {
+  EmployeeRecordBaseField,
+  EmployeeRecordDraft,
+  EmployeeRecordFieldErrors,
+  EmployeeRecordFormDefinition,
+} from "@/lib/employee-record-editor";
 
 type EmployeeCustomFieldManagerProps = {
   fieldLabel: string;
@@ -96,187 +44,46 @@ type EmployeeFormProps = {
   submitLabel: string;
   submittingLabel: string;
   cancelLabel?: string;
-  resetKey: string;
-  initialValues: EmployeeFormValues;
-  formOptions: EmployeeFormOptions | undefined;
+  values: EmployeeRecordDraft;
+  errors: EmployeeRecordFieldErrors;
+  formOptions: EmployeeRecordFormDefinition | undefined;
   isLoading?: boolean;
   isSubmitting: boolean;
-  onSubmit: (values: EmployeeSubmitValues) => Promise<void>;
+  onFieldChange: <Key extends EmployeeRecordBaseField>(
+    field: Key,
+    value: EmployeeRecordDraft[Key],
+  ) => void;
+  onCustomFieldChange: (fieldId: string, value: string) => void;
+  onSubmit: () => Promise<void>;
   onCancel: () => void;
   customFieldManager?: EmployeeCustomFieldManagerProps;
 };
-
-export const emptyEmployeeFormValues: EmployeeFormValues = {
-  firstName: "",
-  middleName: "",
-  surname: "",
-  dateOfBirth: "",
-  gender: "",
-  designationId: "",
-  seniorityRank: "",
-  panNumber: "",
-  pfNumber: "",
-  npsAccountNumber: "",
-  whatsAppNumber: "",
-  contactNumber: "",
-  customFieldValues: {},
-};
-
-function cloneValues(values: EmployeeFormValues): EmployeeFormValues {
-  return {
-    ...values,
-    customFieldValues: { ...values.customFieldValues },
-  };
-}
-
-export function buildEmployeeFormValues(input: {
-  firstName: string;
-  middleName: string;
-  surname: string;
-  dateOfBirth: string;
-  gender: (typeof employeeGenderValues)[number];
-  designationId: string;
-  seniorityRank: number | string;
-  panNumber: string | null;
-  pfNumber: string | null;
-  npsAccountNumber: string | null;
-  whatsAppNumber: string | null;
-  contactNumber: string | null;
-  customFields?: Array<{
-    fieldDefinitionId: string;
-    value: string;
-  }>;
-}): EmployeeFormValues {
-  return {
-    firstName: input.firstName ?? "",
-    middleName: input.middleName ?? "",
-    surname: input.surname ?? "",
-    dateOfBirth: input.dateOfBirth ?? "",
-    gender: input.gender ?? "",
-    designationId: input.designationId ?? "",
-    seniorityRank: String(input.seniorityRank ?? ""),
-    panNumber: input.panNumber ?? "",
-    pfNumber: input.pfNumber ?? "",
-    npsAccountNumber: input.npsAccountNumber ?? "",
-    whatsAppNumber: input.whatsAppNumber ?? "",
-    contactNumber: input.contactNumber ?? "",
-    customFieldValues: Object.fromEntries(
-      (input.customFields ?? []).map((field) => [field.fieldDefinitionId, field.value]),
-    ),
-  };
-}
 
 export function EmployeeForm({
   mode,
   submitLabel,
   submittingLabel,
   cancelLabel = "Back",
-  resetKey,
-  initialValues,
+  values,
+  errors,
   formOptions,
   isLoading = false,
   isSubmitting,
+  onFieldChange,
+  onCustomFieldChange,
   onSubmit,
   onCancel,
   customFieldManager,
 }: EmployeeFormProps) {
-  const [values, setValues] = React.useState<EmployeeFormValues>(() => cloneValues(initialValues));
-  const [errors, setErrors] = React.useState<EmployeeFormErrors>({});
-
-  React.useEffect(() => {
-    setValues(cloneValues(initialValues));
-    setErrors({});
-  }, [initialValues, resetKey]);
-
   const designationItems =
     formOptions?.designations.map((designation) => ({
       label: designation.name,
       value: designation.id,
     })) ?? [];
 
-  function updateValue<Key extends keyof Omit<EmployeeFormValues, "customFieldValues">>(
-    key: Key,
-    value: EmployeeFormValues[Key],
-  ) {
-    setValues((current) => ({
-      ...current,
-      [key]: value,
-    }));
-    setErrors((current) => ({
-      ...current,
-      [key]: undefined,
-    }));
-  }
-
-  function updateCustomFieldValue(fieldId: string, value: string) {
-    setValues((current) => ({
-      ...current,
-      customFieldValues: {
-        ...current.customFieldValues,
-        [fieldId]: value,
-      },
-    }));
-    setErrors((current) => ({
-      ...current,
-      customFieldValues: Object.fromEntries(
-        Object.entries(current.customFieldValues ?? {}).filter(
-          ([currentFieldId]) => currentFieldId !== fieldId,
-        ),
-      ),
-    }));
-  }
-
-  function validateForm() {
-    const parsed = createEmployeeSchema.safeParse(values);
-    const nextErrors: EmployeeFormErrors = {};
-
-    if (!parsed.success) {
-      for (const issue of parsed.error.issues) {
-        const fieldName = issue.path[0] as keyof EmployeeFormErrors;
-
-        if (fieldName === "customFieldValues") {
-          continue;
-        }
-
-        nextErrors[fieldName] = issue.message;
-      }
-    }
-
-    const customFieldErrors: Record<string, string> = {};
-
-    for (const field of formOptions?.customFields ?? []) {
-      if (field.isRequired && !(values.customFieldValues[field.id] ?? "").trim()) {
-        customFieldErrors[field.id] = `${field.label} is required`;
-      }
-    }
-
-    if (Object.keys(customFieldErrors).length > 0) {
-      nextErrors.customFieldValues = customFieldErrors;
-    }
-
-    setErrors(nextErrors);
-    return Object.keys(nextErrors).length === 0;
-  }
-
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-
-    if (!validateForm()) {
-      return;
-    }
-
-    const activeCustomFieldIds = new Set((formOptions?.customFields ?? []).map((field) => field.id));
-
-    await onSubmit({
-      ...values,
-      gender: values.gender as (typeof employeeGenderValues)[number],
-      seniorityRank: Number(values.seniorityRank),
-      customFieldValues: Object.fromEntries(
-        Object.entries(values.customFieldValues).filter(([fieldId]) =>
-          activeCustomFieldIds.has(fieldId),
-        ),
-      ),
-    });
+    await onSubmit();
   }
 
   return (
@@ -287,7 +94,7 @@ export function EmployeeForm({
           <Input
             id={`employee-surname-${mode}`}
             value={values.surname}
-            onChange={(event) => updateValue("surname", event.target.value)}
+            onChange={(event) => onFieldChange("surname", event.target.value)}
             aria-invalid={Boolean(errors.surname)}
             disabled={isLoading || isSubmitting}
           />
@@ -298,7 +105,7 @@ export function EmployeeForm({
           <Input
             id={`employee-first-name-${mode}`}
             value={values.firstName}
-            onChange={(event) => updateValue("firstName", event.target.value)}
+            onChange={(event) => onFieldChange("firstName", event.target.value)}
             aria-invalid={Boolean(errors.firstName)}
             disabled={isLoading || isSubmitting}
           />
@@ -309,7 +116,7 @@ export function EmployeeForm({
           <Input
             id={`employee-middle-name-${mode}`}
             value={values.middleName}
-            onChange={(event) => updateValue("middleName", event.target.value)}
+            onChange={(event) => onFieldChange("middleName", event.target.value)}
             aria-invalid={Boolean(errors.middleName)}
             disabled={isLoading || isSubmitting}
           />
@@ -321,7 +128,7 @@ export function EmployeeForm({
             id={`employee-date-of-birth-${mode}`}
             type="date"
             value={values.dateOfBirth}
-            onChange={(event) => updateValue("dateOfBirth", event.target.value)}
+            onChange={(event) => onFieldChange("dateOfBirth", event.target.value)}
             aria-invalid={Boolean(errors.dateOfBirth)}
             disabled={isLoading || isSubmitting}
           />
@@ -335,7 +142,9 @@ export function EmployeeForm({
               value: gender,
             }))}
             value={values.gender}
-            onValueChange={(value) => updateValue("gender", (value ?? "") as EmployeeFormValues["gender"])}
+            onValueChange={(value) =>
+              onFieldChange("gender", (value ?? "") as EmployeeRecordDraft["gender"])
+            }
           >
             <SelectTrigger
               aria-invalid={Boolean(errors.gender)}
@@ -361,7 +170,7 @@ export function EmployeeForm({
           <Select
             items={designationItems}
             value={values.designationId}
-            onValueChange={(value) => updateValue("designationId", value ?? "")}
+            onValueChange={(value) => onFieldChange("designationId", value ?? "")}
           >
             <SelectTrigger
               aria-invalid={Boolean(errors.designationId)}
@@ -396,7 +205,7 @@ export function EmployeeForm({
             step={1}
             type="number"
             value={values.seniorityRank}
-            onChange={(event) => updateValue("seniorityRank", event.target.value)}
+            onChange={(event) => onFieldChange("seniorityRank", event.target.value)}
             aria-invalid={Boolean(errors.seniorityRank)}
             disabled={isLoading || isSubmitting}
           />
@@ -410,7 +219,7 @@ export function EmployeeForm({
           <Input
             id={`employee-pan-number-${mode}`}
             value={values.panNumber}
-            onChange={(event) => updateValue("panNumber", event.target.value)}
+            onChange={(event) => onFieldChange("panNumber", event.target.value)}
             disabled={isLoading || isSubmitting}
           />
         </Field>
@@ -419,7 +228,7 @@ export function EmployeeForm({
           <Input
             id={`employee-pf-number-${mode}`}
             value={values.pfNumber}
-            onChange={(event) => updateValue("pfNumber", event.target.value)}
+            onChange={(event) => onFieldChange("pfNumber", event.target.value)}
             disabled={isLoading || isSubmitting}
           />
         </Field>
@@ -428,7 +237,7 @@ export function EmployeeForm({
           <Input
             id={`employee-nps-account-number-${mode}`}
             value={values.npsAccountNumber}
-            onChange={(event) => updateValue("npsAccountNumber", event.target.value)}
+            onChange={(event) => onFieldChange("npsAccountNumber", event.target.value)}
             disabled={isLoading || isSubmitting}
           />
         </Field>
@@ -437,7 +246,7 @@ export function EmployeeForm({
           <Input
             id={`employee-whatsapp-number-${mode}`}
             value={values.whatsAppNumber}
-            onChange={(event) => updateValue("whatsAppNumber", event.target.value)}
+            onChange={(event) => onFieldChange("whatsAppNumber", event.target.value)}
             disabled={isLoading || isSubmitting}
           />
         </Field>
@@ -446,7 +255,7 @@ export function EmployeeForm({
           <Input
             id={`employee-contact-number-${mode}`}
             value={values.contactNumber}
-            onChange={(event) => updateValue("contactNumber", event.target.value)}
+            onChange={(event) => onFieldChange("contactNumber", event.target.value)}
             disabled={isLoading || isSubmitting}
           />
         </Field>
@@ -472,7 +281,7 @@ export function EmployeeForm({
                   <Input
                     id={`employee-custom-${mode}-${field.id}`}
                     value={values.customFieldValues[field.id] ?? ""}
-                    onChange={(event) => updateCustomFieldValue(field.id, event.target.value)}
+                    onChange={(event) => onCustomFieldChange(field.id, event.target.value)}
                     aria-invalid={Boolean(fieldError)}
                     disabled={isLoading || isSubmitting}
                   />

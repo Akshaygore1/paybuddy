@@ -1,6 +1,12 @@
 import { z } from "zod";
 
-export const financialYearStartValues = [2023, 2024, 2025, 2026, 2027, 2028] as const;
+import {
+  containsPayrollMonth,
+  isPayrollFinancialYearStart,
+  payrollFinancialYearStartValues,
+} from "../payroll-financial-year";
+
+export { payrollFinancialYearStartValues as financialYearStartValues };
 export const payrollSectionValues = ["earnings", "deductions"] as const;
 
 const requiredTextSchema = z.string().trim().min(1, "This field is required");
@@ -9,11 +15,7 @@ export const financialYearStartSchema = z.object({
   financialYearStart: z.coerce
     .number()
     .int("Financial year must be a whole year")
-    .refine(
-      (value): value is (typeof financialYearStartValues)[number] =>
-        financialYearStartValues.includes(value as (typeof financialYearStartValues)[number]),
-      "Please select a valid financial year",
-    ),
+    .refine(isPayrollFinancialYearStart, "Please select a valid financial year"),
 });
 
 const payrollMonthSchema = z
@@ -25,16 +27,7 @@ export const payrollPeriodSchema = financialYearStartSchema
     month: payrollMonthSchema,
   })
   .refine(
-    ({ financialYearStart, month }) => {
-      const [yearText, monthText] = month.split("-");
-      const year = Number(yearText);
-      const monthNumber = Number(monthText);
-
-      return (
-        (year === financialYearStart && monthNumber >= 4) ||
-        (year === financialYearStart + 1 && monthNumber <= 3)
-      );
-    },
+    ({ financialYearStart, month }) => containsPayrollMonth(financialYearStart, month),
     { path: ["month"], message: "Month must belong to the financial year" },
   );
 

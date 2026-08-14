@@ -1,49 +1,136 @@
 import * as React from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
+import {
+  getDefaultPayrollMonth,
+  isPayrollFinancialYearStart,
+} from "@tds-nivaran/api/payroll-financial-year";
 
 import {
-  financialYearBeforeChangeEvent,
-  financialYearChangeEvent,
-  financialYearOptions,
-  readSelectedFinancialYearStart,
-  type FinancialYearStart,
-  writeSelectedFinancialYearStart,
-} from "@/lib/financial-year";
-import { formatPaiseForInput, normalizePayrollInputForApi } from "@/lib/payroll-money";
+  getSelectedFinancialYearStart,
+  registerSelectedFinancialYearChangeGuard,
+  setSelectedFinancialYearStart,
+  subscribeSelectedFinancialYear,
+} from "../lib/financial-year";
+import { downloadPayrollDocument } from "../lib/payroll-document";
 import {
+  buildPayrollWorkspaceDocument,
   createPayrollWorkspaceState,
-  getPayrollLineItemKey,
-  payrollWorkspaceReducer,
-  type PayrollLineItemState,
+  getPayrollWorkspaceCalendarView,
+  getPayrollWorkspaceEditorView,
+  getPayrollWorkspaceEmployeeView,
+  getPayrollWorkspacePreviousMonthView,
+  serializePayrollWorkspaceSave,
+  transitionPayrollWorkspace,
+  type PayrollWorkspaceCommand,
   type PayrollSection,
-  validatePayrollWorkspace,
-} from "@/lib/payroll-workspace";
-import { queryClient, trpc } from "@/utils/trpc";
+  type PayrollWorkspaceForm,
+  type PayrollWorkspaceSelectionCommand,
+  type PayrollWorkspaceState,
+} from "../lib/payroll-workspace";
+import { queryClient, trpc } from "../utils/trpc";
 
-function getFinancialYearMonth(financialYearStart: number) {
-  const now = new Date();
-  const current = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-  const april = `${financialYearStart}-04`;
-  const march = `${financialYearStart + 1}-03`;
-  return current >= april && current <= march ? current : april;
+export const payrollFinancialYearExternalStore = {
+  subscribe: subscribeSelectedFinancialYear,
+  getSnapshot: getSelectedFinancialYearStart,
+};
+
+type PayrollWorkspaceEffectDependencies = {
+  notifySuccess: (message: string) => void;
+  notifyError: (message: string) => void;
+  invalidateForm: () => Promise<void>;
+  downloadDocument: typeof downloadPayrollDocument;
+};
+
+export async function completePayrollWorkspaceMutation(
+  message: string,
+  dependencies: Pick<PayrollWorkspaceEffectDependencies, "notifySuccess" | "invalidateForm">,
+) {
+  dependencies.notifySuccess(message);
+  await dependencies.invalidateForm();
 }
 
-function toLineItems(form: {
-  lineItems: Array<Omit<PayrollLineItemState, "amount"> & { amountPaise: number }>;
-}) {
-  return form.lineItems.map((item) => ({ ...item, amount: formatPaiseForInput(item.amountPaise) }));
+export function reportPayrollWorkspaceMutationError(
+  error: { message: string },
+  dependencies: Pick<PayrollWorkspaceEffectDependencies, "notifyError">,
+) {
+  dependencies.notifyError(error.message);
+}
+
+export async function executePayrollWorkspaceDownload(
+  state: PayrollWorkspaceState,
+  kind: "monthly" | "annual",
+  dependencies: Pick<PayrollWorkspaceEffectDependencies, "notifyError" | "downloadDocument">,
+) {
+  const result = buildPayrollWorkspaceDocument(state, kind);
+
+  if (result.status === "blocked") {
+    dependencies.notifyError(
+      result.reason === "payrollNotSaved"
+        ? "Save payroll before downloading a payslip"
+        : "Save payroll changes before downloading a payslip",
+    );
+    return "blocked" as const;
+  }
+
+  await dependencies.downloadDocument({
+    tableModel: result.tableModel,
+    fileName: result.fileName,
+  });
+  return "downloaded" as const;
+}
+
+export function resolvePayrollWorkspaceSelection(
+  state: PayrollWorkspaceState,
+  command: PayrollWorkspaceSelectionCommand,
+  confirmDiscard: () => boolean,
+) {
+  const initial = transitionPayrollWorkspace(state, command);
+
+  if (initial.outcome !== "requiresDiscardConfirmation") {
+    return initial;
+  }
+
+  if (!confirmDiscard()) {
+    return initial;
+  }
+
+  return transitionPayrollWorkspace(state, { ...command, discardConfirmed: true });
+}
+
+function toWorkspaceForm(
+  form: Omit<PayrollWorkspaceForm, "financialYearStart"> & { financialYearStart: number },
+): PayrollWorkspaceForm {
+  if (!isPayrollFinancialYearStart(form.financialYearStart)) {
+    throw new Error(`Unsupported Payroll Financial Year: ${form.financialYearStart}`);
+  }
+
+  return { ...form, financialYearStart: form.financialYearStart };
+}
+
+function applyRefreshRequiredResult(
+  current: PayrollWorkspaceState,
+  command: Extract<PayrollWorkspaceCommand, { type: "customFieldAdded" | "customFieldArchived" }>,
+) {
+  const clean = current.isDirty
+    ? transitionPayrollWorkspace(current, { type: "discarded" }).state
+    : current;
+  return transitionPayrollWorkspace(clean, command).state;
 }
 
 export function usePayrollWorkspace() {
-  const initialFinancialYear = React.useMemo(() => readSelectedFinancialYearStart(), []);
-  const [state, dispatch] = React.useReducer(
-    payrollWorkspaceReducer,
+  const selectedFinancialYearStart = React.useSyncExternalStore(
+    payrollFinancialYearExternalStore.subscribe,
+    payrollFinancialYearExternalStore.getSnapshot,
+    payrollFinancialYearExternalStore.getSnapshot,
+  );
+  const [state, setState] = React.useState(() =>
     createPayrollWorkspaceState({
-      financialYearStart: initialFinancialYear,
-      month: getFinancialYearMonth(initialFinancialYear),
+      financialYearStart: selectedFinancialYearStart,
+      month: getDefaultPayrollMonth(selectedFinancialYearStart),
     }),
   );
+  const [isDownloading, setIsDownloading] = React.useState(false);
   const employeesQuery = useQuery(trpc.payroll.getEmployees.queryOptions());
   const formQuery = useQuery({
     ...trpc.payroll.getForm.queryOptions({
@@ -56,132 +143,142 @@ export function usePayrollWorkspace() {
   const saveMutation = useMutation(
     trpc.payroll.save.mutationOptions({
       onSuccess: async (data) => {
-        dispatch({
-          type: "formLoaded",
-          identity: {
-            employeeId: data.employee.id,
-            financialYearStart: data.financialYearStart as FinancialYearStart,
-            month: data.month,
-          },
-          lineItems: toLineItems(data),
+        setState((current) =>
+          transitionPayrollWorkspace(current, {
+            type: "saveSucceeded",
+            form: toWorkspaceForm(data),
+          }).state,
+        );
+        await completePayrollWorkspaceMutation("Payroll saved", {
+          notifySuccess: toast.success,
+          invalidateForm: () =>
+            queryClient.invalidateQueries({ queryKey: trpc.payroll.getForm.queryKey() }),
         });
-        toast.success("Payroll saved");
-        await queryClient.invalidateQueries({ queryKey: trpc.payroll.getForm.queryKey() });
       },
-      onError: (error) => toast.error(error.message),
+      onError: (error) => reportPayrollWorkspaceMutationError(error, { notifyError: toast.error }),
     }),
   );
   const addCustomFieldMutation = useMutation(
     trpc.payroll.addCustomField.mutationOptions({
-      onSuccess: async () => {
-        toast.success("Payroll field added");
-        await queryClient.invalidateQueries({ queryKey: trpc.payroll.getForm.queryKey() });
+      onSuccess: async (field) => {
+        setState((current) => {
+          return applyRefreshRequiredResult(current, { type: "customFieldAdded", field });
+        });
+        await completePayrollWorkspaceMutation("Payroll field added", {
+          notifySuccess: toast.success,
+          invalidateForm: () =>
+            queryClient.invalidateQueries({ queryKey: trpc.payroll.getForm.queryKey() }),
+        });
       },
-      onError: (error) => toast.error(error.message),
+      onError: (error) => reportPayrollWorkspaceMutationError(error, { notifyError: toast.error }),
     }),
   );
   const archiveCustomFieldMutation = useMutation(
     trpc.payroll.archiveCustomField.mutationOptions({
       onSuccess: async () => {
-        toast.success("Payroll field archived");
-        await queryClient.invalidateQueries({ queryKey: trpc.payroll.getForm.queryKey() });
+        setState((current) => {
+          return applyRefreshRequiredResult(current, { type: "customFieldArchived" });
+        });
+        await completePayrollWorkspaceMutation("Payroll field archived", {
+          notifySuccess: toast.success,
+          invalidateForm: () =>
+            queryClient.invalidateQueries({ queryKey: trpc.payroll.getForm.queryKey() }),
+        });
       },
-      onError: (error) => toast.error(error.message),
+      onError: (error) => reportPayrollWorkspaceMutationError(error, { notifyError: toast.error }),
     }),
   );
 
   React.useEffect(() => {
-    if (!formQuery.data || state.isDirty) return;
-    if (
-      formQuery.data.employee.id !== state.employeeId ||
-      formQuery.data.financialYearStart !== state.financialYearStart ||
-      formQuery.data.month !== state.month
-    ) {
-      return;
-    }
-    dispatch({
-      type: "formLoaded",
-      identity: {
-        employeeId: formQuery.data.employee.id,
-        financialYearStart: formQuery.data.financialYearStart as FinancialYearStart,
-        month: formQuery.data.month,
-      },
-      lineItems: toLineItems(formQuery.data),
-    });
-  }, [formQuery.data, state.employeeId, state.financialYearStart, state.isDirty, state.month]);
+    if (!formQuery.data) return;
+    setState((current) =>
+      transitionPayrollWorkspace(current, {
+        type: "formLoaded",
+        form: toWorkspaceForm(formQuery.data),
+      }).state,
+    );
+  }, [formQuery.data]);
 
   React.useEffect(() => {
-    function confirmFinancialYearChange(event: Event) {
-      if (state.isDirty && !window.confirm("Discard your unsaved payroll changes?"))
-        event.preventDefault();
-    }
-    function syncFinancialYear(event: Event) {
-      const detail = (event as CustomEvent<{ financialYearStart: FinancialYearStart }>).detail;
-      const financialYearStart = detail?.financialYearStart ?? readSelectedFinancialYearStart();
-      if (financialYearStart !== state.financialYearStart) {
-        dispatch({
-          type: "financialYearSelected",
-          financialYearStart,
-          month: getFinancialYearMonth(financialYearStart),
-        });
-      }
-    }
-    window.addEventListener(financialYearBeforeChangeEvent, confirmFinancialYearChange);
-    window.addEventListener(financialYearChangeEvent, syncFinancialYear);
-    return () => {
-      window.removeEventListener(financialYearBeforeChangeEvent, confirmFinancialYearChange);
-      window.removeEventListener(financialYearChangeEvent, syncFinancialYear);
-    };
-  }, [state.financialYearStart, state.isDirty]);
+    return registerSelectedFinancialYearChangeGuard(() => {
+      return !state.isDirty || window.confirm("Discard your unsaved payroll changes?");
+    });
+  }, [state.isDirty]);
+
+  React.useEffect(() => {
+    setState((current) => {
+      if (selectedFinancialYearStart === current.financialYearStart) return current;
+      return transitionPayrollWorkspace(current, {
+        type: "selectFinancialYear",
+        financialYearStart: selectedFinancialYearStart,
+        month: getDefaultPayrollMonth(selectedFinancialYearStart),
+        discardConfirmed: true,
+      }).state;
+    });
+  }, [selectedFinancialYearStart]);
+
+  const calendarView = React.useMemo(
+    () => getPayrollWorkspaceCalendarView(state),
+    [state.employeeId, state.financialYearStart, state.month],
+  );
+  const employeeView = React.useMemo(
+    () => getPayrollWorkspaceEmployeeView(employeesQuery.data ?? []),
+    [employeesQuery.data],
+  );
+  const previousMonthView = React.useMemo(
+    () =>
+      getPayrollWorkspacePreviousMonthView(state, calendarView.selection.previousMonth),
+    [calendarView.selection.previousMonth, state.loadedForm],
+  );
+  const editorView = React.useMemo(
+    () => getPayrollWorkspaceEditorView(state),
+    [state.isDirty, state.lineItems, state.loadedForm],
+  );
+  const view = React.useMemo(
+    () => ({
+      ...calendarView,
+      ...employeeView,
+      ...previousMonthView,
+      ...editorView,
+      previousMonth: calendarView.selection.previousMonth,
+    }),
+    [calendarView, editorView, employeeView, previousMonthView],
+  );
 
   function confirmDiscard() {
-    if (state.isDirty && !window.confirm("Discard your unsaved payroll changes?")) return false;
-    if (state.isDirty) dispatch({ type: "discarded" });
-    return true;
+    return window.confirm("Discard your unsaved payroll changes?");
+  }
+
+  function applySelection(command: PayrollWorkspaceSelectionCommand) {
+    const result = resolvePayrollWorkspaceSelection(state, command, confirmDiscard);
+    if (result.outcome !== "requiresDiscardConfirmation") setState(result.state);
+    return result.outcome;
   }
 
   async function save() {
-    const validation = validatePayrollWorkspace(state);
-    if (!validation.canSave || !state.loadedForm) {
-      if (validation.hasInvalidAmounts) toast.error("Fix invalid payroll amounts before saving");
+    const input = serializePayrollWorkspaceSave(state);
+    if (!input || !view.capabilities.canSave) {
+      if (view.capabilities.hasInvalidAmounts) {
+        toast.error("Fix invalid payroll amounts before saving");
+      }
       return;
     }
-    await saveMutation.mutateAsync({
-      ...state.loadedForm,
-      lineItems: state.lineItems
-        .filter((item) => !item.isArchivedCustomField)
-        .map((item) => ({
-          section: item.section,
-          fixedFieldKey: item.fixedFieldKey,
-          customFieldDefinitionId: item.customFieldDefinitionId,
-          amount: normalizePayrollInputForApi(item.amount) || "0",
-        })),
-    });
+    await saveMutation.mutateAsync(input);
   }
 
   async function addCustomField(section: PayrollSection, label: string) {
-    if (!confirmDiscard()) return null;
+    if (state.isDirty && !confirmDiscard()) return null;
     const field = await addCustomFieldMutation.mutateAsync({
       financialYearStart: state.financialYearStart,
       month: state.month,
       section,
       label,
     });
-    const lineItem: PayrollLineItemState = {
-      section: field.section,
-      fixedFieldKey: null,
-      customFieldDefinitionId: field.id,
-      label: field.label,
-      amount: "",
-      sortOrder: 1000 + field.sortOrder,
-      isArchivedCustomField: false,
-    };
-    dispatch({ type: "customFieldAdded", lineItem });
-    return getPayrollLineItemKey(lineItem);
+    return `${field.section}:custom:${field.id}`;
   }
 
   async function archiveCustomField(id: string) {
-    if (!confirmDiscard()) return;
+    if (state.isDirty && !confirmDiscard()) return;
     await archiveCustomFieldMutation.mutateAsync({
       id,
       financialYearStart: state.financialYearStart,
@@ -189,35 +286,68 @@ export function usePayrollWorkspace() {
     });
   }
 
+  async function download(kind: "monthly" | "annual") {
+    setIsDownloading(true);
+    try {
+      await executePayrollWorkspaceDownload(state, kind, {
+        notifyError: toast.error,
+        downloadDocument: downloadPayrollDocument,
+      });
+    } finally {
+      setIsDownloading(false);
+    }
+  }
+
   return {
-    state,
-    validation: validatePayrollWorkspace(state),
-    employeesQuery,
-    formQuery,
-    saveMutation,
-    addCustomFieldMutation,
-    archiveCustomFieldMutation,
-    selectEmployee(employeeId: string) {
-      if (employeeId !== state.employeeId && confirmDiscard())
-        dispatch({ type: "employeeSelected", employeeId });
+    view,
+    status: {
+      employees: {
+        isPending: employeesQuery.isPending,
+        isFetching: employeesQuery.isFetching,
+        error: employeesQuery.error,
+      },
+      form: {
+        isPending: formQuery.isPending,
+        isFetching: formQuery.isFetching,
+        error: formQuery.error,
+      },
+      save: { isPending: saveMutation.isPending },
+      addField: { isPending: addCustomFieldMutation.isPending },
+      archiveField: { isPending: archiveCustomFieldMutation.isPending },
+      download: { isPending: isDownloading },
     },
-    selectMonth(month: string) {
-      if (month !== state.month && confirmDiscard()) dispatch({ type: "monthSelected", month });
+    actions: {
+      selectEmployee(employeeId: string) {
+        applySelection({ type: "selectEmployee", employeeId, discardConfirmed: false });
+      },
+      selectMonth(month: string) {
+        applySelection({ type: "selectMonth", month, discardConfirmed: false });
+      },
+      selectFinancialYear(value: string | null) {
+        const next = Number(value);
+        if (isPayrollFinancialYearStart(next) && next !== state.financialYearStart) {
+          setSelectedFinancialYearStart(next);
+        }
+      },
+      updateAmount(lineItemKey: string, amount: string) {
+        setState((current) =>
+          transitionPayrollWorkspace(current, {
+            type: "amountChanged",
+            lineItemKey,
+            amount,
+          }).state,
+        );
+      },
+      formatAmount(lineItemKey: string) {
+        setState((current) =>
+          transitionPayrollWorkspace(current, { type: "amountFormatted", lineItemKey }).state,
+        );
+      },
+      save,
+      addCustomField,
+      archiveCustomField,
+      downloadMonthly: () => download("monthly"),
+      downloadAnnual: () => download("annual"),
     },
-    selectFinancialYear(value: string | null) {
-      const next = Number(value) as FinancialYearStart;
-      if (financialYearOptions.includes(next) && next !== state.financialYearStart) {
-        writeSelectedFinancialYearStart(next);
-      }
-    },
-    updateAmount(lineItemKey: string, amount: string) {
-      dispatch({ type: "amountChanged", lineItemKey, amount });
-    },
-    formatAmount(lineItemKey: string) {
-      dispatch({ type: "amountFormatted", lineItemKey });
-    },
-    save,
-    addCustomField,
-    archiveCustomField,
   };
 }

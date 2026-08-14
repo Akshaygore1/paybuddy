@@ -8,6 +8,8 @@
 - **Employee record**: The stored base fields, Designation, and Custom Field values for one Employee.
 - **Designation**: An Institution-defined role/title option used on Employee records and ordered in Employee Setup.
 - **Custom Field**: An Institution-defined Employee record field with a label, generated key, required flag, active flag, and display order.
+- **Payroll field timeline**: The effective-month history that determines when an Institution-defined Payroll field participates in Payroll.
+- **Payroll Financial Year**: The user-selected April-through-March calendar used to prepare and review Payroll.
 - **Login Access**: Whether the Better Auth user for an Institution account is allowed to sign in.
 
 ## Architecture Notes
