@@ -3,8 +3,11 @@ import { fileURLToPath } from "node:url";
 
 export default defineConfig({
   test: {
+    exclude: ["e2e/**", "**/node_modules/**"],
     alias: {
-      "cloudflare:workers": fileURLToPath(new URL("./test/shims/cloudflare-workers.ts", import.meta.url)),
+      "cloudflare:workers": fileURLToPath(
+        new URL("./test/shims/cloudflare-workers.ts", import.meta.url),
+      ),
     },
   },
   lint: {

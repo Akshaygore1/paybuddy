@@ -92,7 +92,6 @@ describe("Institution account workflows", () => {
 
   it("deactivates Login Access idempotently when already inactive", async () => {
     let banUserCalled = false;
-    let updateCalled = false;
     const auth = {
       api: {
         banUser: async () => {
@@ -103,23 +102,17 @@ describe("Institution account workflows", () => {
     const db = {
       select: () => ({
         from: () => ({
-          where: () => ({
-            get: async () => ({
-              id: "institution-1",
-              userId: "auth-user-1",
-              loginActive: false,
+          innerJoin: () => ({
+            where: () => ({
+              get: async () => ({
+                id: "institution-1",
+                userId: "auth-user-1",
+                banned: true,
+              }),
             }),
           }),
         }),
       }),
-      update: () => {
-        updateCalled = true;
-        return {
-          set: () => ({
-            where: () => undefined,
-          }),
-        };
-      },
     };
 
     const institutionAccounts = buildInstitutionAccountModule({
@@ -128,9 +121,151 @@ describe("Institution account workflows", () => {
     });
 
     await expect(
-      institutionAccounts.deactivateLogin({ institutionId: "institution-1" }, headers),
+      institutionAccounts.setLoginAccess(
+        { institutionId: "institution-1", active: false },
+        headers,
+      ),
     ).resolves.toEqual({ success: true });
     expect(banUserCalled).toBe(false);
-    expect(updateCalled).toBe(false);
+  });
+
+  it("re-enables an inactive institution through Better Auth", async () => {
+    const unbannedUserIds: string[] = [];
+    const auth = {
+      api: {
+        unbanUser: async ({ body }: { body: { userId: string } }) => {
+          unbannedUserIds.push(body.userId);
+        },
+      },
+    };
+    const db = {
+      select: () => ({
+        from: () => ({
+          innerJoin: () => ({
+            where: () => ({
+              get: async () => ({ id: "institution-1", userId: "auth-user-1", banned: true }),
+            }),
+          }),
+        }),
+      }),
+    };
+    const institutionAccounts = buildInstitutionAccountModule({
+      auth: auth as never,
+      db: db as never,
+    });
+
+    await expect(
+      institutionAccounts.setLoginAccess({ institutionId: "institution-1", active: true }, headers),
+    ).resolves.toEqual({ success: true });
+    expect(unbannedUserIds).toEqual(["auth-user-1"]);
+  });
+
+  it("disables an active institution through Better Auth so sessions are revoked", async () => {
+    const bans: Array<{ userId: string; banReason?: string }> = [];
+    const institutionAccounts = buildInstitutionAccountModule({
+      auth: {
+        api: {
+          banUser: async ({ body }: { body: { userId: string; banReason?: string } }) => {
+            bans.push(body);
+          },
+        },
+      } as never,
+      db: {
+        select: () => ({
+          from: () => ({
+            innerJoin: () => ({
+              where: () => ({
+                get: async () => ({ id: "institution-1", userId: "auth-user-1", banned: false }),
+              }),
+            }),
+          }),
+        }),
+      } as never,
+    });
+
+    await institutionAccounts.setLoginAccess(
+      { institutionId: "institution-1", active: false },
+      headers,
+    );
+    expect(bans).toEqual([
+      { userId: "auth-user-1", banReason: "Institution login has been deactivated" },
+    ]);
+  });
+
+  it("does not call Better Auth when access is already enabled", async () => {
+    let unbanCalled = false;
+    const institutionAccounts = buildInstitutionAccountModule({
+      auth: {
+        api: {
+          unbanUser: async () => {
+            unbanCalled = true;
+          },
+        },
+      } as never,
+      db: {
+        select: () => ({
+          from: () => ({
+            innerJoin: () => ({
+              where: () => ({
+                get: async () => ({ id: "institution-1", userId: "auth-user-1", banned: false }),
+              }),
+            }),
+          }),
+        }),
+      } as never,
+    });
+
+    await institutionAccounts.setLoginAccess(
+      { institutionId: "institution-1", active: true },
+      headers,
+    );
+    expect(unbanCalled).toBe(false);
+  });
+
+  it("reports missing Institutions before calling Better Auth", async () => {
+    const institutionAccounts = buildInstitutionAccountModule({
+      auth: { api: {} } as never,
+      db: {
+        select: () => ({
+          from: () => ({
+            innerJoin: () => ({ where: () => ({ get: async () => null }) }),
+          }),
+        }),
+      } as never,
+    });
+
+    await expect(
+      institutionAccounts.setLoginAccess({ institutionId: "missing", active: false }, headers),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
+  it("surfaces Better Auth failures without persisting a second access flag", async () => {
+    const institutionAccounts = buildInstitutionAccountModule({
+      auth: {
+        api: {
+          banUser: async () => {
+            throw { statusCode: 403, message: "Denied" };
+          },
+        },
+      } as never,
+      db: {
+        select: () => ({
+          from: () => ({
+            innerJoin: () => ({
+              where: () => ({
+                get: async () => ({ id: "institution-1", userId: "auth-user-1", banned: false }),
+              }),
+            }),
+          }),
+        }),
+      } as never,
+    });
+
+    await expect(
+      institutionAccounts.setLoginAccess(
+        { institutionId: "institution-1", active: false },
+        headers,
+      ),
+    ).rejects.toMatchObject({ code: "FORBIDDEN", message: "Denied" });
   });
 });

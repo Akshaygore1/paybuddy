@@ -2,12 +2,12 @@ import { createAuth } from "@tds-nivaran/auth";
 import { createDb } from "@tds-nivaran/db";
 import { institutions, user } from "@tds-nivaran/db/schema/index";
 import { TRPCError } from "@trpc/server";
-import { and, desc, eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import type { z } from "zod";
 
 import type {
   createInstitutionSchema,
-  deactivateInstitutionLoginSchema,
+  setInstitutionLoginAccessSchema,
   resetInstitutionPasswordSchema,
 } from "../schemas/institutions";
 
@@ -42,7 +42,7 @@ export type InstitutionAccountDetail = InstitutionAccountSummary & {
 
 export type CreateInstitutionAccountInput = z.infer<typeof createInstitutionSchema>;
 export type ResetInstitutionPasswordInput = z.infer<typeof resetInstitutionPasswordSchema>;
-export type DeactivateInstitutionLoginInput = z.infer<typeof deactivateInstitutionLoginSchema>;
+export type SetInstitutionLoginAccessInput = z.infer<typeof setInstitutionLoginAccessSchema>;
 
 type BetterAuthLikeError = {
   message?: string;
@@ -88,7 +88,7 @@ export function buildInstitutionAccountModule(options: InstitutionAccountModuleO
   const db = options.db ?? createDb();
 
   async function list(): Promise<InstitutionAccountSummary[]> {
-    return db
+    const rows = await db
       .select({
         id: institutions.id,
         userId: institutions.userId,
@@ -96,7 +96,7 @@ export function buildInstitutionAccountModule(options: InstitutionAccountModuleO
         tanNumber: institutions.tanNumber,
         institutionHead: institutions.institutionHead,
         address: institutions.address,
-        loginActive: institutions.loginActive,
+        banned: user.banned,
         createdAt: institutions.createdAt,
         updatedAt: institutions.updatedAt,
         username: user.username,
@@ -104,6 +104,7 @@ export function buildInstitutionAccountModule(options: InstitutionAccountModuleO
       .from(institutions)
       .innerJoin(user, eq(user.id, institutions.userId))
       .orderBy(desc(institutions.createdAt));
+    return rows.map(({ banned, ...row }) => ({ ...row, loginActive: !banned }));
   }
 
   async function getById(institutionId: string): Promise<InstitutionAccountDetail> {
@@ -115,7 +116,6 @@ export function buildInstitutionAccountModule(options: InstitutionAccountModuleO
         tanNumber: institutions.tanNumber,
         institutionHead: institutions.institutionHead,
         address: institutions.address,
-        loginActive: institutions.loginActive,
         createdAt: institutions.createdAt,
         updatedAt: institutions.updatedAt,
         username: user.username,
@@ -135,7 +135,7 @@ export function buildInstitutionAccountModule(options: InstitutionAccountModuleO
       });
     }
 
-    return row;
+    return { ...row, loginActive: !row.banned };
   }
 
   async function create(input: CreateInstitutionAccountInput, headers: RequestHeaders) {
@@ -180,7 +180,6 @@ export function buildInstitutionAccountModule(options: InstitutionAccountModuleO
           tanNumber: input.tanNumber,
           institutionHead: input.institutionHead,
           address: input.address,
-          loginActive: true,
         })
         .returning();
 
@@ -226,14 +225,15 @@ export function buildInstitutionAccountModule(options: InstitutionAccountModuleO
     return { success: true };
   }
 
-  async function deactivateLogin(input: DeactivateInstitutionLoginInput, headers: RequestHeaders) {
+  async function setLoginAccess(input: SetInstitutionLoginAccessInput, headers: RequestHeaders) {
     const institution = await db
       .select({
         id: institutions.id,
         userId: institutions.userId,
-        loginActive: institutions.loginActive,
+        banned: user.banned,
       })
       .from(institutions)
+      .innerJoin(user, eq(user.id, institutions.userId))
       .where(eq(institutions.id, input.institutionId))
       .get();
 
@@ -244,26 +244,30 @@ export function buildInstitutionAccountModule(options: InstitutionAccountModuleO
       });
     }
 
-    if (!institution.loginActive) {
+    if (institution.banned === !input.active) {
       return { success: true };
     }
 
     try {
-      await auth.api.banUser({
-        headers,
-        body: {
-          userId: institution.userId,
-          banReason: "Institution login has been deactivated",
-        },
-      });
+      if (input.active) {
+        await auth.api.unbanUser({ headers, body: { userId: institution.userId } });
+      } else {
+        await auth.api.banUser({
+          headers,
+          body: {
+            userId: institution.userId,
+            banReason: "Institution login has been deactivated",
+          },
+        });
+      }
     } catch (error) {
-      normalizeBetterAuthError(error, "Unable to deactivate institution login");
+      normalizeBetterAuthError(
+        error,
+        input.active
+          ? "Unable to activate institution login"
+          : "Unable to deactivate institution login",
+      );
     }
-
-    await db
-      .update(institutions)
-      .set({ loginActive: false })
-      .where(and(eq(institutions.id, input.institutionId), eq(institutions.userId, institution.userId)));
 
     return { success: true };
   }
@@ -273,6 +277,6 @@ export function buildInstitutionAccountModule(options: InstitutionAccountModuleO
     getById,
     create,
     resetPassword,
-    deactivateLogin,
+    setLoginAccess,
   };
 }

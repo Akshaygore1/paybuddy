@@ -6,7 +6,10 @@ const handleLikeUsernameSchema = z
   .trim()
   .min(3, "Username must be at least 3 characters")
   .max(30, "Username must be at most 30 characters")
-  .regex(/^[a-zA-Z0-9_.]+$/, "Username can only contain letters, numbers, underscores, and periods");
+  .regex(
+    /^[a-zA-Z0-9_.]+$/,
+    "Username can only contain letters, numbers, underscores, and periods",
+  );
 
 function isValidInstitutionUsername(value: string) {
   return (
@@ -17,11 +20,7 @@ function isValidInstitutionUsername(value: string) {
 
 export const createInstitutionStep1Schema = z.object({
   name: z.string().trim().min(1, "Institution name is required"),
-  tanNumber: z
-    .string()
-    .trim()
-    .min(1, "TAN number is required")
-    .max(64, "TAN number is too long"),
+  tanNumber: z.string().trim().min(1, "TAN number is required").max(64, "TAN number is too long"),
   institutionHead: z.string().trim().min(1, "Institution head is required"),
   address: z.string().trim().min(1, "Address is required"),
 });
@@ -48,6 +47,7 @@ export const resetInstitutionPasswordSchema = z.object({
   password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
-export const deactivateInstitutionLoginSchema = z.object({
+export const setInstitutionLoginAccessSchema = z.object({
   institutionId: z.string().trim().min(1, "Institution ID is required"),
+  active: z.boolean(),
 });

@@ -31,12 +31,15 @@ type EmployeeRecordModuleOptions = {
   db?: Db;
 };
 
+type EmployeeWriteInput = Omit<UpdateEmployeeInput, "employeeId">;
+
 export type EmployeeDirectoryColumn = {
   key: string;
   label: string;
   defaultVisible: boolean;
   kind: "fixed" | "custom";
   fieldDefinitionId: string | null;
+  formatKind: "text" | "integer" | "date" | "date-time";
 };
 
 export type EmployeeDirectoryRow = {
@@ -94,14 +97,23 @@ const fixedDirectoryColumns: EmployeeDirectoryColumn[] = [
     defaultVisible: true,
     kind: "fixed",
     fieldDefinitionId: null,
+    formatKind: "text",
   },
-  { key: "rank", label: "Rank", defaultVisible: true, kind: "fixed", fieldDefinitionId: null },
+  {
+    key: "rank",
+    label: "Rank",
+    defaultVisible: true,
+    kind: "fixed",
+    fieldDefinitionId: null,
+    formatKind: "integer",
+  },
   {
     key: "designation",
     label: "Designation",
     defaultVisible: true,
     kind: "fixed",
     fieldDefinitionId: null,
+    formatKind: "text",
   },
   {
     key: "dateOfBirth",
@@ -109,14 +121,23 @@ const fixedDirectoryColumns: EmployeeDirectoryColumn[] = [
     defaultVisible: false,
     kind: "fixed",
     fieldDefinitionId: null,
+    formatKind: "date",
   },
-  { key: "gender", label: "Gender", defaultVisible: false, kind: "fixed", fieldDefinitionId: null },
+  {
+    key: "gender",
+    label: "Gender",
+    defaultVisible: false,
+    kind: "fixed",
+    fieldDefinitionId: null,
+    formatKind: "text",
+  },
   {
     key: "contactNumber",
     label: "Contact",
     defaultVisible: true,
     kind: "fixed",
     fieldDefinitionId: null,
+    formatKind: "text",
   },
   {
     key: "whatsAppNumber",
@@ -124,15 +145,31 @@ const fixedDirectoryColumns: EmployeeDirectoryColumn[] = [
     defaultVisible: false,
     kind: "fixed",
     fieldDefinitionId: null,
+    formatKind: "text",
   },
-  { key: "panNumber", label: "PAN", defaultVisible: false, kind: "fixed", fieldDefinitionId: null },
-  { key: "pfNumber", label: "PF", defaultVisible: false, kind: "fixed", fieldDefinitionId: null },
+  {
+    key: "panNumber",
+    label: "PAN",
+    defaultVisible: false,
+    kind: "fixed",
+    fieldDefinitionId: null,
+    formatKind: "text",
+  },
+  {
+    key: "pfNumber",
+    label: "PF",
+    defaultVisible: false,
+    kind: "fixed",
+    fieldDefinitionId: null,
+    formatKind: "text",
+  },
   {
     key: "npsAccountNumber",
     label: "NPS",
     defaultVisible: false,
     kind: "fixed",
     fieldDefinitionId: null,
+    formatKind: "text",
   },
   {
     key: "created",
@@ -140,6 +177,7 @@ const fixedDirectoryColumns: EmployeeDirectoryColumn[] = [
     defaultVisible: true,
     kind: "fixed",
     fieldDefinitionId: null,
+    formatKind: "date-time",
   },
 ];
 
@@ -162,6 +200,43 @@ export const emptyEmployeeFormInitialValues: EmployeeFormInitialValues = {
 function toNullableText(value: string | undefined) {
   const normalized = value?.trim() ?? "";
   return normalized.length > 0 ? normalized : null;
+}
+
+export function normalizeEmployeeBaseValues(input: EmployeeWriteInput) {
+  return {
+    firstName: input.firstName.trim(),
+    middleName: input.middleName.trim(),
+    surname: input.surname.trim(),
+    dateOfBirth: input.dateOfBirth.trim(),
+    gender: input.gender,
+    designationId: input.designationId,
+    seniorityRank: input.seniorityRank,
+    panNumber: toNullableText(input.panNumber),
+    pfNumber: toNullableText(input.pfNumber),
+    npsAccountNumber: toNullableText(input.npsAccountNumber),
+    whatsAppNumber: toNullableText(input.whatsAppNumber),
+    contactNumber: toNullableText(input.contactNumber),
+  };
+}
+
+export function planEmployeeCustomFieldValues(input: {
+  employeeId: string;
+  fieldDefinitions: Array<{ id: string }>;
+  customFieldValues: Record<string, string>;
+}) {
+  return input.fieldDefinitions.flatMap((field) => {
+    const value = input.customFieldValues[field.id]?.trim() ?? "";
+    return value
+      ? [
+          {
+            id: crypto.randomUUID(),
+            employeeId: input.employeeId,
+            fieldDefinitionId: field.id,
+            value,
+          },
+        ]
+      : [];
+  });
 }
 
 function getCustomFieldColumnKey(fieldDefinitionId: string) {
@@ -414,6 +489,7 @@ export function buildEmployeeRecordsModule(options: EmployeeRecordModuleOptions 
           defaultVisible: false,
           kind: "custom" as const,
           fieldDefinitionId: field.id,
+          formatKind: "text" as const,
         })),
       ],
       rows: employeeRows.map((row) => {
@@ -501,55 +577,30 @@ export function buildEmployeeRecordsModule(options: EmployeeRecordModuleOptions 
     const fieldDefinitions = await getActiveCustomFieldDefinitions(institutionId);
     validateSubmittedCustomFields(fieldDefinitions, input.customFieldValues);
 
-    const [createdEmployee] = await db
-      .insert(employees)
-      .values({
-        id: crypto.randomUUID(),
+    const employeeId = crypto.randomUUID();
+    const customFieldValuesToInsert = planEmployeeCustomFieldValues({
+      employeeId,
+      fieldDefinitions,
+      customFieldValues: input.customFieldValues,
+    });
+    await db.batch([
+      db.insert(employees).values({
+        id: employeeId,
         institutionId,
-        firstName: input.firstName.trim(),
-        middleName: input.middleName.trim(),
-        surname: input.surname.trim(),
-        dateOfBirth: input.dateOfBirth.trim(),
-        gender: input.gender,
-        designationId: input.designationId,
-        seniorityRank: input.seniorityRank,
-        panNumber: toNullableText(input.panNumber),
-        pfNumber: toNullableText(input.pfNumber),
-        npsAccountNumber: toNullableText(input.npsAccountNumber),
-        whatsAppNumber: toNullableText(input.whatsAppNumber),
-        contactNumber: toNullableText(input.contactNumber),
-      })
-      .returning();
+        ...normalizeEmployeeBaseValues(input),
+      }),
+      ...getCustomValueInsertQueries(customFieldValuesToInsert),
+    ]);
+
+    const createdEmployee = await db
+      .select()
+      .from(employees)
+      .where(and(eq(employees.id, employeeId), eq(employees.institutionId, institutionId)))
+      .get();
 
     if (!createdEmployee) {
-      throw new TRPCError({
-        code: "INTERNAL_SERVER_ERROR",
-        message: "Unable to create employee",
-      });
+      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Unable to create employee" });
     }
-
-    const customFieldValuesToInsert = fieldDefinitions
-      .map((field) => ({
-        fieldDefinitionId: field.id,
-        value: input.customFieldValues[field.id]?.trim() ?? "",
-      }))
-      .filter((field) => field.value.length > 0)
-      .map((field) => ({
-        id: crypto.randomUUID(),
-        employeeId: createdEmployee.id,
-        fieldDefinitionId: field.fieldDefinitionId,
-        value: field.value,
-      }));
-
-    if (customFieldValuesToInsert.length > 0) {
-      const insertQueries = getCustomValueInsertQueries(customFieldValuesToInsert);
-      const [firstInsertQuery, ...remainingInsertQueries] = insertQueries;
-
-      if (firstInsertQuery) {
-        await db.batch([firstInsertQuery, ...remainingInsertQueries]);
-      }
-    }
-
     return createdEmployee;
   }
 
@@ -579,44 +630,11 @@ export function buildEmployeeRecordsModule(options: EmployeeRecordModuleOptions 
     const fieldDefinitions = await getActiveCustomFieldDefinitions(institutionId);
     validateSubmittedCustomFields(fieldDefinitions, input.customFieldValues);
 
-    const customFieldValuesToInsert = fieldDefinitions
-      .map((field) => ({
-        fieldDefinitionId: field.id,
-        value: input.customFieldValues[field.id]?.trim() ?? "",
-      }))
-      .filter((field) => field.value.length > 0)
-      .map((field) => ({
-        id: crypto.randomUUID(),
-        employeeId: input.employeeId,
-        fieldDefinitionId: field.fieldDefinitionId,
-        value: field.value,
-      }));
-
-    const [updatedEmployee] = await db
-      .update(employees)
-      .set({
-        firstName: input.firstName.trim(),
-        middleName: input.middleName.trim(),
-        surname: input.surname.trim(),
-        dateOfBirth: input.dateOfBirth.trim(),
-        gender: input.gender,
-        designationId: input.designationId,
-        seniorityRank: input.seniorityRank,
-        panNumber: toNullableText(input.panNumber),
-        pfNumber: toNullableText(input.pfNumber),
-        npsAccountNumber: toNullableText(input.npsAccountNumber),
-        whatsAppNumber: toNullableText(input.whatsAppNumber),
-        contactNumber: toNullableText(input.contactNumber),
-      })
-      .where(and(eq(employees.id, input.employeeId), eq(employees.institutionId, institutionId)))
-      .returning();
-
-    if (!updatedEmployee) {
-      throw new TRPCError({
-        code: "INTERNAL_SERVER_ERROR",
-        message: "Unable to update employee",
-      });
-    }
+    const customFieldValuesToInsert = planEmployeeCustomFieldValues({
+      employeeId: input.employeeId,
+      fieldDefinitions,
+      customFieldValues: input.customFieldValues,
+    });
 
     const activeFieldDefinitionIds = db
       .select({ id: employeeCustomFieldDefinitions.id })
@@ -637,7 +655,24 @@ export function buildEmployeeRecordsModule(options: EmployeeRecordModuleOptions 
       );
     const insertValueQueries = getCustomValueInsertQueries(customFieldValuesToInsert);
 
-    await db.batch([deleteValuesQuery, ...insertValueQueries]);
+    await db.batch([
+      db
+        .update(employees)
+        .set(normalizeEmployeeBaseValues(input))
+        .where(and(eq(employees.id, input.employeeId), eq(employees.institutionId, institutionId))),
+      deleteValuesQuery,
+      ...insertValueQueries,
+    ]);
+
+    const updatedEmployee = await db
+      .select()
+      .from(employees)
+      .where(and(eq(employees.id, input.employeeId), eq(employees.institutionId, institutionId)))
+      .get();
+
+    if (!updatedEmployee) {
+      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Unable to update employee" });
+    }
 
     return updatedEmployee;
   }

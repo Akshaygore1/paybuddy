@@ -47,169 +47,41 @@ import { useNavigate } from "react-router";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/page-header";
+import {
+  buildEmployeeDirectoryCsv,
+  getInitialDirectoryColumnVisibility,
+  projectEmployeeDirectory,
+} from "@/lib/employee-directory";
 import { queryClient, trpc } from "@/utils/trpc";
 
-function formatDate(value: Date | string | number) {
-  return new Intl.DateTimeFormat("en-IN", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
-}
-
-function formatDateOnly(value: string) {
-  const [yearText, monthText, dayText] = value.split("-");
-  const year = Number(yearText);
-  const month = Number(monthText);
-  const day = Number(dayText);
-
-  return new Intl.DateTimeFormat("en-IN", {
-    dateStyle: "medium",
-    timeZone: "UTC",
-  }).format(new Date(Date.UTC(year, month - 1, day)));
-}
-
 const PAGE_SIZE = 10;
-
-const fixedColumnDefinitions = [
-  { key: "employee", label: "Employee", defaultVisible: true },
-  { key: "rank", label: "Rank", defaultVisible: true },
-  { key: "designation", label: "Designation", defaultVisible: true },
-  { key: "dateOfBirth", label: "Date of Birth", defaultVisible: false },
-  { key: "gender", label: "Gender", defaultVisible: false },
-  { key: "contactNumber", label: "Contact", defaultVisible: true },
-  { key: "whatsAppNumber", label: "WhatsApp", defaultVisible: false },
-  { key: "panNumber", label: "PAN", defaultVisible: false },
-  { key: "pfNumber", label: "PF", defaultVisible: false },
-  { key: "npsAccountNumber", label: "NPS", defaultVisible: false },
-  { key: "created", label: "Created", defaultVisible: true },
-] as const;
-
-function getCustomFieldColumnKey(fieldDefinitionId: string) {
-  return `customField:${fieldDefinitionId}`;
-}
-
-function getEmployeeDisplayName(input: {
-  surname: string;
-  firstName: string;
-  middleName: string;
-}) {
-  return [input.surname, input.firstName, input.middleName]
-    .filter(Boolean)
-    .join(" ");
-}
-
-function getDesignationDisplayValue(input: {
-  designationName: string;
-  designationIsActive: boolean;
-}) {
-  return input.designationIsActive
-    ? input.designationName
-    : `${input.designationName} (archived)`;
-}
-
-function normalizeSearchText(value: string) {
-  return value.trim().toLocaleLowerCase();
-}
-
-function escapeCsvValue(value: string) {
-  if (/[",\n\r]/.test(value)) {
-    return `"${value.replace(/"/g, '""')}"`;
-  }
-
-  return value;
-}
 
 export default function EmployeeIndexPage() {
   const navigate = useNavigate();
   const employeesQuery = useQuery(trpc.employees.getDirectory.queryOptions());
-  const formOptionsQuery = useQuery(
-    trpc.employees.getCreateForm.queryOptions(),
-  );
   const employees = employeesQuery.data?.rows ?? [];
-  const customFieldDefinitions = formOptionsQuery.data?.customFields ?? [];
+  const columns = employeesQuery.data?.columns ?? [];
 
   const [pageIndex, setPageIndex] = React.useState(0);
   const [searchTerm, setSearchTerm] = React.useState("");
-  const [visibleColumns, setVisibleColumns] = React.useState<
-    Record<string, boolean>
-  >(
-    Object.fromEntries(
-      fixedColumnDefinitions.map((column) => [
-        column.key,
-        column.defaultVisible,
-      ]),
-    ),
-  );
+  const [visibleColumns, setVisibleColumns] = React.useState<Record<string, boolean>>({});
   const [employeePendingDelete, setEmployeePendingDelete] = React.useState<
     (typeof employees)[number] | null
   >(null);
 
-  const visibleFixedColumns = fixedColumnDefinitions.filter(
-    (column) => visibleColumns[column.key],
+  const directory = React.useMemo(
+    () =>
+      projectEmployeeDirectory({
+        columns,
+        rows: employees,
+        visibleColumns,
+        searchTerm,
+        pageIndex,
+        pageSize: PAGE_SIZE,
+      }),
+    [columns, employees, pageIndex, searchTerm, visibleColumns],
   );
-  const visibleCustomFieldColumns = customFieldDefinitions.filter(
-    (field) => visibleColumns[getCustomFieldColumnKey(field.id)],
-  );
-  const visibleColumnCount =
-    visibleFixedColumns.length + visibleCustomFieldColumns.length;
-  const searchableColumns = React.useMemo(
-    () => [
-      ...visibleFixedColumns.map((column) => ({
-        key: column.key,
-        label: column.label,
-        getValue(employee: (typeof employees)[number]) {
-          switch (column.key) {
-            case "employee":
-              return getEmployeeDisplayName(employee);
-            case "rank":
-              return String(employee.seniorityRank);
-            case "designation":
-              return getDesignationDisplayValue(employee);
-            case "dateOfBirth":
-              return formatDateOnly(employee.dateOfBirth);
-            case "gender":
-              return employee.gender;
-            case "contactNumber":
-              return employee.contactNumber ?? "";
-            case "whatsAppNumber":
-              return employee.whatsAppNumber ?? "";
-            case "panNumber":
-              return employee.panNumber ?? "";
-            case "pfNumber":
-              return employee.pfNumber ?? "";
-            case "npsAccountNumber":
-              return employee.npsAccountNumber ?? "";
-            case "created":
-              return formatDate(employee.createdAt);
-            default:
-              return "";
-          }
-        },
-      })),
-      ...visibleCustomFieldColumns.map((field) => ({
-        key: getCustomFieldColumnKey(field.id),
-        label: field.label,
-        getValue(employee: (typeof employees)[number]) {
-          return employee.values[getCustomFieldColumnKey(field.id)] ?? "";
-        },
-      })),
-    ],
-    [visibleCustomFieldColumns, visibleFixedColumns],
-  );
-  const normalizedSearchTerm = normalizeSearchText(searchTerm);
-  const filteredEmployees = React.useMemo(() => {
-    if (!normalizedSearchTerm) {
-      return employees;
-    }
-
-    return employees.filter((employee) =>
-      searchableColumns.some((column) =>
-        normalizeSearchText(String(column.getValue(employee))).includes(
-          normalizedSearchTerm,
-        ),
-      ),
-    );
-  }, [employees, normalizedSearchTerm, searchableColumns]);
+  const visibleColumnCount = directory.columns.length;
 
   const deleteEmployeeMutation = useMutation(
     trpc.employees.delete.mutationOptions({
@@ -227,22 +99,24 @@ export default function EmployeeIndexPage() {
   );
 
   const totalRows = employees.length;
-  const filteredRows = filteredEmployees.length;
-  const totalPages = Math.max(1, Math.ceil(filteredRows / PAGE_SIZE));
-  const clampedPageIndex = Math.min(pageIndex, totalPages - 1);
-  const pageStart = clampedPageIndex * PAGE_SIZE;
-  const paginatedEmployees = filteredEmployees.slice(
-    pageStart,
-    pageStart + PAGE_SIZE,
-  );
+  const filteredRows = directory.filteredRows.length;
+  const totalPages = directory.totalPages;
+  const clampedPageIndex = directory.pageIndex;
+  const pageStart = directory.pageStart;
+  const paginatedEmployees = directory.pageRows;
   const rangeStart = filteredRows === 0 ? 0 : pageStart + 1;
   const rangeEnd =
-    filteredRows === 0
-      ? 0
-      : Math.min(pageStart + paginatedEmployees.length, filteredRows);
+    filteredRows === 0 ? 0 : Math.min(pageStart + paginatedEmployees.length, filteredRows);
   const canGoPrevious = clampedPageIndex > 0;
   const canGoNext = clampedPageIndex < totalPages - 1;
-  const hasSearch = normalizedSearchTerm.length > 0;
+  const hasSearch = searchTerm.trim().length > 0;
+
+  React.useEffect(() => {
+    setVisibleColumns((current) => ({
+      ...getInitialDirectoryColumnVisibility(columns),
+      ...current,
+    }));
+  }, [columns]);
 
   React.useEffect(() => {
     if (pageIndex !== clampedPageIndex) {
@@ -263,21 +137,15 @@ export default function EmployeeIndexPage() {
   }
 
   function handleDownloadCsv() {
-    if (searchableColumns.length === 0) {
+    if (directory.columns.length === 0) {
       return;
     }
-
-    const csvRows = [
-      searchableColumns.map((column) => escapeCsvValue(column.label)).join(","),
-      ...employees.map((employee) =>
-        searchableColumns
-          .map((column) => escapeCsvValue(String(column.getValue(employee))))
-          .join(","),
-      ),
-    ];
-    const blob = new Blob([csvRows.join("\r\n")], {
-      type: "text/csv;charset=utf-8",
-    });
+    const blob = new Blob(
+      [buildEmployeeDirectoryCsv({ columns: directory.columns, rows: employees })],
+      {
+        type: "text/csv;charset=utf-8",
+      },
+    );
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
@@ -304,49 +172,45 @@ export default function EmployeeIndexPage() {
         action={
           <div className="flex gap-2">
             <DropdownMenu>
-              <DropdownMenuTrigger
-                render={<Button variant="outline">Choose Columns</Button>}
-              />
+              <DropdownMenuTrigger render={<Button variant="outline">Choose Columns</Button>} />
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>Visible columns</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                {fixedColumnDefinitions.map((column) => (
-                  <DropdownMenuCheckboxItem
-                    checked={visibleColumns[column.key]}
-                    key={column.key}
-                    onCheckedChange={(checked) =>
-                      toggleColumn(column.key, Boolean(checked))
-                    }
-                  >
-                    {column.label}
-                  </DropdownMenuCheckboxItem>
-                ))}
-                {customFieldDefinitions.length > 0 ? (
+                {columns
+                  .filter((column) => column.kind === "fixed")
+                  .map((column) => (
+                    <DropdownMenuCheckboxItem
+                      checked={visibleColumns[column.key]}
+                      key={column.key}
+                      onCheckedChange={(checked) => toggleColumn(column.key, Boolean(checked))}
+                    >
+                      {column.label}
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                {columns.some((column) => column.kind === "custom") ? (
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuLabel>Custom fields</DropdownMenuLabel>
-                    {customFieldDefinitions.map((field) => {
-                      const columnKey = getCustomFieldColumnKey(field.id);
-
-                      return (
-                        <DropdownMenuCheckboxItem
-                          checked={visibleColumns[columnKey] ?? false}
-                          key={columnKey}
-                          onCheckedChange={(checked) =>
-                            toggleColumn(columnKey, Boolean(checked))
-                          }
-                        >
-                          {field.label}
-                        </DropdownMenuCheckboxItem>
-                      );
-                    })}
+                    {columns
+                      .filter((column) => column.kind === "custom")
+                      .map((column) => {
+                        return (
+                          <DropdownMenuCheckboxItem
+                            checked={visibleColumns[column.key] ?? false}
+                            key={column.key}
+                            onCheckedChange={(checked) =>
+                              toggleColumn(column.key, Boolean(checked))
+                            }
+                          >
+                            {column.label}
+                          </DropdownMenuCheckboxItem>
+                        );
+                      })}
                   </>
                 ) : null}
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button onClick={() => navigate("/employee/create")}>
-              Add Employee
-            </Button>
+            <Button onClick={() => navigate("/employee/create")}>Add Employee</Button>
           </div>
         }
       />
@@ -390,34 +254,14 @@ export default function EmployeeIndexPage() {
             <Table aria-label="Employee directory">
               <TableHeader>
                 <TableRow>
-                  {visibleColumns.employee ? (
-                    <TableHead className="min-w-56">Employee</TableHead>
-                  ) : null}
-                  {visibleColumns.rank ? <TableHead>Rank</TableHead> : null}
-                  {visibleColumns.designation ? (
-                    <TableHead>Designation</TableHead>
-                  ) : null}
-                  {visibleColumns.dateOfBirth ? (
-                    <TableHead>Date of Birth</TableHead>
-                  ) : null}
-                  {visibleColumns.gender ? <TableHead>Gender</TableHead> : null}
-                  {visibleColumns.contactNumber ? (
-                    <TableHead>Contact</TableHead>
-                  ) : null}
-                  {visibleColumns.whatsAppNumber ? (
-                    <TableHead>WhatsApp</TableHead>
-                  ) : null}
-                  {visibleColumns.panNumber ? <TableHead>PAN</TableHead> : null}
-                  {visibleColumns.pfNumber ? <TableHead>PF</TableHead> : null}
-                  {visibleColumns.npsAccountNumber ? (
-                    <TableHead>NPS</TableHead>
-                  ) : null}
-                  {visibleCustomFieldColumns.map((field) => (
-                    <TableHead className="min-w-40" key={field.id}>
-                      {field.label}
+                  {directory.columns.map((column) => (
+                    <TableHead
+                      className={column.key === "employee" ? "min-w-56" : undefined}
+                      key={column.key}
+                    >
+                      {column.label}
                     </TableHead>
                   ))}
-                  {visibleColumns.created ? <TableHead>Created</TableHead> : null}
                   <TableHead className="w-12 text-right">Action</TableHead>
                 </TableRow>
               </TableHeader>
@@ -425,20 +269,11 @@ export default function EmployeeIndexPage() {
                 {employeesQuery.isPending
                   ? Array.from({ length: 5 }, (_, rowIndex) => (
                       <TableRow key={`loading-${rowIndex}`}>
-                        {visibleFixedColumns.map((column) => (
+                        {directory.columns.map((column) => (
                           <TableCell key={`${column.key}-${rowIndex}`}>
                             <Skeleton
-                              className={
-                                column.key === "employee"
-                                  ? "h-4 w-40"
-                                  : "h-4 w-24"
-                              }
+                              className={column.key === "employee" ? "h-4 w-40" : "h-4 w-24"}
                             />
-                          </TableCell>
-                        ))}
-                        {visibleCustomFieldColumns.map((field) => (
-                          <TableCell key={`${field.id}-${rowIndex}`}>
-                            <Skeleton className="h-4 w-24" />
                           </TableCell>
                         ))}
                         <TableCell>
@@ -449,72 +284,20 @@ export default function EmployeeIndexPage() {
                   : null}
 
                 {!employeesQuery.isPending && paginatedEmployees.length > 0
-                  ? paginatedEmployees.map((employee) => (
+                  ? paginatedEmployees.map(({ row: employee, values }) => (
                       <TableRow key={employee.id}>
-                        {visibleColumns.employee ? (
-                          <TableCell className="whitespace-normal">
-                            <div className="space-y-1">
-                              <p className="font-medium">
-                                {getEmployeeDisplayName(employee)}
-                              </p>
-                            </div>
+                        {directory.columns.map((column) => (
+                          <TableCell
+                            className={
+                              column.key === "employee" || column.key === "designation"
+                                ? "whitespace-normal"
+                                : undefined
+                            }
+                            key={column.key}
+                          >
+                            {values[column.key] || "Not provided"}
                           </TableCell>
-                        ) : null}
-                        {visibleColumns.rank ? (
-                          <TableCell>{employee.seniorityRank}</TableCell>
-                        ) : null}
-                        {visibleColumns.designation ? (
-                          <TableCell className="whitespace-normal">
-                            {getDesignationDisplayValue(employee)}
-                          </TableCell>
-                        ) : null}
-                        {visibleColumns.dateOfBirth ? (
-                          <TableCell>
-                            {formatDateOnly(employee.dateOfBirth)}
-                          </TableCell>
-                        ) : null}
-                        {visibleColumns.gender ? (
-                          <TableCell>{employee.gender}</TableCell>
-                        ) : null}
-                        {visibleColumns.contactNumber ? (
-                          <TableCell>
-                            {employee.contactNumber || "Not provided"}
-                          </TableCell>
-                        ) : null}
-                        {visibleColumns.whatsAppNumber ? (
-                          <TableCell>
-                            {employee.whatsAppNumber || "Not provided"}
-                          </TableCell>
-                        ) : null}
-                        {visibleColumns.panNumber ? (
-                          <TableCell>
-                            {employee.panNumber || "Not provided"}
-                          </TableCell>
-                        ) : null}
-                        {visibleColumns.pfNumber ? (
-                          <TableCell>
-                            {employee.pfNumber || "Not provided"}
-                          </TableCell>
-                        ) : null}
-                        {visibleColumns.npsAccountNumber ? (
-                          <TableCell>
-                            {employee.npsAccountNumber || "Not provided"}
-                          </TableCell>
-                        ) : null}
-                        {visibleCustomFieldColumns.map((field) => {
-                          const fieldValue =
-                            employee.values[getCustomFieldColumnKey(field.id)] ??
-                            "";
-
-                          return (
-                            <TableCell key={field.id}>
-                              {fieldValue || "Not provided"}
-                            </TableCell>
-                          );
-                        })}
-                        {visibleColumns.created ? (
-                          <TableCell>{formatDate(employee.createdAt)}</TableCell>
-                        ) : null}
+                        ))}
                         <TableCell className="text-right">
                           <DropdownMenu>
                             <DropdownMenuTrigger
@@ -530,16 +313,12 @@ export default function EmployeeIndexPage() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem
-                                onClick={() =>
-                                  navigate(`/employee/${employee.id}/edit`)
-                                }
+                                onClick={() => navigate(`/employee/${employee.id}/edit`)}
                               >
                                 Edit
                               </DropdownMenuItem>
                               <DropdownMenuItem
-                                onClick={() =>
-                                  setEmployeePendingDelete(employee)
-                                }
+                                onClick={() => setEmployeePendingDelete(employee)}
                                 variant="destructive"
                               >
                                 Delete
@@ -557,8 +336,8 @@ export default function EmployeeIndexPage() {
                       className="h-24 text-center text-muted-foreground"
                       colSpan={visibleColumnCount + 1}
                     >
-                      Start by creating a designation in Employee Setup, then
-                      add your first employee here.
+                      Start by creating a designation in Employee Setup, then add your first
+                      employee here.
                     </TableCell>
                   </TableRow>
                 ) : null}
@@ -589,9 +368,7 @@ export default function EmployeeIndexPage() {
                   <PaginationItem>
                     <PaginationPrevious
                       disabled={!canGoPrevious}
-                      onClick={() =>
-                        setPageIndex((current) => Math.max(current - 1, 0))
-                      }
+                      onClick={() => setPageIndex((current) => Math.max(current - 1, 0))}
                       variant="outline"
                     />
                   </PaginationItem>
@@ -599,9 +376,7 @@ export default function EmployeeIndexPage() {
                     <PaginationNext
                       disabled={!canGoNext}
                       onClick={() =>
-                        setPageIndex((current) =>
-                          Math.min(current + 1, totalPages - 1),
-                        )
+                        setPageIndex((current) => Math.min(current + 1, totalPages - 1))
                       }
                       variant="outline"
                     />
@@ -645,9 +420,7 @@ export default function EmployeeIndexPage() {
               }}
               disabled={deleteEmployeeMutation.isPending}
             >
-              {deleteEmployeeMutation.isPending
-                ? "Deleting..."
-                : "Delete employee"}
+              {deleteEmployeeMutation.isPending ? "Deleting..." : "Delete employee"}
             </Button>
           </DialogFooter>
         </DialogContent>

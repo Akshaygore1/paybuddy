@@ -66,17 +66,11 @@ describe("Reports row aggregation", () => {
       financialYearStart: 2026,
       employees: [
         {
-          id: "employee-1",
-          firstName: "Asha",
-          middleName: "",
-          surname: "Patel",
-          seniorityRank: 1,
+          employee: { id: "employee-1", name: "Asha Patel" },
+          annualTotals: { earningsPaise: 0, deductionsPaise: 0, netPayPaise: 0 },
+          monthlyPayroll: [],
         },
       ],
-      profiles: [],
-      versions: [],
-      customFieldPeriods: [],
-      lineItems: [],
     });
 
     expect(rows).toEqual([
@@ -98,75 +92,26 @@ describe("Reports row aggregation", () => {
       financialYearStart: 2026,
       employees: [
         {
-          id: "employee-1",
-          firstName: "Asha",
-          middleName: "R",
-          surname: "Patel",
-          seniorityRank: 1,
-        },
-      ],
-      profiles: [{ id: "profile-1", employeeId: "employee-1" }],
-      versions: [
-        {
-          id: "version-april",
-          payrollProfileId: "profile-1",
-          effectiveMonth: "2026-04",
-        },
-        {
-          id: "version-june",
-          payrollProfileId: "profile-1",
-          effectiveMonth: "2026-06",
-        },
-      ],
-      customFieldPeriods: [
-        {
-          customFieldDefinitionId: "allowance",
-          effectiveFromMonth: "2026-04",
-          effectiveToMonth: "2026-09",
-        },
-      ],
-      lineItems: [
-        {
-          payrollVersionId: "version-april",
-          section: "earnings",
-          fixedFieldKey: "basicPay",
-          customFieldDefinitionId: null,
-          amountPaise: 1_00_000 * 100,
-        },
-        {
-          payrollVersionId: "version-april",
-          section: "deductions",
-          fixedFieldKey: "incomeTax",
-          customFieldDefinitionId: null,
-          amountPaise: 5_000 * 100,
-        },
-        {
-          payrollVersionId: "version-april",
-          section: "earnings",
-          fixedFieldKey: null,
-          customFieldDefinitionId: "allowance",
-          amountPaise: 10_000 * 100,
-        },
-        {
-          payrollVersionId: "version-june",
-          section: "earnings",
-          fixedFieldKey: "basicPay",
-          customFieldDefinitionId: null,
-          amountPaise: 1_20_000 * 100,
-        },
-        {
-          payrollVersionId: "version-june",
-          section: "deductions",
-          fixedFieldKey: "incomeTax",
-          customFieldDefinitionId: null,
-          amountPaise: 6_000 * 100,
-        },
-        {
-          payrollVersionId: "version-june",
-          section: "earnings",
-          fixedFieldKey: null,
-          customFieldDefinitionId: "allowance",
-          amountPaise: 10_000 * 100,
+          employee: { id: "employee-1", name: "Asha R Patel" },
+          annualTotals: {
+            earningsPaise: 14_50_000 * 100,
+            deductionsPaise: 70_000 * 100,
+            netPayPaise: 13_80_000 * 100,
+          },
+          monthlyPayroll: Array.from({ length: 12 }, (_, monthIndex) => ({
+            lineItems: [
+              {
+                section: "earnings" as const,
+                fixedFieldKey: "basicPay",
+                amountPaise: monthIndex < 2 ? 1_00_000 * 100 : 1_20_000 * 100,
+              },
+              {
+                section: "deductions" as const,
+                fixedFieldKey: "incomeTax",
+                amountPaise: monthIndex < 2 ? 5_000 * 100 : 6_000 * 100,
+              },
+            ],
+          })),
         },
       ],
     });

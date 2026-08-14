@@ -13,7 +13,6 @@ export const institutions = sqliteTable("institutions", {
   tanNumber: text("tan_number").notNull().unique(),
   institutionHead: text("institution_head").notNull(),
   address: text("address").notNull(),
-  loginActive: integer("login_active", { mode: "boolean" }).default(true).notNull(),
   createdAt: integer("created_at", { mode: "timestamp_ms" })
     .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
     .notNull(),

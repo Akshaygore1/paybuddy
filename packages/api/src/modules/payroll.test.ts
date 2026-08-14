@@ -51,7 +51,7 @@ describe("Payroll D1 statement limits", () => {
     expect(Math.max(...parameterCounts)).toBeLessThanOrEqual(100);
   });
 
-  it("rolls back version line-item replacement when a later batch statement fails", async () => {
+  it("rolls back a selected version replacement without touching later versions", async () => {
     const sqlite = await createSqliteD1({ failBatchAt: 2 });
     await sqlite.executeMultiple(`
       create table employees (
@@ -83,8 +83,12 @@ describe("Payroll D1 statement limits", () => {
       insert into employees values ('employee-1', 'institution-1', 'Asha', '', 'Patel');
       insert into employee_payroll_profiles values ('profile-1', 'institution-1', 'employee-1', 2026);
       insert into employee_payroll_versions values ('version-1', 'profile-1', '2026-04');
+      insert into employee_payroll_versions values ('version-2', 'profile-1', '2026-09');
       insert into payroll_line_items values (
         'old-item', 'version-1', 'earnings', 'basicPay', null, 'Basic Pay', 50000, 1, 0, 0
+      );
+      insert into payroll_line_items values (
+        'future-item', 'version-2', 'earnings', 'basicPay', null, 'Basic Pay', 200000, 1, 0, 0
       );
     `);
     const db = drizzle(sqlite.client, { schema });
@@ -112,8 +116,173 @@ describe("Payroll D1 statement limits", () => {
       "select id, amount_paise from payroll_line_items",
     );
 
-    expect(versions.rows).toEqual([{ id: "version-1" }]);
-    expect(lineItemsAfterFailure.rows).toEqual([{ id: "old-item", amount_paise: 50_000 }]);
+    expect(versions.rows).toEqual([{ id: "version-1" }, { id: "version-2" }]);
+    expect(lineItemsAfterFailure.rows).toEqual([
+      { id: "old-item", amount_paise: 50_000 },
+      { id: "future-item", amount_paise: 200_000 },
+    ]);
+    sqlite.close();
+  });
+
+  it("preserves later version changes when an earlier month is saved", async () => {
+    const sqlite = await createSqliteD1();
+    await sqlite.executeMultiple(`
+      create table institutions (
+        id text primary key, name text not null, tan_number text not null, address text not null
+      );
+      create table employees (
+        id text primary key, institution_id text not null, first_name text not null,
+        middle_name text not null, surname text not null
+      );
+      create table payroll_custom_field_definitions (
+        id text primary key, institution_id text not null, section text not null,
+        label text not null, key text not null, is_active integer not null,
+        sort_order integer not null
+      );
+      create table payroll_custom_field_periods (
+        id text primary key, custom_field_definition_id text not null,
+        effective_from_month text not null, effective_to_month text
+      );
+      create table employee_payroll_profiles (
+        id text primary key, institution_id text not null, employee_id text not null,
+        financial_year_start integer not null,
+        created_at integer default 0 not null, updated_at integer default 0 not null
+      );
+      create table employee_payroll_versions (
+        id text primary key, payroll_profile_id text not null, effective_month text not null,
+        created_at integer default 0 not null, updated_at integer default 0 not null
+      );
+      create table payroll_line_items (
+        id text primary key, payroll_version_id text not null, section text not null,
+        fixed_field_key text, custom_field_definition_id text, label text not null,
+        amount_paise integer not null, sort_order integer not null,
+        created_at integer default 0 not null, updated_at integer default 0 not null
+      );
+      insert into institutions values ('institution-1', 'School', 'TAN1', 'Address');
+      insert into employees values ('employee-1', 'institution-1', 'Asha', '', 'Patel');
+      insert into employees values ('employee-2', 'institution-1', 'Ravi', '', 'Shah');
+      insert into payroll_custom_field_definitions values
+        ('allowance', 'institution-1', 'earnings', 'Allowance', 'allowance', 1, 1),
+        ('later-field', 'institution-1', 'earnings', 'Later Field', 'later_field', 1, 2);
+      insert into payroll_custom_field_periods values
+        ('allowance-period', 'allowance', '2026-06', null),
+        ('later-period', 'later-field', '2026-09', null);
+      insert into employee_payroll_profiles values
+        ('profile-1', 'institution-1', 'employee-1', 2026, 0, 0),
+        ('profile-other-employee', 'institution-1', 'employee-2', 2026, 0, 0),
+        ('profile-other-fy', 'institution-1', 'employee-1', 2025, 0, 0);
+      insert into employee_payroll_versions values
+        ('version-april', 'profile-1', '2026-04', 0, 0),
+        ('version-september', 'profile-1', '2026-09', 0, 0),
+        ('version-october', 'profile-1', '2026-10', 0, 0),
+        ('version-march', 'profile-1', '2027-03', 0, 0),
+        ('version-other-employee', 'profile-other-employee', '2026-09', 0, 0),
+        ('version-other-fy', 'profile-other-fy', '2025-09', 0, 0);
+      insert into payroll_line_items values
+        ('item-april', 'version-april', 'earnings', 'basicPay', null, 'Basic Pay', 50000, 1, 0, 0),
+        ('item-september', 'version-september', 'earnings', 'basicPay', null, 'Basic Pay', 20000000, 1, 0, 0),
+        ('item-september-custom', 'version-september', 'earnings', null, 'allowance', 'Allowance', 90000, 1001, 0, 0),
+        ('item-october', 'version-october', 'earnings', 'basicPay', null, 'Basic Pay', 30000000, 1, 0, 0),
+        ('item-march', 'version-march', 'earnings', 'basicPay', null, 'Basic Pay', 40000000, 1, 0, 0),
+        ('item-other-employee', 'version-other-employee', 'earnings', 'basicPay', null, 'Basic Pay', 70000, 1, 0, 0),
+        ('item-other-fy', 'version-other-fy', 'earnings', 'basicPay', null, 'Basic Pay', 80000, 1, 0, 0);
+    `);
+    const db = drizzle(sqlite.client, { schema });
+    const payroll = buildPayrollModule({ db: db as never });
+
+    const augustForm = await payroll.save("institution-1", {
+      employeeId: "employee-1",
+      financialYearStart: 2026,
+      month: "2026-08",
+      lineItems: [
+        {
+          section: "earnings",
+          fixedFieldKey: "basicPay",
+          customFieldDefinitionId: null,
+          amount: "100000.00",
+        },
+        {
+          section: "earnings",
+          fixedFieldKey: null,
+          customFieldDefinitionId: "allowance",
+          amount: "700.00",
+        },
+      ],
+    });
+
+    expect(augustForm.effectiveMonth).toBe("2026-08");
+    expect(
+      augustForm.monthlyPayroll
+        .find((item) => item.month === "2026-09")
+        ?.lineItems.find((item) => item.fixedFieldKey === "basicPay")?.amountPaise,
+    ).toBe(20_000_000);
+    expect(
+      augustForm.monthlyPayroll
+        .find((item) => item.month === "2026-10")
+        ?.lineItems.find((item) => item.fixedFieldKey === "basicPay")?.amountPaise,
+    ).toBe(30_000_000);
+    expect(
+      augustForm.monthlyPayroll
+        .find((item) => item.month === "2027-03")
+        ?.lineItems.find((item) => item.fixedFieldKey === "basicPay")?.amountPaise,
+    ).toBe(40_000_000);
+    expect(
+      augustForm.monthlyPayroll
+        .find((item) => item.month === "2026-09")
+        ?.lineItems.find((item) => item.customFieldDefinitionId === "later-field")?.amountPaise,
+    ).toBe(0);
+
+    const remainingVersions = await sqlite.execute(
+      "select id, payroll_profile_id from employee_payroll_versions order by id",
+    );
+    expect(remainingVersions.rows).toHaveLength(7);
+    expect(remainingVersions.rows).toEqual(
+      expect.arrayContaining([
+        { id: "version-april", payroll_profile_id: "profile-1" },
+        { id: "version-other-employee", payroll_profile_id: "profile-other-employee" },
+        { id: "version-other-fy", payroll_profile_id: "profile-other-fy" },
+        expect.objectContaining({ payroll_profile_id: "profile-1" }),
+      ]),
+    );
+    const untouchedLineItems = await sqlite.execute(
+      "select id, amount_paise from payroll_line_items where id in ('item-other-employee', 'item-other-fy') order by id",
+    );
+    expect(untouchedLineItems.rows).toEqual([
+      { id: "item-other-employee", amount_paise: 70_000 },
+      { id: "item-other-fy", amount_paise: 80_000 },
+    ]);
+
+    const septemberForm = await payroll.save("institution-1", {
+      employeeId: "employee-1",
+      financialYearStart: 2026,
+      month: "2026-09",
+      lineItems: [
+        {
+          section: "earnings",
+          fixedFieldKey: "basicPay",
+          customFieldDefinitionId: null,
+          amount: "0",
+        },
+        {
+          section: "earnings",
+          fixedFieldKey: null,
+          customFieldDefinitionId: "allowance",
+          amount: "0",
+        },
+        {
+          section: "earnings",
+          fixedFieldKey: null,
+          customFieldDefinitionId: "later-field",
+          amount: "0",
+        },
+      ],
+    });
+    const octoberPayroll = septemberForm.monthlyPayroll.find((item) => item.month === "2026-10");
+
+    expect(octoberPayroll?.effectiveMonth).toBe("2026-10");
+    expect(
+      octoberPayroll?.lineItems.find((item) => item.fixedFieldKey === "basicPay")?.amountPaise,
+    ).toBe(30_000_000);
     sqlite.close();
   });
 });

@@ -4,7 +4,7 @@ import { buildInstitutionAccountModule } from "../modules/institution-accounts";
 import { adminProcedure, router } from "../index";
 import {
   createInstitutionSchema,
-  deactivateInstitutionLoginSchema,
+  setInstitutionLoginAccessSchema,
   resetInstitutionPasswordSchema,
 } from "../schemas/institutions";
 
@@ -29,9 +29,9 @@ export const institutionsRouter = router({
     .mutation(async ({ ctx, input }) => {
       return institutionAccounts.resetPassword(input, ctx.headers);
     }),
-  deactivateLogin: adminProcedure
-    .input(deactivateInstitutionLoginSchema)
+  setLoginAccess: adminProcedure
+    .input(setInstitutionLoginAccessSchema)
     .mutation(async ({ ctx, input }) => {
-      return institutionAccounts.deactivateLogin(input, ctx.headers);
+      return institutionAccounts.setLoginAccess(input, ctx.headers);
     }),
 });

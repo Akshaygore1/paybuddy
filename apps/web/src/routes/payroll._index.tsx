@@ -7,7 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@tds-nivaran/ui/components/card";
-import { Field, FieldError, FieldGroup, FieldLabel } from "@tds-nivaran/ui/components/field";
+import { Field, FieldError, FieldLabel } from "@tds-nivaran/ui/components/field";
 import { Input } from "@tds-nivaran/ui/components/input";
 import {
   Select,
@@ -26,34 +26,24 @@ import {
   TableRow,
 } from "@tds-nivaran/ui/components/table";
 import { Badge } from "@tds-nivaran/ui/components/badge";
-import { useMutation, useQuery } from "@tanstack/react-query";
 import { DownloadIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/page-header";
+import { usePayrollWorkspace } from "@/hooks/use-payroll-workspace";
+import { financialYearOptions, getFinancialYearLabel } from "@/lib/financial-year";
 import {
-  financialYearBeforeChangeEvent,
-  financialYearChangeEvent,
-  financialYearOptions,
-  getFinancialYearLabel,
-  readSelectedFinancialYearStart,
-  type FinancialYearStart,
-  writeSelectedFinancialYearStart,
-} from "@/lib/financial-year";
-import { buildPayrollPdfTableModel, formatPayrollPdfCurrency } from "@/lib/payroll-pdf";
-import { queryClient, trpc } from "@/utils/trpc";
-
-type PayrollSection = "earnings" | "deductions";
-
-type PayrollLineItemState = {
-  section: PayrollSection;
-  fixedFieldKey: string | null;
-  customFieldDefinitionId: string | null;
-  label: string;
-  amount: string;
-  sortOrder: number;
-  isArchivedCustomField?: boolean;
-};
+  formatPaiseForDisplay,
+  parsePayrollInputToPaise,
+  removeMoneyGrouping,
+} from "@/lib/payroll-money";
+import { downloadPayrollDocument } from "@/lib/payroll-document";
+import { buildPayrollPdfTableModel } from "@/lib/payroll-pdf";
+import {
+  getPayrollLineItemKey as getLineItemKey,
+  type PayrollLineItemState,
+  type PayrollSection,
+} from "@/lib/payroll-workspace";
 
 const sectionLabels: Record<PayrollSection, string> = {
   earnings: "Earnings",
@@ -84,47 +74,6 @@ function buildFinancialYearMonths(financialYearStart: number) {
   });
 }
 
-function getCurrentFinancialYearMonth(financialYearStart: number) {
-  const months = buildFinancialYearMonths(financialYearStart);
-  const now = new Date();
-  const currentValue = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-
-  return months.some((month) => month.value === currentValue) ? currentValue : months[0].value;
-}
-
-function getLineItemKey(item: {
-  fixedFieldKey: string | null;
-  customFieldDefinitionId: string | null;
-  section: PayrollSection;
-}) {
-  return item.fixedFieldKey
-    ? `${item.section}:fixed:${item.fixedFieldKey}`
-    : `${item.section}:custom:${item.customFieldDefinitionId}`;
-}
-
-function paiseToInput(amountPaise: number) {
-  if (amountPaise === 0) {
-    return "";
-  }
-
-  return `${Math.floor(amountPaise / 100)}.${String(amountPaise % 100).padStart(2, "0")}`;
-}
-
-function parseInputToPaise(value: string) {
-  const normalized = value.trim();
-
-  if (!normalized) {
-    return 0;
-  }
-
-  if (!/^\d+(\.\d{1,2})?$/.test(normalized)) {
-    return Number.NaN;
-  }
-
-  const [rupeesText, paiseText = ""] = normalized.split(".");
-  return Number(rupeesText) * 100 + Number(paiseText.padEnd(2, "0"));
-}
-
 function formatCurrency(amountPaise: number) {
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
@@ -145,7 +94,7 @@ function calculateTotals(lineItems: PayrollLineItemState[]) {
   const totals = { earningsPaise: 0, deductionsPaise: 0, netPayPaise: 0 };
 
   for (const item of lineItems) {
-    const amountPaise = parseInputToPaise(item.amount);
+    const amountPaise = parsePayrollInputToPaise(item.amount);
 
     if (!Number.isFinite(amountPaise)) {
       continue;
@@ -162,46 +111,28 @@ function calculateTotals(lineItems: PayrollLineItemState[]) {
   return totals;
 }
 
-function createLineItemsFromForm(form: NonNullable<ReturnType<typeof useQuery>["data"]>) {
-  const data = form as {
-    lineItems: Array<{
-      section: PayrollSection;
-      fixedFieldKey: string | null;
-      customFieldDefinitionId: string | null;
-      label: string;
-      amountPaise: number;
-      sortOrder: number;
-      isArchivedCustomField?: boolean;
-    }>;
-  };
-
-  return data.lineItems.map((item) => ({
-    section: item.section,
-    fixedFieldKey: item.fixedFieldKey,
-    customFieldDefinitionId: item.customFieldDefinitionId,
-    label: item.label,
-    amount: paiseToInput(item.amountPaise),
-    sortOrder: item.sortOrder,
-    isArchivedCustomField: item.isArchivedCustomField,
-  }));
-}
-
 function PayrollTable({
   section,
   lineItems,
   onAmountChange,
+  onAmountBlur,
   onAddField,
   onArchiveField,
   selectedMonthLabel,
+  previousMonthLabel,
+  previousMonthAmounts,
   isAddFieldPending,
   isArchivingField,
 }: {
   section: PayrollSection;
   lineItems: PayrollLineItemState[];
   onAmountChange: (lineItemKey: string, value: string) => void;
+  onAmountBlur: (lineItemKey: string) => void;
   onAddField: (section: PayrollSection, label: string) => Promise<string | null>;
   onArchiveField: (fieldId: string) => Promise<void>;
   selectedMonthLabel: string;
+  previousMonthLabel: string | null;
+  previousMonthAmounts: ReadonlyMap<string, number>;
   isAddFieldPending: boolean;
   isArchivingField: boolean;
 }) {
@@ -209,11 +140,12 @@ function PayrollTable({
   const [fieldLabel, setFieldLabel] = React.useState("");
   const [fieldError, setFieldError] = React.useState<string | null>(null);
   const [lineItemKeyToFocus, setLineItemKeyToFocus] = React.useState<string | null>(null);
+  const [focusedAmountKey, setFocusedAmountKey] = React.useState<string | null>(null);
   const fieldNameInputRef = React.useRef<HTMLInputElement>(null);
   const amountInputRefs = React.useRef(new Map<string, HTMLInputElement>());
   const visibleItems = lineItems.filter((item) => item.section === section);
   const totalPaise = visibleItems.reduce((total, item) => {
-    const amountPaise = parseInputToPaise(item.amount);
+    const amountPaise = parsePayrollInputToPaise(item.amount);
     return total + (Number.isFinite(amountPaise) ? amountPaise : 0);
   }, 0);
 
@@ -352,6 +284,9 @@ function PayrollTable({
           <TableHeader>
             <TableRow>
               <TableHead>Field</TableHead>
+              <TableHead className="w-44 text-right">
+                {previousMonthLabel ? `Previous month (${previousMonthLabel})` : "Previous month"}
+              </TableHead>
               <TableHead className="w-48 text-right">Amount</TableHead>
             </TableRow>
           </TableHeader>
@@ -359,7 +294,7 @@ function PayrollTable({
             {visibleItems.map((item) => {
               const key = getLineItemKey(item);
               const invalidAmount = item.amount.trim()
-                ? Number.isNaN(parseInputToPaise(item.amount))
+                ? Number.isNaN(parsePayrollInputToPaise(item.amount))
                 : false;
 
               return (
@@ -385,6 +320,11 @@ function PayrollTable({
                       ) : null}
                     </div>
                   </TableCell>
+                  <TableCell className="text-right font-medium tabular-nums text-muted-foreground">
+                    {previousMonthAmounts.has(key)
+                      ? formatPaiseForDisplay(previousMonthAmounts.get(key) ?? 0)
+                      : "—"}
+                  </TableCell>
                   <TableCell>
                     <Input
                       ref={(input) => {
@@ -397,9 +337,16 @@ function PayrollTable({
                       aria-label={`${item.label} amount`}
                       inputMode="decimal"
                       className="text-right"
-                      value={item.amount}
+                      value={
+                        focusedAmountKey === key ? removeMoneyGrouping(item.amount) : item.amount
+                      }
                       aria-invalid={invalidAmount}
+                      onFocus={() => setFocusedAmountKey(key)}
                       onChange={(event) => onAmountChange(key, event.target.value)}
+                      onBlur={() => {
+                        setFocusedAmountKey(null);
+                        onAmountBlur(key);
+                      }}
                       placeholder="0.00"
                     />
                     {invalidAmount ? (
@@ -423,74 +370,20 @@ function PayrollTable({
 }
 
 export default function PayrollIndexPage() {
-  const [financialYearStart, setFinancialYearStart] = React.useState<FinancialYearStart>(() =>
-    readSelectedFinancialYearStart(),
-  );
-  const [selectedEmployeeId, setSelectedEmployeeId] = React.useState("");
-  const [selectedMonth, setSelectedMonth] = React.useState(() =>
-    getCurrentFinancialYearMonth(readSelectedFinancialYearStart()),
-  );
-  const [formKey, setFormKey] = React.useState<{
-    employeeId: string;
-    financialYearStart: FinancialYearStart;
-  } | null>(null);
-  const [lineItems, setLineItems] = React.useState<PayrollLineItemState[]>([]);
-  const [isDirty, setIsDirty] = React.useState(false);
-
-  const employeesQuery = useQuery(trpc.payroll.getEmployees.queryOptions());
-  const formQuery = useQuery({
-    ...trpc.payroll.getForm.queryOptions(
-      formKey
-        ? {
-            employeeId: formKey.employeeId,
-            financialYearStart: formKey.financialYearStart,
-            month: selectedMonth,
-          }
-        : {
-            employeeId: "__pending__",
-            financialYearStart,
-            month: selectedMonth,
-          },
-    ),
-    enabled: Boolean(formKey),
-  });
-
-  const savePayrollMutation = useMutation(
-    trpc.payroll.save.mutationOptions({
-      onSuccess: async (data) => {
-        setLineItems(createLineItemsFromForm(data));
-        setIsDirty(false);
-        toast.success("Payroll saved");
-        await queryClient.invalidateQueries({
-          queryKey: trpc.payroll.getForm.queryKey({
-            employeeId: data.employee.id,
-            financialYearStart: data.financialYearStart,
-            month: data.month,
-          }),
-        });
-      },
-      onError: (error) => toast.error(error.message),
-    }),
-  );
-
-  const addCustomFieldMutation = useMutation(
-    trpc.payroll.addCustomField.mutationOptions({
-      onSuccess: async () => {
-        toast.success("Payroll field added");
-        await queryClient.invalidateQueries();
-      },
-    }),
-  );
-
-  const archiveCustomFieldMutation = useMutation(
-    trpc.payroll.archiveCustomField.mutationOptions({
-      onSuccess: async () => {
-        toast.success("Payroll field archived");
-        await queryClient.invalidateQueries();
-      },
-      onError: (error) => toast.error(error.message),
-    }),
-  );
+  const workspace = usePayrollWorkspace();
+  const {
+    state: { financialYearStart, employeeId: selectedEmployeeId, month: selectedMonth, lineItems },
+    validation: { hasInvalidAmounts, canDownload },
+    employeesQuery,
+    formQuery,
+    saveMutation: savePayrollMutation,
+    addCustomFieldMutation,
+    archiveCustomFieldMutation,
+    updateAmount,
+    formatAmount,
+    addCustomField,
+    archiveCustomField,
+  } = workspace;
 
   const months = React.useMemo(
     () => buildFinancialYearMonths(financialYearStart),
@@ -498,6 +391,21 @@ export default function PayrollIndexPage() {
   );
   const selectedMonthDefinition =
     months.find((month) => month.value === selectedMonth) ?? months[0];
+  const selectedMonthIndex = months.findIndex((month) => month.value === selectedMonth);
+  const previousMonthDefinition = selectedMonthIndex > 0 ? months[selectedMonthIndex - 1] : null;
+  const previousMonthAmounts = React.useMemo(() => {
+    if (!previousMonthDefinition || !formQuery.data) {
+      return new Map<string, number>();
+    }
+
+    const previousPayroll = formQuery.data.monthlyPayroll.find(
+      (payroll) => payroll.month === previousMonthDefinition.value,
+    );
+
+    return new Map(
+      (previousPayroll?.lineItems ?? []).map((item) => [getLineItemKey(item), item.amountPaise]),
+    );
+  }, [formQuery.data, previousMonthDefinition]);
   const employeeLabelById = React.useMemo(
     () =>
       Object.fromEntries(
@@ -509,194 +417,6 @@ export default function PayrollIndexPage() {
     [employeesQuery.data],
   );
   const totals = React.useMemo(() => calculateTotals(lineItems), [lineItems]);
-  const hasInvalidAmounts = lineItems.some(
-    (item) => item.amount.trim() && Number.isNaN(parseInputToPaise(item.amount)),
-  );
-
-  React.useEffect(() => {
-    function confirmFinancialYearChange(event: Event) {
-      if (isDirty && !window.confirm("Discard your unsaved payroll changes?")) {
-        event.preventDefault();
-      }
-    }
-
-    window.addEventListener(financialYearBeforeChangeEvent, confirmFinancialYearChange);
-    return () =>
-      window.removeEventListener(financialYearBeforeChangeEvent, confirmFinancialYearChange);
-  }, [isDirty]);
-
-  React.useEffect(() => {
-    function syncFinancialYear(event: Event) {
-      const customEvent = event as CustomEvent<{
-        financialYearStart: FinancialYearStart;
-      }>;
-      const nextFinancialYearStart =
-        customEvent.detail?.financialYearStart ?? readSelectedFinancialYearStart();
-
-      if (nextFinancialYearStart === financialYearStart) {
-        return;
-      }
-
-      setFinancialYearStart(nextFinancialYearStart);
-      setSelectedMonth(getCurrentFinancialYearMonth(nextFinancialYearStart));
-      setFormKey((current) =>
-        current
-          ? {
-              employeeId: current.employeeId,
-              financialYearStart: nextFinancialYearStart,
-            }
-          : null,
-      );
-      setLineItems([]);
-      setIsDirty(false);
-    }
-
-    window.addEventListener(financialYearChangeEvent, syncFinancialYear);
-    return () => window.removeEventListener(financialYearChangeEvent, syncFinancialYear);
-  }, [financialYearStart]);
-
-  React.useEffect(() => {
-    if (formQuery.data) {
-      setLineItems(createLineItemsFromForm(formQuery.data));
-      setIsDirty(false);
-    }
-  }, [formQuery.data]);
-
-  function updateFinancialYear(value: string | null) {
-    const nextFinancialYearStart = Number(value) as FinancialYearStart;
-
-    if (
-      !financialYearOptions.includes(nextFinancialYearStart) ||
-      nextFinancialYearStart === financialYearStart
-    ) {
-      return;
-    }
-
-    if (!writeSelectedFinancialYearStart(nextFinancialYearStart)) {
-      return;
-    }
-
-    setFinancialYearStart(nextFinancialYearStart);
-    setSelectedMonth(getCurrentFinancialYearMonth(nextFinancialYearStart));
-    setFormKey(
-      selectedEmployeeId
-        ? {
-            employeeId: selectedEmployeeId,
-            financialYearStart: nextFinancialYearStart,
-          }
-        : null,
-    );
-    setLineItems([]);
-    setIsDirty(false);
-  }
-
-  function confirmDiscardChanges() {
-    if (isDirty && !window.confirm("Discard your unsaved payroll changes?")) {
-      return false;
-    }
-
-    if (isDirty && formQuery.data) {
-      setLineItems(createLineItemsFromForm(formQuery.data));
-    }
-    setIsDirty(false);
-    return true;
-  }
-
-  function updateMonth(value: string | null) {
-    if (!value || value === selectedMonth || !confirmDiscardChanges()) {
-      return;
-    }
-
-    setSelectedMonth(value);
-    setLineItems([]);
-  }
-
-  function updateAmount(lineItemKey: string, value: string) {
-    setLineItems((current) =>
-      current.map((item) =>
-        getLineItemKey(item) === lineItemKey
-          ? {
-              ...item,
-              amount: value,
-            }
-          : item,
-      ),
-    );
-    setIsDirty(true);
-  }
-
-  async function savePayroll() {
-    if (!formKey || hasInvalidAmounts) {
-      if (hasInvalidAmounts) {
-        toast.error("Fix invalid payroll amounts before saving");
-      }
-      return;
-    }
-
-    await savePayrollMutation.mutateAsync({
-      employeeId: formKey.employeeId,
-      financialYearStart: formKey.financialYearStart,
-      month: selectedMonth,
-      lineItems: lineItems
-        .filter((item) => !item.isArchivedCustomField)
-        .map((item) => ({
-          section: item.section,
-          fixedFieldKey: item.fixedFieldKey,
-          customFieldDefinitionId: item.customFieldDefinitionId,
-          amount: item.amount.trim() || "0",
-        })),
-    });
-  }
-
-  async function addCustomField(section: PayrollSection, label: string) {
-    if (!confirmDiscardChanges()) {
-      return null;
-    }
-
-    const field = await addCustomFieldMutation.mutateAsync({
-      financialYearStart,
-      month: selectedMonth,
-      section,
-      label,
-    });
-
-    setLineItems((current) => {
-      if (current.some((item) => item.customFieldDefinitionId === field.id)) {
-        return current;
-      }
-
-      return [
-        ...current,
-        {
-          section: field.section,
-          fixedFieldKey: null,
-          customFieldDefinitionId: field.id,
-          label: field.label,
-          amount: "",
-          sortOrder: 1000 + field.sortOrder,
-          isArchivedCustomField: false,
-        },
-      ];
-    });
-
-    return getLineItemKey({
-      section: field.section,
-      fixedFieldKey: null,
-      customFieldDefinitionId: field.id,
-    });
-  }
-
-  async function archiveCustomField(fieldId: string) {
-    if (!confirmDiscardChanges()) {
-      return;
-    }
-
-    await archiveCustomFieldMutation.mutateAsync({
-      id: fieldId,
-      financialYearStart,
-      month: selectedMonth,
-    });
-  }
 
   function requireSavedPayroll() {
     if (!formQuery.data?.hasSavedPayroll) {
@@ -704,7 +424,7 @@ export default function PayrollIndexPage() {
       return false;
     }
 
-    if (isDirty) {
+    if (!canDownload) {
       toast.error("Save payroll changes before downloading a payslip");
       return false;
     }
@@ -717,11 +437,10 @@ export default function PayrollIndexPage() {
       return;
     }
 
-    const { Document, Page, Text, View, StyleSheet, pdf } = await import("@react-pdf/renderer");
     const savedLineItems = lineItems
       .filter((item) => !item.isArchivedCustomField)
       .map((item) => {
-        const amountPaise = parseInputToPaise(item.amount);
+        const amountPaise = parsePayrollInputToPaise(item.amount);
 
         return {
           ...item,
@@ -766,283 +485,12 @@ export default function PayrollIndexPage() {
         name: formQuery.data.employee.name,
       },
     });
-    const styles = StyleSheet.create({
-      page: {
-        paddingTop: 16,
-        paddingRight: 18,
-        paddingBottom: 20,
-        paddingLeft: 18,
-        fontSize: 6,
-        fontFamily: "Helvetica",
-        color: "#111111",
-      },
-      headerBlock: {
-        alignItems: "center",
-        borderBottom: "1px solid #9ca3af",
-        paddingTop: 4,
-        paddingBottom: 8,
-        marginBottom: 10,
-      },
-      institutionName: {
-        textAlign: "center",
-        fontSize: 12,
-        fontWeight: 700,
-        marginBottom: 2,
-      },
-      institutionAddress: {
-        textAlign: "center",
-        fontSize: 7,
-        marginBottom: 2,
-      },
-      institutionTan: {
-        textAlign: "center",
-        fontSize: 6.5,
-        color: "#4b5563",
-        marginBottom: 5,
-      },
-      title: {
-        textAlign: "center",
-        fontSize: 9.5,
-        fontWeight: 700,
-        letterSpacing: 0.2,
-        marginBottom: 8,
-      },
-      headerMetaRow: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        gap: 10,
-        width: "100%",
-        borderTop: "1px solid #d1d5db",
-        paddingTop: 6,
-      },
-      metaColumn: {
-        width: "48%",
-      },
-      metaText: {
-        fontSize: 6.5,
-        marginBottom: 2,
-      },
-      metaLabel: {
-        fontWeight: 700,
-      },
-      tableWrap: {
-        alignSelf: "center",
-        borderTop: "1px solid #94a3b8",
-        borderLeft: "1px solid #94a3b8",
-      },
-      tableHeaderRow: {
-        flexDirection: "row",
-        backgroundColor: "#dbe4f0",
-      },
-      tableRow: {
-        flexDirection: "row",
-      },
-      alternateRow: {
-        backgroundColor: "#f8fafc",
-      },
-      projectedRow: {
-        backgroundColor: "#f3f4f6",
-        color: "#9ca3af",
-      },
-      cell: {
-        paddingTop: 3,
-        paddingRight: 3,
-        paddingBottom: 3,
-        paddingLeft: 3,
-        borderRight: "1px solid #94a3b8",
-        borderBottom: "1px solid #94a3b8",
-        justifyContent: "center",
-      },
-      headerCellText: {
-        fontSize: 5.5,
-        fontWeight: 700,
-        textAlign: "center",
-        lineHeight: 1.2,
-      },
-      bodyCellText: {
-        fontSize: 5.7,
-        lineHeight: 1.2,
-      },
-      totalRow: {
-        backgroundColor: "#e2e8f0",
-      },
-    });
-    const institutionName = tableModel.header.leftLines[0]?.replace(/^School:\s*/u, "") ?? "";
-    const institutionAddress = tableModel.header.leftLines[1]?.replace(/^Address:\s*/u, "") ?? "";
-    const institutionTan = tableModel.header.leftLines[2]?.replace(/^TAN No\.\s*:\s*/u, "") ?? "";
-    function renderMetaLine(line: string) {
-      const [label, ...valueParts] = line.split(": ");
-      const value = valueParts.join(": ");
-
-      if (!value) {
-        return React.createElement(Text, { key: line, style: styles.metaText }, line);
-      }
-
-      return React.createElement(
-        Text,
-        { key: line, style: styles.metaText },
-        React.createElement(Text, { style: styles.metaLabel }, `${label}: `),
-        value,
-      );
-    }
-    function formatColumnLabel(label: string) {
-      if (label === "Month / Row") {
-        return "Month\nRow";
-      }
-
-      const words = label.replace(/\//g, " / ").split(/\s+/).filter(Boolean);
-
-      if (words.length <= 1 || label.length <= 10) {
-        return label;
-      }
-
-      const lines: string[] = [];
-      let currentLine = "";
-
-      for (const word of words) {
-        const nextLine = currentLine ? `${currentLine} ${word}` : word;
-
-        if (nextLine.length <= 11 || currentLine.length === 0) {
-          currentLine = nextLine;
-          continue;
-        }
-
-        lines.push(currentLine);
-        currentLine = word;
-      }
-
-      if (currentLine) {
-        lines.push(currentLine);
-      }
-
-      return lines.join("\n");
-    }
-    const renderCell = (
-      text: string,
-      width: number,
-      options: {
-        isHeader?: boolean;
-        align: "left" | "right" | "center";
-        isLastColumn?: boolean;
-      },
-    ) =>
-      React.createElement(
-        View,
-        {
-          style: [
-            styles.cell,
-            {
-              width,
-              textAlign: options.align,
-              borderRightWidth: options?.isLastColumn ? 0 : 1,
-            },
-          ],
-        },
-        React.createElement(
-          Text,
-          {
-            style: options?.isHeader ? styles.headerCellText : styles.bodyCellText,
-          },
-          text,
-        ),
-      );
-    const documentNode = React.createElement(
-      Document,
-      null,
-      React.createElement(
-        Page,
-        {
-          size: "A4",
-          orientation: "landscape",
-          style: styles.page,
-        },
-        React.createElement(
-          View,
-          { style: styles.headerBlock },
-          React.createElement(Text, { style: styles.institutionName }, institutionName),
-          React.createElement(Text, { style: styles.institutionAddress }, institutionAddress),
-          React.createElement(Text, { style: styles.institutionTan }, `TAN No.: ${institutionTan}`),
-          React.createElement(Text, { style: styles.title }, tableModel.header.title),
-          React.createElement(
-            View,
-            { style: styles.headerMetaRow },
-            React.createElement(
-              View,
-              { style: styles.metaColumn },
-              ...tableModel.header.rightLines
-                .filter((line) => line.startsWith("Employee:"))
-                .map(renderMetaLine),
-            ),
-            React.createElement(
-              View,
-              { style: styles.metaColumn },
-              ...tableModel.header.rightLines
-                .filter((line) => !line.startsWith("Employee:"))
-                .map(renderMetaLine),
-            ),
-          ),
-        ),
-        React.createElement(
-          View,
-          {
-            style: [styles.tableWrap, { width: tableModel.widthFit.tableWidth }],
-          },
-          React.createElement(
-            View,
-            { style: styles.tableHeaderRow },
-            ...tableModel.columns.map((column, columnIndex) =>
-              renderCell(formatColumnLabel(column.label), column.width, {
-                isHeader: true,
-                align: column.align,
-                isLastColumn: columnIndex === tableModel.columns.length - 1,
-              }),
-            ),
-          ),
-          ...tableModel.rows.map((row) =>
-            React.createElement(
-              View,
-              {
-                key: row.key,
-                style: [
-                  styles.tableRow,
-                  row.rowLabel === "Total"
-                    ? styles.totalRow
-                    : row.key === "selected-month" || Number(row.serialNumber) % 2 === 1
-                      ? styles.alternateRow
-                      : {},
-                  row.isProjected ? styles.projectedRow : {},
-                ],
-              },
-              ...tableModel.columns.map((column, columnIndex) => {
-                const value =
-                  column.key === "serialNumber"
-                    ? row.serialNumber
-                    : column.key === "rowLabel"
-                      ? row.rowLabel
-                      : formatPayrollPdfCurrency(row.values[column.key] ?? 0);
-
-                return renderCell(String(value), column.width, {
-                  align: column.align,
-                  isLastColumn: columnIndex === tableModel.columns.length - 1,
-                });
-              }),
-            ),
-          ),
-        ),
-      ),
-    );
-    const blob = await pdf(documentNode).toBlob();
     const employeeSlug = slugify(formQuery.data.employee.name);
     const fileName =
       kind === "monthly"
         ? `payslip-${employeeSlug}-${slugify(selectedMonthDefinition.shortLabel)}.pdf`
         : `annual-payslip-${employeeSlug}-${getFinancialYearLabel(financialYearStart)}.pdf`;
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = fileName;
-    link.click();
-    URL.revokeObjectURL(url);
+    await downloadPayrollDocument({ tableModel, fileName });
   }
 
   return (
@@ -1091,22 +539,7 @@ export default function PayrollIndexPage() {
                 value={selectedEmployeeId}
                 onValueChange={(value) => {
                   const nextEmployeeId = value ?? "";
-
-                  if (nextEmployeeId === selectedEmployeeId || !confirmDiscardChanges()) {
-                    return;
-                  }
-
-                  setSelectedEmployeeId(nextEmployeeId);
-                  setFormKey(
-                    nextEmployeeId
-                      ? {
-                          employeeId: nextEmployeeId,
-                          financialYearStart,
-                        }
-                      : null,
-                  );
-                  setLineItems([]);
-                  setIsDirty(false);
+                  workspace.selectEmployee(nextEmployeeId);
                 }}
               >
                 <SelectTrigger aria-label="Select employee">
@@ -1129,7 +562,10 @@ export default function PayrollIndexPage() {
             </Field>
             <Field>
               <FieldLabel>Financial year</FieldLabel>
-              <Select value={String(financialYearStart)} onValueChange={updateFinancialYear}>
+              <Select
+                value={String(financialYearStart)}
+                onValueChange={workspace.selectFinancialYear}
+              >
                 <SelectTrigger aria-label="Select payroll financial year">
                   <SelectValue placeholder="Select financial year">
                     {getFinancialYearLabel(financialYearStart)}
@@ -1148,7 +584,12 @@ export default function PayrollIndexPage() {
             </Field>
             <Field>
               <FieldLabel>Month</FieldLabel>
-              <Select value={selectedMonth} onValueChange={updateMonth}>
+              <Select
+                value={selectedMonth}
+                onValueChange={(value) => {
+                  if (value) workspace.selectMonth(value);
+                }}
+              >
                 <SelectTrigger aria-label="Select payroll month">
                   <SelectValue placeholder="Select month">
                     {selectedMonthDefinition.label}
@@ -1169,7 +610,7 @@ export default function PayrollIndexPage() {
         </CardContent>
       </Card>
 
-      {formKey ? (
+      {selectedEmployeeId ? (
         <div className="space-y-6">
           <div className="space-y-3">
             <div className="grid gap-6 xl:grid-cols-2">
@@ -1177,9 +618,12 @@ export default function PayrollIndexPage() {
                 section="earnings"
                 lineItems={lineItems}
                 onAmountChange={updateAmount}
+                onAmountBlur={formatAmount}
                 onAddField={addCustomField}
                 onArchiveField={archiveCustomField}
                 selectedMonthLabel={selectedMonthDefinition.label}
+                previousMonthLabel={previousMonthDefinition?.shortLabel ?? null}
+                previousMonthAmounts={previousMonthAmounts}
                 isAddFieldPending={addCustomFieldMutation.isPending}
                 isArchivingField={archiveCustomFieldMutation.isPending}
               />
@@ -1187,9 +631,12 @@ export default function PayrollIndexPage() {
                 section="deductions"
                 lineItems={lineItems}
                 onAmountChange={updateAmount}
+                onAmountBlur={formatAmount}
                 onAddField={addCustomField}
                 onArchiveField={archiveCustomField}
                 selectedMonthLabel={selectedMonthDefinition.label}
+                previousMonthLabel={previousMonthDefinition?.shortLabel ?? null}
+                previousMonthAmounts={previousMonthAmounts}
                 isAddFieldPending={addCustomFieldMutation.isPending}
                 isArchivingField={archiveCustomFieldMutation.isPending}
               />
@@ -1205,7 +652,7 @@ export default function PayrollIndexPage() {
           <div className="flex justify-end">
             <Button
               type="button"
-              onClick={() => void savePayroll()}
+              onClick={() => void workspace.save()}
               disabled={savePayrollMutation.isPending || hasInvalidAmounts}
             >
               {savePayrollMutation.isPending ? "Saving..." : "Save Payroll"}

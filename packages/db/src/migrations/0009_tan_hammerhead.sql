@@ -1,0 +1,1 @@
+ALTER TABLE `institutions` DROP COLUMN `login_active`;

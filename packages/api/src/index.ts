@@ -1,7 +1,7 @@
 import { initTRPC, TRPCError } from "@trpc/server";
 import type { UserRole } from "@tds-nivaran/auth";
 import { createDb } from "@tds-nivaran/db";
-import { institutions } from "@tds-nivaran/db/schema/index";
+import { institutions, user } from "@tds-nivaran/db/schema/index";
 import { eq } from "drizzle-orm";
 
 import type { Context } from "./context";
@@ -71,9 +71,10 @@ export const institutionProcedure = userProcedure.use(async ({ ctx, next }) => {
       id: institutions.id,
       userId: institutions.userId,
       name: institutions.name,
-      loginActive: institutions.loginActive,
+      banned: user.banned,
     })
     .from(institutions)
+    .innerJoin(user, eq(user.id, institutions.userId))
     .where(eq(institutions.userId, ctx.session.user.id))
     .get();
 
@@ -84,10 +85,13 @@ export const institutionProcedure = userProcedure.use(async ({ ctx, next }) => {
     });
   }
 
+  const { banned, ...institutionRecord } = institution;
+  const institutionContext = { ...institutionRecord, loginActive: !banned };
+
   return next({
     ctx: {
       ...ctx,
-      institution,
+      institution: institutionContext,
     },
   });
 });
