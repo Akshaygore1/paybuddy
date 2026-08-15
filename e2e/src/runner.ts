@@ -41,8 +41,8 @@ Options:
   -d, --depth <name>       Select suite depth: smoke, regression (default: smoke)
   -w, --workers <count>    Set worker count for execution
   -r, --retries <count>    Set retry count (default: 0)
-  -p, --project <name>     Select Playwright project: desktop, mobile (default: all projects)
       --base-url <url>     Override BASE_URL environment variable
+      --server-url <url>   Override SERVER_URL environment variable
       --admin-identifier <id>  Override admin identifier
       --admin-password <pwd> Override admin password
       --headed             Run tests in headed browser mode
@@ -130,6 +130,12 @@ function parseCliArgs(args: string[]) {
     } else if (currentArg.startsWith("--base-url=")) {
       const val = currentArg.split("=")[1];
       if (val) process.env.BASE_URL = val;
+    } else if (currentArg === "--server-url") {
+      const nextVal = args[++i];
+      if (nextVal) process.env.SERVER_URL = nextVal;
+    } else if (currentArg.startsWith("--server-url=")) {
+      const val = currentArg.split("=")[1];
+      if (val) process.env.SERVER_URL = val;
     } else if (currentArg === "--admin-identifier") {
       const nextVal = args[++i];
       if (nextVal) process.env.ADMIN_IDENTIFIER = nextVal;
@@ -158,7 +164,7 @@ function resolveTestTarget(feature: FeatureName | undefined, depth: DepthName): 
   if (feature) {
     return `tests/${feature}.${depth}.spec.ts`;
   }
-  return `tests/*.${depth}.spec.ts`;
+  return `tests/.*\\.${depth}\\.spec\\.ts`;
 }
 
 function validateEnvironment() {
@@ -245,6 +251,11 @@ export function runE2E() {
     env: {
       ...process.env,
       BASE_URL: process.env.BASE_URL,
+      SERVER_URL:
+        process.env.SERVER_URL ||
+        process.env.VITE_SERVER_URL ||
+        process.env.BETTER_AUTH_URL ||
+        "http://localhost:3000",
       TEST_IDENTIFIER: process.env.ADMIN_IDENTIFIER,
       TEST_PASSWORD: process.env.ADMIN_PASSWORD,
       ADMIN_IDENTIFIER: process.env.ADMIN_IDENTIFIER,

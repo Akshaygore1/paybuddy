@@ -4,10 +4,14 @@ import { expect, type Download, type Locator, type Page } from "@playwright/test
 
 import type { RunContext } from "./run-context";
 
+export * from "./api-client";
+export * from "./data/indian-institutions";
+
 const EMPLOYEE_DIRECTORY_EMPTY_STATE =
   "Start by creating a designation in Employee Setup, then add your first employee here.";
 const CUSTOM_FIELDS_EMPTY_STATE = "No custom fields added yet.";
-const DESIGNATIONS_EMPTY_STATE = "No designations added yet. Create one to unlock employee creation.";
+const DESIGNATIONS_EMPTY_STATE =
+  "No designations added yet. Create one to unlock employee creation.";
 
 export async function signIn(page: Page, identifier: string, password: string) {
   await page.goto("/");
@@ -20,16 +24,21 @@ export async function signIn(page: Page, identifier: string, password: string) {
 
 export async function selectOption(page: Page, triggerName: string, optionText: string) {
   await page.getByRole("combobox", { name: triggerName, exact: true }).click();
-  await page.locator('[data-slot="select-content"]').getByRole("option", { name: optionText, exact: true }).click();
+  await page
+    .locator('[data-slot="select-content"]')
+    .getByRole("option", { name: optionText, exact: true })
+    .click();
 }
 
 export async function goToInstitutionSettings(page: Page) {
+  await openSidebarIfMobile(page);
   await page.getByRole("link", { name: "Employee Setup", exact: true }).click();
   await expect(page).toHaveURL(/\/institution-settings$/);
   await expect(page.getByRole("heading", { name: "Employee Setup" })).toBeVisible();
 }
 
 export async function goToEmployeeDirectory(page: Page) {
+  await openSidebarIfMobile(page);
   await page.getByRole("link", { name: "Employee", exact: true }).click();
   await expect(page).toHaveURL(/\/employee$/);
   await expect(page.getByRole("heading", { name: "Employee" })).toBeVisible();
@@ -57,7 +66,8 @@ export async function expectDesignationOrder(page: Page, namesInOrder: string[])
     .poll(async () => {
       const designationNames = await page.getByTestId("designation-name").allInnerTexts();
       const indexes = namesInOrder.map((name) => designationNames.indexOf(name));
-      return indexes.every((value) => value >= 0) &&
+      return (
+        indexes.every((value) => value >= 0) &&
         indexes.every((value, index) => {
           if (index === 0) {
             return true;
@@ -65,7 +75,8 @@ export async function expectDesignationOrder(page: Page, namesInOrder: string[])
 
           const previousValue = indexes[index - 1];
           return previousValue !== undefined && value > previousValue;
-        });
+        })
+      );
     })
     .toBeTruthy();
 }
@@ -74,7 +85,9 @@ export async function addRequiredCustomField(page: Page, label: string) {
   await page.getByLabel("Field label").fill(label);
   await page.getByRole("checkbox", { name: "Required" }).click();
   await page.getByRole("button", { name: "Add Field" }).click();
-  await expect(page.getByTestId("custom-field-manager-name").filter({ hasText: label })).toBeVisible();
+  await expect(
+    page.getByTestId("custom-field-manager-name").filter({ hasText: label }),
+  ).toBeVisible();
   await expect(page.getByLabel(`${label} *`)).toBeVisible();
 }
 
@@ -126,11 +139,7 @@ export async function enableCustomFieldColumn(page: Page, label: string) {
   await expect(page.getByRole("columnheader", { name: label, exact: true })).toBeVisible();
 }
 
-export async function setColumnVisibility(
-  page: Page,
-  label: string,
-  visible: boolean,
-) {
+export async function setColumnVisibility(page: Page, label: string, visible: boolean) {
   await page.getByRole("button", { name: "Choose Columns" }).click();
   const columnToggle = page.getByRole("menuitemcheckbox", {
     name: label,
@@ -185,7 +194,10 @@ export async function deleteEmployee(page: Page, displayName: string) {
   }
 
   await openEmployeeActions(page, displayName);
-  await page.locator('[data-slot="dropdown-menu-content"]').getByText("Delete", { exact: true }).click();
+  await page
+    .locator('[data-slot="dropdown-menu-content"]')
+    .getByText("Delete", { exact: true })
+    .click();
   await page.getByRole("button", { name: "Delete employee" }).click();
   await waitForMutationToSettle({
     targetRow: row,
@@ -195,7 +207,10 @@ export async function deleteEmployee(page: Page, displayName: string) {
 
 export async function editEmployee(page: Page, displayName: string) {
   await openEmployeeActions(page, displayName);
-  await page.locator('[data-slot="dropdown-menu-content"]').getByText("Edit", { exact: true }).click();
+  await page
+    .locator('[data-slot="dropdown-menu-content"]')
+    .getByText("Edit", { exact: true })
+    .click();
   await expect(page).toHaveURL(/\/employee\/.*\/edit$/);
   await expect(page.getByRole("heading", { name: "Edit Employee" })).toBeVisible();
 }
@@ -243,19 +258,13 @@ export async function assertRunEmployeeOrder(page: Page, run: RunContext) {
   expect(runRows[3]).toContain(run.employees.associate.displayName);
 }
 
-export async function expectRowValues(
-  row: Locator,
-  values: Array<string | number>,
-) {
+export async function expectRowValues(row: Locator, values: Array<string | number>) {
   for (const value of values) {
     await expect(row).toContainText(String(value));
   }
 }
 
-export async function waitForMutationToSettle(input: {
-  targetRow: Locator;
-  emptyState: Locator;
-}) {
+export async function waitForMutationToSettle(input: { targetRow: Locator; emptyState: Locator }) {
   await expect
     .poll(async () => {
       const rowCount = await input.targetRow.count();
@@ -273,7 +282,11 @@ export async function deleteAllEmployees(page: Page) {
     emptyState: employeeDirectoryEmptyState(page),
   });
 
-  while (!(await employeeDirectoryEmptyState(page).isVisible().catch(() => false))) {
+  while (
+    !(await employeeDirectoryEmptyState(page)
+      .isVisible()
+      .catch(() => false))
+  ) {
     const displayName = await visibleEmployeeDisplayName(page);
     await deleteEmployee(page, displayName);
   }
@@ -289,7 +302,11 @@ export async function archiveAllCustomFields(page: Page) {
     emptyState: customFieldEmptyState(page),
   });
 
-  while (!(await customFieldEmptyState(page).isVisible().catch(() => false))) {
+  while (
+    !(await customFieldEmptyState(page)
+      .isVisible()
+      .catch(() => false))
+  ) {
     const label = await visibleCustomFieldLabel(page);
     await archiveCustomField(page, label);
   }
@@ -305,7 +322,11 @@ export async function archiveAllDesignations(page: Page) {
     emptyState: designationEmptyState(page),
   });
 
-  while (!(await designationEmptyState(page).isVisible().catch(() => false))) {
+  while (
+    !(await designationEmptyState(page)
+      .isVisible()
+      .catch(() => false))
+  ) {
     const name = await visibleDesignationName(page);
     await archiveDesignation(page, name);
   }
@@ -333,7 +354,9 @@ function designationEmptyState(page: Page) {
 
 function customFieldManagerRow(page: Page, label: string) {
   return page.getByTestId("custom-field-manager-row").filter({
-    has: page.getByTestId("custom-field-manager-name").filter({ hasText: new RegExp(`^${escapeRegExp(label)}(?:\\s+\\*)?$`) }),
+    has: page
+      .getByTestId("custom-field-manager-name")
+      .filter({ hasText: new RegExp(`^${escapeRegExp(label)}(?:\\s+\\*)?$`) }),
   });
 }
 
@@ -343,7 +366,9 @@ function customFieldManagerRows(page: Page) {
 
 function designationRow(page: Page, name: string) {
   return page.getByTestId("designation-row").filter({
-    has: page.getByTestId("designation-name").filter({ hasText: new RegExp(`^${escapeRegExp(name)}$`) }),
+    has: page
+      .getByTestId("designation-name")
+      .filter({ hasText: new RegExp(`^${escapeRegExp(name)}$`) }),
   });
 }
 
@@ -389,10 +414,7 @@ function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-async function waitForListToSettle(input: {
-  rows: Locator;
-  emptyState: Locator;
-}) {
+async function waitForListToSettle(input: { rows: Locator; emptyState: Locator }) {
   await expect
     .poll(async () => {
       const rowCount = await input.rows.count();
@@ -524,7 +546,9 @@ export async function expectInstitutionNavigation(page: Page) {
   await expect(page.getByRole("link", { name: "Payroll", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Reports", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Institution", exact: true })).toHaveCount(0);
-  await expect(page.getByRole("link", { name: "Manage Custom Fields", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Manage Custom Fields", exact: true })).toHaveCount(
+    0,
+  );
 }
 
 export async function createInstitutionViaUI(

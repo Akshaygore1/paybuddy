@@ -20,11 +20,13 @@ test.describe("institution smoke", () => {
     console.log(
       `[E2E Smoke: Institution] Run ID: ${runId} | Institution: "${institution.name}" | Username: "${institution.username}" | Target: ${env.baseURL}`,
     );
-    test.info().annotations.push(
-      { type: "run-id", description: runId },
-      { type: "institution-name", description: institution.name },
-      { type: "institution-username", description: institution.username },
-    );
+    test
+      .info()
+      .annotations.push(
+        { type: "run-id", description: runId },
+        { type: "institution-name", description: institution.name },
+        { type: "institution-username", description: institution.username },
+      );
 
     // 2. Sign in as administrator
     await signIn(page, env.adminIdentifier, env.adminPassword);

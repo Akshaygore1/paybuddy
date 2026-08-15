@@ -23,6 +23,10 @@ export type RunManifest = {
     address: string;
     username: string;
   };
+  createdDesignation?: {
+    id?: string;
+    name: string;
+  };
   viewport?: {
     name: string;
     width?: number;

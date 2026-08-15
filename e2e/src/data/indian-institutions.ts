@@ -55,7 +55,8 @@ function stringHash(str: string): number {
 
 export function generateIndianInstitution(runMarker: string): IndianInstitutionSeed {
   const hash = stringHash(runMarker);
-  const baseName = INDIAN_SCHOOL_NAMES[hash % INDIAN_SCHOOL_NAMES.length] ?? "Saraswati Vidya Mandir";
+  const baseName =
+    INDIAN_SCHOOL_NAMES[hash % INDIAN_SCHOOL_NAMES.length] ?? "Saraswati Vidya Mandir";
   const baseHead = INDIAN_HEADS[(hash >> 2) % INDIAN_HEADS.length] ?? "Dr. Sunita Deshmukh";
   const baseAddress =
     INDIAN_ADDRESSES[(hash >> 4) % INDIAN_ADDRESSES.length] ??
@@ -78,4 +79,25 @@ export function generateIndianInstitution(runMarker: string): IndianInstitutionS
     username,
     password,
   };
+}
+
+export const REALISTIC_INDIAN_DESIGNATIONS = [
+  "Senior Secondary Physics Teacher",
+  "Post Graduate Teacher (Mathematics)",
+  "Trained Graduate Teacher (English)",
+  "Head of Science Department",
+  "Primary Section Supervisor",
+  "Higher Secondary Biology Lecturer",
+  "Assistant Professor of Chemistry",
+  "Senior Administrative Officer",
+  "Vice Principal (Academics)",
+  "Physical Education Instructor",
+];
+
+export function generateRealisticDesignation(runMarker: string): string {
+  const hash = stringHash(runMarker);
+  const base =
+    REALISTIC_INDIAN_DESIGNATIONS[hash % REALISTIC_INDIAN_DESIGNATIONS.length] ??
+    "Senior Secondary Physics Teacher";
+  return `${base} [${runMarker}]`;
 }

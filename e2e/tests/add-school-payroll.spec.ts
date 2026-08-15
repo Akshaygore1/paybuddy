@@ -9,8 +9,8 @@ const employees = [
     recovery: "2000",
     allowances: [
       { label: "Dearness Allowance", amount: "15000" },
-      { label: "House Rent Allowance", amount: "8000" }
-    ]
+      { label: "House Rent Allowance", amount: "8000" },
+    ],
   },
   {
     fullName: "Sunita Anil Kulkarni",
@@ -19,8 +19,8 @@ const employees = [
     recovery: "1000",
     allowances: [
       { label: "Dearness Allowance", amount: "9000" },
-      { label: "House Rent Allowance", amount: "5000" }
-    ]
+      { label: "House Rent Allowance", amount: "5000" },
+    ],
   },
   {
     fullName: "Sachin Suresh Joshi",
@@ -29,8 +29,8 @@ const employees = [
     recovery: "1000",
     allowances: [
       { label: "Dearness Allowance", amount: "9000" },
-      { label: "House Rent Allowance", amount: "5000" }
-    ]
+      { label: "House Rent Allowance", amount: "5000" },
+    ],
   },
   {
     fullName: "Priya Sanjay Deshmukh",
@@ -39,8 +39,8 @@ const employees = [
     recovery: "1000",
     allowances: [
       { label: "Dearness Allowance", amount: "9000" },
-      { label: "House Rent Allowance", amount: "5000" }
-    ]
+      { label: "House Rent Allowance", amount: "5000" },
+    ],
   },
   {
     fullName: "Amit Vijay Pawar",
@@ -49,8 +49,8 @@ const employees = [
     recovery: "800",
     allowances: [
       { label: "Dearness Allowance", amount: "7000" },
-      { label: "House Rent Allowance", amount: "4000" }
-    ]
+      { label: "House Rent Allowance", amount: "4000" },
+    ],
   },
   {
     fullName: "Snehal Nitin Shinde",
@@ -59,8 +59,8 @@ const employees = [
     recovery: "800",
     allowances: [
       { label: "Dearness Allowance", amount: "7000" },
-      { label: "House Rent Allowance", amount: "4000" }
-    ]
+      { label: "House Rent Allowance", amount: "4000" },
+    ],
   },
   {
     fullName: "Rahul Manohar More",
@@ -69,8 +69,8 @@ const employees = [
     recovery: "800",
     allowances: [
       { label: "Dearness Allowance", amount: "7000" },
-      { label: "House Rent Allowance", amount: "4000" }
-    ]
+      { label: "House Rent Allowance", amount: "4000" },
+    ],
   },
   {
     fullName: "Anjali Devendra Gaikwad",
@@ -79,8 +79,8 @@ const employees = [
     recovery: "900",
     allowances: [
       { label: "Dearness Allowance", amount: "8000" },
-      { label: "House Rent Allowance", amount: "4500" }
-    ]
+      { label: "House Rent Allowance", amount: "4500" },
+    ],
   },
   {
     fullName: "Nitin Vasant Tambe",
@@ -89,8 +89,8 @@ const employees = [
     recovery: "500",
     allowances: [
       { label: "Dearness Allowance", amount: "6000" },
-      { label: "House Rent Allowance", amount: "3500" }
-    ]
+      { label: "House Rent Allowance", amount: "3500" },
+    ],
   },
   {
     fullName: "Kavita Prakash Gokhale",
@@ -99,8 +99,8 @@ const employees = [
     recovery: "500",
     allowances: [
       { label: "Dearness Allowance", amount: "6000" },
-      { label: "House Rent Allowance", amount: "3500" }
-    ]
+      { label: "House Rent Allowance", amount: "3500" },
+    ],
   },
   {
     fullName: "Vikas Ramchandra Bhat",
@@ -109,8 +109,8 @@ const employees = [
     recovery: "800",
     allowances: [
       { label: "Dearness Allowance", amount: "7000" },
-      { label: "House Rent Allowance", amount: "4000" }
-    ]
+      { label: "House Rent Allowance", amount: "4000" },
+    ],
   },
   {
     fullName: "Jyoti Sharad Kadam",
@@ -119,8 +119,8 @@ const employees = [
     recovery: "800",
     allowances: [
       { label: "Dearness Allowance", amount: "7000" },
-      { label: "House Rent Allowance", amount: "4000" }
-    ]
+      { label: "House Rent Allowance", amount: "4000" },
+    ],
   },
   {
     fullName: "Sanjay Arvind Kamble",
@@ -129,8 +129,8 @@ const employees = [
     recovery: "300",
     allowances: [
       { label: "Dearness Allowance", amount: "4000" },
-      { label: "House Rent Allowance", amount: "2500" }
-    ]
+      { label: "House Rent Allowance", amount: "2500" },
+    ],
   },
   {
     fullName: "Sujata Dilip Kale",
@@ -139,8 +139,8 @@ const employees = [
     recovery: "300",
     allowances: [
       { label: "Dearness Allowance", amount: "4000" },
-      { label: "House Rent Allowance", amount: "2500" }
-    ]
+      { label: "House Rent Allowance", amount: "2500" },
+    ],
   },
   {
     fullName: "Ramesh Dnyaneshwar Rane",
@@ -149,17 +149,21 @@ const employees = [
     recovery: "300",
     allowances: [
       { label: "Dearness Allowance", amount: "4000" },
-      { label: "House Rent Allowance", amount: "2500" }
-    ]
-  }
+      { label: "House Rent Allowance", amount: "2500" },
+    ],
+  },
 ];
 
 async function ensureCustomField(page: Page, label: string, section: "earnings" | "deductions") {
   const input = page.getByLabel(`${label} amount`);
-  if (await input.count() === 0) {
+  if ((await input.count()) === 0) {
     console.log(`Custom field "${label}" not found. Adding it to ${section}...`);
     // Select the section
-    await selectOption(page, "Select custom payroll field section", section === "earnings" ? "Earnings" : "Deductions");
+    await selectOption(
+      page,
+      "Select custom payroll field section",
+      section === "earnings" ? "Earnings" : "Deductions",
+    );
     // Fill the field label using placeholder
     await page.getByPlaceholder("Allowance name").fill(label);
     // Click Add Field
@@ -179,7 +183,7 @@ test("Add payroll for all 15 employees", async ({ page }) => {
   // 2. Add payroll for each employee
   for (const emp of employees) {
     console.log(`Processing payroll for ${emp.fullName} (${emp.designationName})...`);
-    
+
     // Navigate directly to payroll page to reset the form state
     await page.goto("/payroll");
     await expect(page.getByRole("heading", { name: "Payroll" })).toBeVisible();

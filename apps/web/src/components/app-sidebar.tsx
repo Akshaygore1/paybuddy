@@ -11,6 +11,7 @@ import {
   SidebarMenuItem,
   SidebarRail,
   SidebarSeparator,
+  useSidebar,
 } from "@tds-nivaran/ui/components/sidebar";
 import {
   Building2Icon,
@@ -76,6 +77,14 @@ const navigationItems = [
 export default function AppSidebar() {
   const location = useLocation();
   const { data: session } = authClient.useSession();
+  const { setOpenMobile, isMobile } = useSidebar();
+
+  React.useEffect(() => {
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+  }, [location.pathname, isMobile, setOpenMobile]);
+
   const financialYearStart = React.useSyncExternalStore(
     subscribeSelectedFinancialYear,
     getSelectedFinancialYearStart,
