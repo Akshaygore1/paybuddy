@@ -20,6 +20,7 @@ import {
 
 import type { Route } from "./+types/root";
 import AppSidebar from "./components/app-sidebar";
+import { ConfirmModalProvider } from "./components/confirm-modal";
 import Loader from "./components/loader";
 import { ThemeProvider } from "./components/theme-provider";
 import { queryClient } from "./utils/trpc";
@@ -36,6 +37,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>TDS Nivaran - Payroll Management</title>
         <Meta />
         <Links />
       </head>
@@ -55,8 +57,6 @@ export function HydrateFallback() {
     </main>
   );
 }
-
-import { ConfirmModalProvider } from "./components/confirm-modal";
 
 export default function App() {
   const location = useLocation();
@@ -82,7 +82,9 @@ export default function App() {
                 <header className="sticky top-0 z-20 flex h-14 items-center border-b border-border/70 bg-background/80 px-4 backdrop-blur">
                   <SidebarTrigger />
                   <div className="ml-3 min-w-0">
-                    <p className="text-sm font-semibold tracking-tight">TDS Nivaran</p>
+                    <p className="text-sm font-semibold tracking-tight">
+                      TDS Nivaran
+                    </p>
                   </div>
                 </header>
                 <div className="min-w-0 flex-1">
@@ -106,7 +108,9 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   if (isRouteErrorResponse(error)) {
     message = error.status === 404 ? "404" : "Error";
     details =
-      error.status === 404 ? "The requested page could not be found." : error.statusText || details;
+      error.status === 404
+        ? "The requested page could not be found."
+        : error.statusText || details;
   } else if (import.meta.env.DEV && error && error instanceof Error) {
     details = error.message;
     stack = error.stack;

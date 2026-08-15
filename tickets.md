@@ -98,16 +98,16 @@ Work the **frontier**: any ticket whose blockers are all done. Implement one fro
 
 **Blocked by:** Run Institution smoke tests by feature.
 
-- [ ] Institution regression validates empty, malformed, minimum, maximum, and boundary behavior across both creation-form steps.
-- [ ] A representative multi-error submission verifies error presentation, accessible associations, and useful focus behavior.
-- [ ] Regression verifies the institution directory, detail persistence, password reset, old/new credential behavior, login deactivation, blocked login, reactivation, and restored login.
-- [ ] Admin and institution logout are verified by attempting to revisit protected pages.
-- [ ] Admin and institution route guards expose the correct navigation and deny the wrong role.
-- [ ] Automated accessibility scanning fails the test for serious violations on primary Institution pages.
-- [ ] Core creation, dialogs, and access-management interactions are keyboard operable with correct focus movement.
-- [ ] Controlled request interception covers an unauthorized/session-expired response, server-side validation failure, temporary server failure, slow mutation, and failed save without replacing normal success-path backend calls.
-- [ ] Reusable accessibility and network-failure helpers expose behavior-oriented interfaces suitable for later feature suites.
-- [ ] All created institutions remain uniquely identifiable and are preserved after the run.
+- [x] Institution regression validates empty, malformed, minimum, maximum, and boundary behavior across both creation-form steps.
+- [x] A representative multi-error submission verifies error presentation, accessible associations, and useful focus behavior.
+- [x] Regression verifies the institution directory, detail persistence, password reset, old/new credential behavior, login deactivation, blocked login, reactivation, and restored login.
+- [x] Admin and institution logout are verified by attempting to revisit protected pages.
+- [x] Admin and institution route guards expose the correct navigation and deny the wrong role.
+- [x] Automated accessibility scanning fails the test for serious violations on primary Institution pages.
+- [x] Core creation, dialogs, and access-management interactions are keyboard operable with correct focus movement.
+- [x] Controlled request interception covers an unauthorized/session-expired response, server-side validation failure, temporary server failure, slow mutation, and failed save without replacing normal success-path backend calls.
+- [x] Reusable accessibility and network-failure helpers expose behavior-oriented interfaces suitable for later feature suites.
+- [x] All created institutions remain uniquely identifiable and are preserved after the run.
 
 ## Deep-test Employee Setup
 
