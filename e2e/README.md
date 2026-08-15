@@ -10,6 +10,12 @@ Run the Playwright suite manually against a local or staging deployment that is 
 
 `ADMIN_IDENTIFIER` and `ADMIN_PASSWORD` remain supported as aliases for the administrator credentials. No generated institution password is printed to console or HTML output.
 
+For local runs, copy `e2e/.env.test.example` to `e2e/.env.test` and fill in the values. The `.env.test` file is ignored by Git and is loaded automatically by the E2E runner. The configured administrator must already exist in the target environment; E2E execution does not create administrator accounts.
+
+Provision or rotate that disposable administrator through the protected `/api/bootstrap/users` operational endpoint or your approved deployment process, using `BOOTSTRAP_API_SECRET` from the server environment. Keep the resulting identifier and password only in `e2e/.env.test`.
+
+The former seed-admin script has been removed because it contained committed credentials. Removing it from the current tree does not remove older Git or GitHub history, so rotate or revoke any credentials that were previously exposed and use a history-rewrite process separately if repository policy requires it.
+
 ## Commands
 
 From the repository root:

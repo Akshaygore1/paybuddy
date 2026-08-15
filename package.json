@@ -38,7 +38,6 @@
     "hooks:setup": "vp config",
     "dev:web": "vp run --filter web dev",
     "dev:server": "vp run --filter server dev",
-    "seed:admin": "bun scripts/seed-admin.ts",
     "db:generate": "vp run --filter @tds-nivaran/db db:generate",
     "test:e2e": "bun e2e/src/runner.ts",
     "test:smoke": "bun e2e/src/runner.ts --depth smoke",

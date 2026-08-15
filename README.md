@@ -58,7 +58,7 @@ tds-nivaran/
 bun install
 ```
 
-That's it. The `.env` files are committed with dev defaults so you can run immediately.
+Local environment files are intentionally kept out of Git. Use the Local Environment table below to configure the services, and keep disposable E2E credentials in `e2e/.env.test`.
 
 ---
 
@@ -97,8 +97,9 @@ bun run dev:web       # Just the frontend (port 5173)
 | `apps/server/.env` | Server env: `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `CORS_ORIGIN` |
 | `apps/web/.env` | Web env: `VITE_SERVER_URL=http://localhost:3000` |
 | `packages/infra/.env` | `ALCHEMY_PASSWORD` (change before deploying) |
+| `e2e/.env.test` | Local-only E2E target and disposable administrator credentials |
 
-The local D1 database lives at `.alchemy/miniflare/v3/d1/` (gitignored).
+Environment files are ignored by Git. Copy `e2e/.env.test.example` to `e2e/.env.test` and fill in disposable test credentials before running E2E tests. The local D1 database lives at `.alchemy/miniflare/v3/d1/` (gitignored).
 
 ---
 

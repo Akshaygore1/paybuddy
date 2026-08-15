@@ -2,12 +2,14 @@
 
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { config as loadDotenv } from "dotenv";
 
 // Load environment files if present
-const rootDir = resolve(process.cwd());
+const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const envPaths = [
+  resolve(rootDir, "e2e/.env.test"),
   resolve(rootDir, ".env"),
   resolve(rootDir, "apps/server/.env"),
   resolve(rootDir, "e2e/.env"),

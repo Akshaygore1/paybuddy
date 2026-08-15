@@ -13,6 +13,7 @@ apps/web/src/routeTree.gen.ts
 
 # Environment variables
 .env
+.env.test
 .env*.local
 
 # IDEs and editors
