@@ -230,24 +230,26 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
       const viewport = page.viewportSize() ?? undefined;
       const isMobile = testInfo.project.use.isMobile ?? false;
 
-      const suiteTitle = (testInfo.titlePath[1] || "").toLowerCase();
-      const matchedFeature = suiteTitle.includes("employee-setup")
+      const testFilePath = testInfo.file || "";
+      const suitePath = testInfo.titlePath.join(" ").toLowerCase();
+      const fullPath = `${testFilePath} ${suitePath}`.toLowerCase();
+      const matchedFeature = fullPath.includes("employee-setup")
         ? "employee-setup"
-        : suiteTitle.includes("employee")
+        : fullPath.includes("employee")
           ? "employee"
-          : suiteTitle.includes("payroll")
+          : fullPath.includes("payroll")
             ? "payroll"
-            : suiteTitle.includes("reports")
+            : fullPath.includes("reports")
               ? "reports"
-              : suiteTitle.includes("institution")
+              : fullPath.includes("institution")
                 ? "institution"
                 : process.env.E2E_FEATURE && process.env.E2E_FEATURE !== "all"
                   ? process.env.E2E_FEATURE
-                  : "employee-setup";
+                  : "unknown";
 
       const matchedDepth =
         process.env.E2E_DEPTH ||
-        (testInfo.titlePath[0]?.toLowerCase().includes("regression") ? "regression" : "smoke");
+        (fullPath.includes("regression") ? "regression" : "smoke");
 
       const manifestData: RunManifest = {
         runId,

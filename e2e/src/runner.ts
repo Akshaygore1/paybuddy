@@ -78,7 +78,7 @@ function parseCliArgs(args: string[]) {
         process.exit(1);
       }
       feature = val;
-    } else if (currentArg.startsWith("--feature=")) {
+    } else if (currentArg.startsWith("--feature=") || currentArg.startsWith("-f=")) {
       const val = (currentArg.split("=")[1]?.toLowerCase() ?? "") as FeatureName;
       if (!VALID_FEATURES.includes(val)) {
         console.error(
@@ -97,7 +97,7 @@ function parseCliArgs(args: string[]) {
         process.exit(1);
       }
       depth = val;
-    } else if (currentArg.startsWith("--depth=")) {
+    } else if (currentArg.startsWith("--depth=") || currentArg.startsWith("-d=")) {
       const val = (currentArg.split("=")[1]?.toLowerCase() ?? "") as DepthName;
       if (!VALID_DEPTHS.includes(val)) {
         console.error(
@@ -109,19 +109,19 @@ function parseCliArgs(args: string[]) {
     } else if (currentArg === "-w" || currentArg === "--workers") {
       const nextVal = args[++i];
       if (nextVal) workers = parseInt(nextVal, 10);
-    } else if (currentArg.startsWith("--workers=")) {
+    } else if (currentArg.startsWith("--workers=") || currentArg.startsWith("-w=")) {
       const val = currentArg.split("=")[1];
       if (val) workers = parseInt(val, 10);
     } else if (currentArg === "-r" || currentArg === "--retries") {
       const nextVal = args[++i];
       if (nextVal) retries = parseInt(nextVal, 10);
-    } else if (currentArg.startsWith("--retries=")) {
+    } else if (currentArg.startsWith("--retries=") || currentArg.startsWith("-r=")) {
       const val = currentArg.split("=")[1];
       if (val) retries = parseInt(val, 10);
     } else if (currentArg === "-p" || currentArg === "--project") {
       const nextVal = args[++i];
       if (nextVal) project = nextVal;
-    } else if (currentArg.startsWith("--project=")) {
+    } else if (currentArg.startsWith("--project=") || currentArg.startsWith("-p=")) {
       const val = currentArg.split("=")[1];
       if (val) project = val;
     } else if (currentArg === "--base-url") {
@@ -155,6 +155,20 @@ function parseCliArgs(args: string[]) {
     } else {
       passThrough.push(currentArg);
     }
+  }
+
+  if (workers !== undefined && (isNaN(workers) || workers < 1)) {
+    console.error(
+      `Error: Invalid workers count "${workers}". Workers must be a positive integer.`,
+    );
+    process.exit(1);
+  }
+
+  if (retries !== undefined && (isNaN(retries) || retries < 0)) {
+    console.error(
+      `Error: Invalid retries count "${retries}". Retries must be a non-negative integer.`,
+    );
+    process.exit(1);
   }
 
   return { feature, depth, workers, retries, project, headed, ui, passThrough };
@@ -243,6 +257,8 @@ export function runE2E() {
   console.log(`   Feature: ${options.feature || "all"}`);
   console.log(`   Depth:   ${options.depth}`);
   console.log(`   Target:  ${testTarget}`);
+  console.log(`   Workers: ${options.workers !== undefined ? options.workers : "default (parallel)"}`);
+  console.log(`   Retries: ${options.retries}`);
   console.log(`   BaseURL: ${process.env.BASE_URL}\n`);
 
   const result = spawnSync("bunx", playwrightArgs, {
@@ -263,6 +279,7 @@ export function runE2E() {
       E2E_FEATURE: options.feature || "all",
       E2E_DEPTH: options.depth,
       E2E_RETRIES: String(options.retries),
+      E2E_WORKERS: options.workers !== undefined ? String(options.workers) : (process.env.E2E_WORKERS || ""),
     },
   });
 

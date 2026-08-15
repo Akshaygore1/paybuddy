@@ -83,14 +83,14 @@ Work the **frontier**: any ticket whose blockers are all done. Implement one fro
 
 **Blocked by:** Run Employee Setup smoke tests independently; Run Employee smoke tests independently; Run Payroll smoke tests independently; Run Reports smoke tests independently.
 
-- [ ] Omitting the feature selector runs every smoke feature.
-- [ ] Independent feature suites run in parallel by default and never share an institution, login, or mutable fixture.
-- [ ] A worker-count option can force serial execution without editing configuration.
-- [ ] A retry-count option can explicitly enable retries while the default remains zero.
-- [ ] Feature, depth, worker, and retry selections compose predictably in one command interface.
-- [ ] List and HTML reports identify the feature and viewport for every test.
-- [ ] Per-run manifests and failure artifacts remain distinguishable during parallel execution.
-- [ ] Type checking and Playwright test discovery succeed for the complete smoke suite.
+- [x] Omitting the feature selector runs every smoke feature.
+- [x] Independent feature suites run in parallel by default and never share an institution, login, or mutable fixture.
+- [x] A worker-count option can force serial execution without editing configuration.
+- [x] A retry-count option can explicitly enable retries while the default remains zero.
+- [x] Feature, depth, worker, and retry selections compose predictably in one command interface.
+- [x] List and HTML reports identify the feature and viewport for every test.
+- [x] Per-run manifests and failure artifacts remain distinguishable during parallel execution.
+- [x] Type checking and Playwright test discovery succeed for the complete smoke suite.
 
 ## Deep-test Institution and establish regression probes
 
