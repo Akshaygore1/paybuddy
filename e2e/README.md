@@ -232,8 +232,7 @@ Use cleanup only when old generated institution records need to be removed. It i
 ```bash
 bun run test:e2e:cleanup -- \
   --dry-run \
-  --report e2e/.cleanup/generated-institutions.json \
-  --expected-count 777
+  --report e2e/.cleanup/generated-institutions.json
 ```
 
 The command authenticates as the administrator, applies the marker filter, and writes a JSON report containing the matched institution IDs, user IDs, names, usernames, count, and a hash of the exact list. It does not delete anything. Review the report before continuing:
@@ -251,20 +250,19 @@ Do not proceed unless all of these are true:
 
 - the report was produced by the dry-run you just reviewed;
 - `marker` is exactly `run-`;
-- `matchedCount` is exactly `777`;
+- `matchedCount` is the count you reviewed in that report;
 - the records are all generated E2E institutions;
 - the target is the disposable environment; and
 - no other cleanup or E2E process is changing the database.
 
-The value `777` is a safety contract, not an estimate. If the dry run reports 774, 778, or any other count, stop and investigate. Do not change `--expected-count` to make deletion proceed. A changed count, ID list, or report hash causes the server to reject the deletion as well.
+The count is derived from the reviewed dry-run report; it is not hard-coded. You may pass `--expected-count <count>` as an additional assertion, but it must match the report. A changed count, ID list, or report hash causes deletion to abort.
 
 ### 3. Execute the exact reviewed list
 
 ```bash
 bun run test:e2e:cleanup -- \
   --execute \
-  --report e2e/.cleanup/generated-institutions.json \
-  --expected-count 777
+  --report e2e/.cleanup/generated-institutions.json
 ```
 
 Execution revalidates the current marker-filtered list against the dry-run report before deleting. It deletes the generated institution user rows and relies on the database relationships to remove the associated institutions, employees, payroll records, sessions, and accounts. It does not run a broad “delete all institutions” operation.

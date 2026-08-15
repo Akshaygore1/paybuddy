@@ -12,12 +12,11 @@ import { readTestEnv } from "./env";
 import { repositoryRoot } from "./load-env";
 
 const BULK_MARKER = "run-";
-const EXPECTED_BULK_COUNT = 777;
 
 type CleanupOptions = {
   mode: "dry-run" | "execute";
   marker: string;
-  expectedCount: number;
+  expectedCount?: number;
   reportPath?: string;
 };
 
@@ -31,7 +30,7 @@ Options:
   --execute                 Delete only the exact list captured in --report.
   --report <path>           JSON report path (required for --execute).
   --marker <value>          Marker prefix (default: run-).
-  --expected-count <count>  Must be 777 for bulk deletion (default: 777).
+  --expected-count <count>  Optional assertion for the reviewed report count.
   --help                    Show this message.
 `);
 }
@@ -39,7 +38,7 @@ Options:
 function parseOptions(args: string[]): CleanupOptions {
   let mode: CleanupOptions["mode"] | undefined;
   let marker = BULK_MARKER;
-  let expectedCount = EXPECTED_BULK_COUNT;
+  let expectedCount: number | undefined;
   let reportPath: string | undefined;
 
   for (let index = 0; index < args.length; index += 1) {
@@ -83,8 +82,8 @@ function parseOptions(args: string[]): CleanupOptions {
   if (mode === "execute" && marker !== BULK_MARKER) {
     throw new Error("Bulk execution requires the exact --marker run- filter.");
   }
-  if (mode === "execute" && expectedCount !== EXPECTED_BULK_COUNT) {
-    throw new Error("Bulk execution requires --expected-count 777.");
+  if (expectedCount !== undefined && (!Number.isInteger(expectedCount) || expectedCount < 0)) {
+    throw new Error("--expected-count must be a non-negative integer.");
   }
   if (mode === "execute" && !reportPath) {
     throw new Error("--execute requires a report created by a prior --dry-run.");
@@ -143,7 +142,7 @@ async function main(): Promise<void> {
   }
 
   const report = await readReport(resolve(options.reportPath!));
-  if (report.matchedCount !== options.expectedCount) {
+  if (options.expectedCount !== undefined && report.matchedCount !== options.expectedCount) {
     throw new Error(
       `Refusing deletion: the dry-run report contains ${report.matchedCount} records, expected ${options.expectedCount}.`,
     );

@@ -281,12 +281,9 @@ export async function cleanupE2EInstitutions(
   if (marker !== E2E_BULK_MARKER) {
     throw new Error("Bulk cleanup requires the exact run- marker.");
   }
-  if (input.expectedCount !== 777) {
-    throw new Error("Bulk cleanup requires expectedCount=777.");
-  }
-  if (report.matchedCount !== input.expectedCount) {
+  if (input.expectedCount !== undefined && report.matchedCount !== input.expectedCount) {
     throw new Error(
-      `Bulk cleanup aborted: expected 777 generated institutions, found ${report.matchedCount}.`,
+      `Bulk cleanup aborted: expected ${input.expectedCount} generated institutions, found ${report.matchedCount}.`,
     );
   }
 

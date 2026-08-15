@@ -272,20 +272,21 @@ export async function dryRunE2EInstitutionCleanupViaApi(
 export async function executeE2EInstitutionCleanupViaApi(
   env: TestEnv,
   report: E2ECleanupReport,
-  expectedCount: number,
+  expectedCount?: number,
 ): Promise<E2ECleanupReport & { deletedCount: number }> {
   const { cookieHeader } = await authenticateAdminViaApi(env);
+  const body = {
+    mode: "delete" as const,
+    marker: report.marker,
+    institutionIds: report.records.map((record) => record.institutionId),
+    reportHash: report.reportHash,
+    ...(expectedCount === undefined ? {} : { expectedCount }),
+  };
   return postE2EOperation<E2ECleanupReport & { deletedCount: number }>(
     env,
     cookieHeader,
     "/api/e2e/institutions/cleanup",
-    {
-      mode: "delete",
-      marker: report.marker,
-      expectedCount,
-      institutionIds: report.records.map((record) => record.institutionId),
-      reportHash: report.reportHash,
-    },
+    body,
   );
 }
 
