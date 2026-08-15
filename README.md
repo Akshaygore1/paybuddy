@@ -101,6 +101,10 @@ bun run dev:web       # Just the frontend (port 5173)
 
 Environment files are ignored by Git. Copy `e2e/.env.test.example` to `e2e/.env.test` and fill in disposable test credentials before running E2E tests. The local D1 database lives at `.alchemy/miniflare/v3/d1/` (gitignored).
 
+### E2E test documentation
+
+See [`e2e/README.md`](e2e/README.md) for the complete E2E guide, including environment setup, smoke versus regression coverage, serial execution, per-test data isolation, cleanup safety gates, artifacts, and troubleshooting.
+
 ---
 
 ## How to Create a tRPC API
