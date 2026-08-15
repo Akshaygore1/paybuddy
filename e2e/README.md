@@ -269,6 +269,23 @@ Execution revalidates the current marker-filtered list against the dry-run repor
 
 If the command aborts, preserve the report and error message. The safe next step is to inspect the current count and IDs and obtain an explicit decision about the discrepancy; it is not to bypass the guard.
 
+### Local D1 fallback script
+
+The API cleanup command deletes institution users through database cascades. Local D1 data may contain `RESTRICT` relationships, so the dependency-aware local script can be used after reviewing the dry-run report:
+
+```bash
+# Generate or refresh the report; this never deletes data.
+bash e2e/cleanup-generated-institutions.sh --dry-run
+```
+
+Review the report, stop the dev server, then run the dependency-aware transaction separately:
+
+```bash
+bash e2e/cleanup-generated-institutions.sh --execute
+```
+
+The script discovers exactly one local D1 database, verifies that the current marker-filtered institution IDs still match the report, clears restricted child records in dependency order, and deletes the matching institution users in one transaction. It is for the disposable local database only; it does not use a fixed total count and does not target ordinary institutions.
+
 ### Per-test cleanup versus operational cleanup
 
 The operational cleanup command is not needed after every test. The fixture already removes every temporary institution created by the selected test using that test's unique run marker, including the extra institutions used by reports regression. The shared institution remains because its identity is configured in `.env.test`; only its child data and mutable login state are reset.
