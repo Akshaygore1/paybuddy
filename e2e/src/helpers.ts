@@ -51,6 +51,13 @@ export async function goToEmployeeCreate(page: Page) {
   await expect(page.getByRole("heading", { name: "Create Employee" })).toBeVisible();
 }
 
+export async function goToPayroll(page: Page) {
+  await openSidebarIfMobile(page);
+  await page.getByRole("link", { name: "Payroll", exact: true }).click();
+  await expect(page).toHaveURL(/\/payroll$/);
+  await expect(page.getByRole("heading", { name: "Payroll" })).toBeVisible();
+}
+
 export async function createDesignation(page: Page, name: string) {
   await page.getByLabel("Designation name").fill(name);
   await page.getByRole("button", { name: "Create Designation" }).click();

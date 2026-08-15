@@ -55,13 +55,13 @@ Work the **frontier**: any ticket whose blockers are all done. Implement one fro
 
 **Blocked by:** Run Employee smoke tests independently.
 
-- [ ] Selecting Payroll smoke provisions a unique institution, designation, and employee through existing authenticated APIs.
-- [ ] The browser signs in as the institution user and selects the provisioned employee, financial year, and payroll month.
-- [ ] The workflow enters a realistic basic-pay amount and deduction, saves payroll, and verifies the resulting gross, deductions, and net totals.
-- [ ] Saved values are reloaded or revisited to demonstrate persistence beyond the success toast.
-- [ ] The workflow verifies relevant institution-user navigation and logout.
-- [ ] Desktop and mobile smoke variants complete independently.
-- [ ] The run manifest records the payroll employee, period, and expected amounts.
+- [x] Selecting Payroll smoke provisions a unique institution, designation, and employee through existing authenticated APIs.
+- [x] The browser signs in as the institution user and selects the provisioned employee, financial year, and payroll month.
+- [x] The workflow enters a realistic basic-pay amount and deduction, saves payroll, and verifies the resulting gross, deductions, and net totals.
+- [x] Saved values are reloaded or revisited to demonstrate persistence beyond the success toast.
+- [x] The workflow verifies relevant institution-user navigation and logout.
+- [x] Desktop and mobile smoke variants complete independently.
+- [x] The run manifest records the payroll employee, period, and expected amounts.
 
 ## Run Reports smoke tests independently
 

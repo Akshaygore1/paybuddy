@@ -61,6 +61,16 @@ export type RunManifest = {
     contactNumber?: string;
     customFields?: Record<string, string>;
   };
+  payrollRecord?: {
+    employeeName: string;
+    financialYear: string;
+    month: string;
+    basicPay: string;
+    deduction: string;
+    gross: string;
+    deductions: string;
+    net: string;
+  };
   viewport?: {
     name: string;
     width?: number;

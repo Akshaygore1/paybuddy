@@ -3,10 +3,15 @@ import { test as base } from "@playwright/test";
 import {
   provisionEmployeePrerequisitesViaApi,
   provisionInstitutionViaApi,
+  provisionPayrollPrerequisitesViaApi,
   type ProvisionedEmployeePrerequisites,
   type ProvisionedInstitution,
+  type ProvisionedPayrollPrerequisites,
 } from "./api-client";
-import { generateRealisticCustomField } from "./data/indian-employees";
+import {
+  generateIndianEmployee,
+  generateRealisticCustomField,
+} from "./data/indian-employees";
 import {
   generateIndianInstitution,
   generateRealisticDesignation,
@@ -21,6 +26,7 @@ type TestFixtures = {
   institution: IndianInstitutionSeed;
   provisionedInstitution: ProvisionedInstitution;
   provisionedEmployeePrerequisites: ProvisionedEmployeePrerequisites;
+  provisionedPayrollPrerequisites: ProvisionedPayrollPrerequisites;
   manifest: RunManifest;
 };
 
@@ -106,6 +112,54 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
           isRequired: prerequisites.customField.isRequired,
           sortOrder: prerequisites.customField.sortOrder,
         },
+      },
+    }));
+
+    await use(prerequisites);
+  },
+  provisionedPayrollPrerequisites: async ({ env, institution, runId }, use) => {
+    const designationName = generateRealisticDesignation(runId);
+    const employeeData = generateIndianEmployee(runId);
+    const prerequisites = await provisionPayrollPrerequisitesViaApi(env, institution, {
+      designationName,
+      employeeData,
+    });
+
+    await updateRunManifest(runId, (prev) => ({
+      ...prev,
+      createdInstitution: {
+        id: prerequisites.institution.id,
+        name: prerequisites.institution.name,
+        tanNumber: prerequisites.institution.tanNumber,
+        institutionHead: prerequisites.institution.institutionHead,
+        address: prerequisites.institution.address,
+        username: prerequisites.institution.username,
+      },
+      provisionedPrerequisites: {
+        institution: {
+          id: prerequisites.institution.id,
+          name: prerequisites.institution.name,
+          tanNumber: prerequisites.institution.tanNumber,
+          username: prerequisites.institution.username,
+        },
+        designation: {
+          id: prerequisites.designation.id,
+          name: prerequisites.designation.name,
+          sortOrder: prerequisites.designation.sortOrder,
+        },
+      },
+      createdEmployee: {
+        id: prerequisites.employee.id,
+        surname: prerequisites.employee.surname,
+        firstName: prerequisites.employee.firstName,
+        middleName: prerequisites.employee.middleName,
+        displayName: prerequisites.employee.displayName,
+        dateOfBirth: prerequisites.employee.dateOfBirth,
+        gender: prerequisites.employee.gender,
+        designationName: prerequisites.designation.name,
+        seniorityRank: prerequisites.employee.seniorityRank,
+        panNumber: prerequisites.employee.panNumber,
+        contactNumber: prerequisites.employee.contactNumber,
       },
     }));
 
