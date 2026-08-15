@@ -14,8 +14,7 @@ function createTrpcErrorBody(status: number, message: string) {
             ? "BAD_REQUEST"
             : "INTERNAL_SERVER_ERROR";
 
-  const jsonRpcCode =
-    status === 401 ? -32001 : status === 400 ? -32600 : -32603;
+  const jsonRpcCode = status === 401 ? -32001 : status === 400 ? -32600 : -32603;
 
   return JSON.stringify([
     {
@@ -116,5 +115,47 @@ export async function simulateSlowResponse(
   await page.route(urlPattern, handler);
   return async () => {
     await page.unroute(urlPattern, handler).catch(() => {});
+  };
+}
+
+export async function simulateDownloadFailure(
+  page: Page,
+  errorMessage = "Unable to generate payslip PDF",
+): Promise<UnrouteFn> {
+  await page.evaluate((message) => {
+    type AnchorPrototype = typeof HTMLAnchorElement.prototype & {
+      __e2eOriginalClick?: typeof HTMLAnchorElement.prototype.click;
+    };
+
+    const prototype = HTMLAnchorElement.prototype as AnchorPrototype;
+    if (prototype.__e2eOriginalClick) {
+      return;
+    }
+
+    const originalClick = prototype.click;
+    prototype.__e2eOriginalClick = originalClick;
+    prototype.click = function click() {
+      if (this.download) {
+        throw new Error(message);
+      }
+
+      return originalClick.call(this);
+    };
+  }, errorMessage);
+
+  return async () => {
+    await page.evaluate(() => {
+      type AnchorPrototype = typeof HTMLAnchorElement.prototype & {
+        __e2eOriginalClick?: typeof HTMLAnchorElement.prototype.click;
+      };
+
+      const prototype = HTMLAnchorElement.prototype as AnchorPrototype;
+      if (!prototype.__e2eOriginalClick) {
+        return;
+      }
+
+      prototype.click = prototype.__e2eOriginalClick;
+      delete prototype.__e2eOriginalClick;
+    });
   };
 }

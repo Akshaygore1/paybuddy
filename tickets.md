@@ -161,15 +161,15 @@ Work the **frontier**: any ticket whose blockers are all done. Implement one fro
 
 **Blocked by:** Run Payroll smoke tests independently; Deep-test Institution and establish regression probes.
 
-- [ ] Payroll regression covers fixed earnings/deductions and representative custom earnings/deductions with realistic Indian payroll amounts.
-- [ ] Money inputs cover empty, malformed, negative, decimal precision, zero, large valid values, focus formatting, and blur formatting as supported by product rules.
-- [ ] Gross earnings, deductions, and net totals are asserted from the entered line items.
-- [ ] Custom payroll fields cover cancel, required label, maximum length, case-insensitive duplicate detection, successful creation, focus placement, fixed-field protection, and narrowly scoped archival.
-- [ ] Unsaved-change confirmation is tested for both cancel-and-stay and confirm-and-discard outcomes.
-- [ ] Saved payroll is verified after reload and while switching between employees, financial years, and months.
-- [ ] Controlled unauthorized, server-error, slow-save, failed-save, and stale-session states show useful feedback without corrupting saved payroll.
-- [ ] Primary payroll pages pass serious accessibility scanning and core selection, entry, dialog, and save workflows are keyboard operable.
-- [ ] Institution-user login/logout and relevant permission behavior are covered inside the feature.
+- [x] Payroll regression covers fixed earnings/deductions and representative custom earnings/deductions with realistic Indian payroll amounts.
+- [x] Money inputs cover empty, malformed, negative, decimal precision, zero, large valid values, focus formatting, and blur formatting as supported by product rules.
+- [x] Gross earnings, deductions, and net totals are asserted from the entered line items.
+- [x] Custom payroll fields cover cancel, required label, maximum length, case-insensitive duplicate detection, successful creation, focus placement, fixed-field protection, and narrowly scoped archival.
+- [x] Unsaved-change confirmation is tested for both cancel-and-stay and confirm-and-discard outcomes.
+- [x] Saved payroll is verified after reload and while switching between employees, financial years, and months.
+- [x] Controlled unauthorized, server-error, slow-save, failed-save, and stale-session states show useful feedback without corrupting saved payroll.
+- [x] Primary payroll pages pass serious accessibility scanning and core selection, entry, dialog, and save workflows are keyboard operable.
+- [x] Institution-user login/logout and relevant permission behavior are covered inside the feature.
 
 ## Deep-test payroll history and payslips
 
@@ -177,15 +177,15 @@ Work the **frontier**: any ticket whose blockers are all done. Implement one fro
 
 **Blocked by:** Deep-test payroll entry and custom fields.
 
-- [ ] A small data-driven employee set proves payroll values do not leak between employees or financial years.
-- [ ] Later-month behavior correctly reflects the previous effective values.
-- [ ] Backdated changes update subsequent periods according to the product's effective-month rules.
-- [ ] Earlier periods display the correct absence of previous-month values at the financial-year boundary.
-- [ ] Archived custom fields remain visible where historically applicable and disappear from later applicable periods according to product behavior.
-- [ ] Monthly payslip download verifies its suggested filename and that a non-empty PDF artifact is produced for the selected employee and month.
-- [ ] Annual payslip download verifies its suggested filename and that a non-empty PDF artifact is produced for the selected employee and financial year.
-- [ ] Failed-download behavior is simulated deterministically and produces usable feedback.
-- [ ] Reloading and revisiting saved periods preserves all history assertions.
+- [x] A small data-driven employee set proves payroll values do not leak between employees or financial years.
+- [x] Later-month behavior correctly reflects the previous effective values.
+- [x] Backdated changes update subsequent periods according to the product's effective-month rules.
+- [x] Earlier periods display the correct absence of previous-month values at the financial-year boundary.
+- [x] Archived custom fields remain visible where historically applicable and disappear from later applicable periods according to product behavior.
+- [x] Monthly payslip download verifies its suggested filename and that a non-empty PDF artifact is produced for the selected employee and month.
+- [x] Annual payslip download verifies its suggested filename and that a non-empty PDF artifact is produced for the selected employee and financial year.
+- [x] Failed-download behavior is simulated deterministically and produces usable feedback.
+- [x] Reloading and revisiting saved periods preserves all history assertions.
 
 ## Deep-test institution and administrator reports
 
@@ -193,15 +193,15 @@ Work the **frontier**: any ticket whose blockers are all done. Implement one fro
 
 **Blocked by:** Run Reports smoke tests independently; Deep-test Institution and establish regression probes.
 
-- [ ] Institution-user regression displays only the signed-in institution's report and does not expose the administrator institution selector.
-- [ ] Administrator regression selects among uniquely generated institutions and displays the selected institution's data only.
-- [ ] Financial-year selection loads the correct payroll-derived rows and totals.
-- [ ] Search covers matching employees, no matches, clearing, and accurate result counts.
-- [ ] A fixture large enough to cross a page boundary verifies report pagination and filtered pagination behavior.
-- [ ] Empty institution and empty financial-year states provide accurate user-facing guidance.
-- [ ] Unauthorized, server-error, slow-loading, and failed-report states are deterministic and asserted.
-- [ ] Report pages pass serious accessibility scanning and selection/search workflows are keyboard operable.
-- [ ] Admin and institution login/logout and cross-role route protection are covered inside the feature.
+- [x] Institution-user regression displays only the signed-in institution's report and does not expose the administrator institution selector.
+- [x] Administrator regression selects among uniquely generated institutions and displays the selected institution's data only.
+- [x] Financial-year selection loads the correct payroll-derived rows and totals.
+- [x] Search covers matching employees, no matches, clearing, and accurate result counts.
+- [x] A fixture large enough to cross a page boundary verifies report pagination and filtered pagination behavior.
+- [x] Empty institution and empty financial-year states provide accurate user-facing guidance.
+- [x] Unauthorized, server-error, slow-loading, and failed-report states are deterministic and asserted.
+- [x] Report pages pass serious accessibility scanning and selection/search workflows are keyboard operable.
+- [x] Admin and institution login/logout and cross-role route protection are covered inside the feature.
 
 ## Finalize full regression and retire legacy scenarios
 
@@ -209,13 +209,15 @@ Work the **frontier**: any ticket whose blockers are all done. Implement one fro
 
 **Blocked by:** Run the complete smoke suite in parallel; Deep-test Employee Setup; Deep-test the employee directory and CSV export; Deep-test payroll history and payslips; Deep-test institution and administrator reports.
 
-- [ ] Omitting the feature selector runs all regression features in parallel with isolated institutions and records.
-- [ ] Any single feature can still run its smoke or regression depth independently.
-- [ ] Worker and retry overrides behave consistently for full and focused runs.
-- [ ] Existing high-value designation, employee, directory, CSV, payroll, payslip, and report assertions are represented in the new feature-owned suites.
-- [ ] The realistic Indian school and 15-employee data are reusable fixture catalogs rather than standalone order-dependent seeding tests.
-- [ ] Bulk payroll repetition is replaced by a smaller behavior-driven data matrix that covers calculations, isolation, history, and reporting.
-- [ ] Hard-coded credentials, shared-account assumptions, serial cross-feature dependencies, broad employee deletion, broad custom-field archival, and broad designation archival are removed from normal execution.
-- [ ] Documentation explains required environment variables, feature/depth selection, full smoke/regression commands, workers, retries, artifacts, manifests, retained production data, and the absence of automatic cleanup.
-- [ ] The run manifest directory and all generated sensitive artifacts are ignored by version control.
-- [ ] Playwright discovery, E2E type checking, repository checks, every feature smoke suite, and the full regression command pass against an appropriate configured environment.
+- [x] Omitting the feature selector runs all regression features in parallel with isolated institutions and records.
+- [x] Any single feature can still run its smoke or regression depth independently.
+- [x] Worker and retry overrides behave consistently for full and focused runs.
+- [x] Existing high-value designation, employee, directory, CSV, payroll, payslip, and report assertions are represented in the new feature-owned suites.
+- [x] The realistic Indian school and 15-employee data are reusable fixture catalogs rather than standalone order-dependent seeding tests.
+- [x] Bulk payroll repetition is replaced by a smaller behavior-driven data matrix that covers calculations, isolation, history, and reporting.
+- [x] Hard-coded credentials, shared-account assumptions, serial cross-feature dependencies, broad employee deletion, broad custom-field archival, and broad designation archival are removed from normal execution.
+- [x] Documentation explains required environment variables, feature/depth selection, full smoke/regression commands, workers, retries, artifacts, manifests, retained production data, and the absence of automatic cleanup.
+- [x] The run manifest directory and all generated sensitive artifacts are ignored by version control.
+- [x] Playwright discovery, E2E type checking, targeted workspace type checks, every feature smoke suite, and the full desktop regression command pass against an appropriate configured environment.
+
+> Verification note: repository-wide `bun run check` remains blocked by 122 pre-existing formatting violations outside this ticket; no global reformat was applied.

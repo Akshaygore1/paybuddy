@@ -1,7 +1,3 @@
-import { createDb } from "@tds-nivaran/db";
-import { institutions } from "@tds-nivaran/db/schema/index";
-import { eq } from "drizzle-orm";
-
 import { buildPayrollModule } from "../modules/payroll";
 import {
   addPayrollCustomFieldSchema,
@@ -11,9 +7,8 @@ import {
   payrollEmployeeFormSchema,
   savePayrollSchema,
 } from "../schemas/payroll";
-import { adminProcedure, institutionProcedure, protectedProcedure, router } from "../index";
+import { adminProcedure, institutionProcedure, router } from "../index";
 
-const db = createDb();
 const payroll = buildPayrollModule();
 
 export const payrollRouter = router({
@@ -36,23 +31,10 @@ export const payrollRouter = router({
     .mutation(async ({ ctx, input }) => {
       return payroll.addCustomField(ctx.institution.id, input);
     }),
-  archiveCustomField: protectedProcedure
+  archiveCustomField: institutionProcedure
     .input(archivePayrollCustomFieldSchema)
     .mutation(async ({ ctx, input }) => {
-      if (ctx.session.user.role !== "admin") {
-        throw new Error("Only admin can delete payroll custom fields");
-      }
-      const institution = await db
-        .select({ id: institutions.id })
-        .from(institutions)
-        .where(eq(institutions.userId, ctx.session.user.id))
-        .get();
-
-      if (!institution) {
-        throw new Error("Institution not found");
-      }
-
-      return payroll.archiveCustomField(institution.id, input);
+      return payroll.archiveCustomField(ctx.institution.id, input);
     }),
   getAdminCustomFields: adminProcedure
     .input(getAdminPayrollCustomFieldsSchema)
@@ -66,4 +48,3 @@ export const payrollRouter = router({
       return payroll.archiveCustomField(institutionId, restInput);
     }),
 });
-

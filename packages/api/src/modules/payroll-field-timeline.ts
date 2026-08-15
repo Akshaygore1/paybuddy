@@ -32,7 +32,7 @@ export type PayrollFieldTimeline = {
   periods: PayrollCustomFieldPeriod[];
 };
 
-function normalizeText(value: string) {
+export function normalizePayrollFieldLabel(value: string) {
   return value.trim().replace(/\s+/g, " ").toLowerCase();
 }
 
@@ -118,14 +118,14 @@ export function buildPayrollFieldTimelineModule(options: { db?: Db } = {}) {
     return timeline.fields.filter((field) => getActivePeriodForMonth(timeline, field.id, month));
   }
 
-  function filterSavedLineItems<TLineItem extends { customFieldDefinitionId: string | null }>(
-    input: {
-      savedLineItems: TLineItem[];
-      versionEffectiveMonth: string;
-      month: string;
-      timeline: PayrollFieldTimeline;
-    },
-  ) {
+  function filterSavedLineItems<
+    TLineItem extends { customFieldDefinitionId: string | null },
+  >(input: {
+    savedLineItems: TLineItem[];
+    versionEffectiveMonth: string;
+    month: string;
+    timeline: PayrollFieldTimeline;
+  }) {
     const fieldIdsWithPeriods = new Set(
       input.timeline.periods.map((period) => period.customFieldDefinitionId),
     );
@@ -140,7 +140,9 @@ export function buildPayrollFieldTimelineModule(options: { db?: Db } = {}) {
         input.month,
       );
 
-      return Boolean(activePeriod && input.versionEffectiveMonth >= activePeriod.effectiveFromMonth);
+      return Boolean(
+        activePeriod && input.versionEffectiveMonth >= activePeriod.effectiveFromMonth,
+      );
     });
   }
 
@@ -167,7 +169,8 @@ export function buildPayrollFieldTimelineModule(options: { db?: Db } = {}) {
     const timeline = await load(institutionId);
     const matchingFields = timeline.fields.filter(
       (field) =>
-        field.section === input.section && normalizeText(field.label) === normalizeText(input.label),
+        field.section === input.section &&
+        normalizePayrollFieldLabel(field.label) === normalizePayrollFieldLabel(input.label),
     );
 
     if (matchingFields.some((field) => getActivePeriodForMonth(timeline, field.id, input.month))) {
@@ -209,8 +212,7 @@ export function buildPayrollFieldTimelineModule(options: { db?: Db } = {}) {
     const nextPeriod = timeline.periods
       .filter(
         (period) =>
-          period.customFieldDefinitionId === field.id &&
-          period.effectiveFromMonth > input.month,
+          period.customFieldDefinitionId === field.id && period.effectiveFromMonth > input.month,
       )
       .sort((left, right) => left.effectiveFromMonth.localeCompare(right.effectiveFromMonth))[0];
 

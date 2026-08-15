@@ -61,6 +61,16 @@ export type RunManifest = {
     contactNumber?: string;
     customFields?: Record<string, string>;
   };
+  createdInstitutions?: Array<{
+    id?: string;
+    name: string;
+    username: string;
+  }>;
+  createdEmployees?: Array<{
+    id?: string;
+    displayName: string;
+    institutionName: string;
+  }>;
   payrollRecord?: {
     employeeName: string;
     financialYear: string;

@@ -28,7 +28,6 @@ import {
 import { Badge } from "@tds-nivaran/ui/components/badge";
 import { DownloadIcon, PlusIcon, Trash2Icon } from "lucide-react";
 
-import { authClient } from "@/lib/auth-client";
 import { useConfirmModal } from "@/components/confirm-modal";
 import { PageHeader } from "@/components/page-header";
 import { usePayrollWorkspace } from "@/hooks/use-payroll-workspace";
@@ -58,7 +57,6 @@ function PayrollTable({
   totalPaise,
   isAddFieldPending,
   isArchivingField,
-  isAdmin,
 }: {
   section: PayrollSection;
   lineItems: PayrollLineItemView[];
@@ -72,7 +70,6 @@ function PayrollTable({
   totalPaise: number;
   isAddFieldPending: boolean;
   isArchivingField: boolean;
-  isAdmin: boolean;
 }) {
   const [isAddFieldFormOpen, setIsAddFieldFormOpen] = React.useState(false);
   const [fieldLabel, setFieldLabel] = React.useState("");
@@ -245,7 +242,7 @@ function PayrollTable({
                       {item.isArchivedCustomField ? (
                         <Badge variant="outline">Archived</Badge>
                       ) : null}
-                      {item.customFieldDefinitionId && !item.isArchivedCustomField && isAdmin ? (
+                      {item.customFieldDefinitionId && !item.isArchivedCustomField ? (
                         <Button
                           type="button"
                           size="icon-sm"
@@ -310,13 +307,10 @@ function PayrollTable({
 }
 
 export default function PayrollIndexPage() {
-  const { data: session } = authClient.useSession();
-  const isAdmin = session?.user.role === "admin";
   const {
     view: {
       selection: {
         financialYearStart,
-        financialYearLabel,
         employeeId: selectedEmployeeId,
         month: selectedMonth,
         selectedMonth: selectedMonthDefinition,
@@ -341,6 +335,23 @@ export default function PayrollIndexPage() {
         title="Payroll"
         description="Prepare monthly payroll and download employee payslips for the selected financial year."
       />
+
+      {status.employees.error ? (
+        <div
+          className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive"
+          role="alert"
+        >
+          Unable to load employees: {status.employees.error.message}
+        </div>
+      ) : null}
+      {status.form.error ? (
+        <div
+          className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive"
+          role="alert"
+        >
+          Unable to load payroll: {status.form.error.message}
+        </div>
+      ) : null}
 
       <Card>
         <CardHeader>
@@ -461,7 +472,6 @@ export default function PayrollIndexPage() {
                 totalPaise={totals.earningsPaise}
                 isAddFieldPending={status.addField.isPending}
                 isArchivingField={status.archiveField.isPending}
-                isAdmin={isAdmin}
               />
               <PayrollTable
                 section="deductions"
@@ -476,7 +486,6 @@ export default function PayrollIndexPage() {
                 totalPaise={totals.deductionsPaise}
                 isAddFieldPending={status.addField.isPending}
                 isArchivingField={status.archiveField.isPending}
-                isAdmin={isAdmin}
               />
             </div>
             <div className="space-y-1 px-4 py-2">

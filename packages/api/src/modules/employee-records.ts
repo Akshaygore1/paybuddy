@@ -329,7 +329,7 @@ export function buildEmployeeRecordsModule(options: EmployeeRecordModuleOptions 
     }>,
   ) {
     return planD1Statements(values, (valueChunk) =>
-      db.insert(employeeCustomFieldValues).values(valueChunk),
+      db.insert(employeeCustomFieldValues).values([...valueChunk]),
     );
   }
 
@@ -659,9 +659,9 @@ export function buildEmployeeRecordsModule(options: EmployeeRecordModuleOptions 
     const insertValueQueries = getCustomValueInsertQueries(prepared.customFieldValues);
 
     await executeD1Batch(db, insertValueQueries, [
-        db
-          .update(employees)
-          .set(prepared.baseValues)
+      db
+        .update(employees)
+        .set(prepared.baseValues)
         .where(and(eq(employees.id, input.employeeId), eq(employees.institutionId, institutionId))),
       deleteValuesQuery,
     ]);

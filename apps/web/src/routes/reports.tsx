@@ -142,13 +142,15 @@ export default function ReportsPage() {
       institutionId: selectedInstitutionId || undefined,
     }),
     enabled: Boolean(shouldFetchReport),
+    retry: false,
   });
 
   const reportRows = React.useMemo(
-    () => (reportQuery.data?.rows ?? []).map(createReportDisplayRow),
-    [reportQuery.data?.rows],
+    () => (reportQuery.error ? [] : (reportQuery.data?.rows ?? []).map(createReportDisplayRow)),
+    [reportQuery.data?.rows, reportQuery.error],
   );
-  const isReportLoading = reportQuery.isPending && Boolean(shouldFetchReport);
+  const isReportLoading =
+    (reportQuery.isPending || reportQuery.isFetching) && Boolean(shouldFetchReport);
   const selectedInstitutionName =
     reportQuery.data?.institution.name ??
     institutionsQuery.data?.find((institution) => institution.id === selectedInstitutionId)?.name;
@@ -294,13 +296,13 @@ export default function ReportsPage() {
               </div>
 
               <div
-                aria-busy={areResultsStale}
+                aria-busy={isReportLoading || areResultsStale}
                 className={`overflow-hidden rounded-lg border transition-opacity ${
                   areResultsStale ? "opacity-70" : "opacity-100"
                 }`}
                 data-stale={areResultsStale || undefined}
               >
-                <Table aria-label="Reports table">
+                <Table aria-busy={isReportLoading || areResultsStale} aria-label="Reports table">
                   <TableHeader>
                     <TableRow>
                       <TableHead className="min-w-48">Name</TableHead>
@@ -369,6 +371,24 @@ export default function ReportsPage() {
                   </TableBody>
                 </Table>
               </div>
+
+              {reportQuery.error ? (
+                <div
+                  className="flex flex-col gap-3 rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive sm:flex-row sm:items-center sm:justify-between"
+                  data-testid="report-error"
+                  role="alert"
+                >
+                  <span>Unable to load report: {reportQuery.error.message}</span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    onClick={() => void reportQuery.refetch()}
+                  >
+                    Retry report
+                  </Button>
+                </div>
+              ) : null}
 
               {!isReportLoading && filteredRows > 0 ? (
                 <div className="flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">

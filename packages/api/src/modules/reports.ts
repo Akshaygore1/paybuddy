@@ -193,7 +193,9 @@ export function buildReportsModule(options: ReportsModuleOptions = {}) {
       institution: history.institution,
       financialYearStart: input.financialYearStart,
       rows: buildReportRows({
-        employees: history.employees,
+        employees: history.employees.filter((employee) =>
+          employee.monthlyPayroll.some((month) => month.hasSavedPayroll),
+        ),
         financialYearStart: input.financialYearStart,
       }),
     };

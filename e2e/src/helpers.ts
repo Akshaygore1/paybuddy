@@ -1,11 +1,6 @@
 import { readFile } from "node:fs/promises";
 
-import {
-  expect,
-  type Download,
-  type Locator,
-  type Page,
-} from "@playwright/test";
+import { expect, type Download, type Locator, type Page } from "@playwright/test";
 
 import type { RunContext } from "./run-context";
 
@@ -31,25 +26,56 @@ export async function signIn(page: Page, identifier: string, password: string) {
   await expect(page).toHaveURL(/\/(?:dashboard|employee)$/);
 }
 
-export async function selectOption(
-  page: Page,
-  triggerName: string,
-  optionText: string,
-) {
+export async function selectOption(page: Page, triggerName: string, optionText: string) {
   await page.getByRole("combobox", { name: triggerName, exact: true }).click();
-  await page
+  const option = page
     .locator('[data-slot="select-content"]')
-    .getByRole("option", { name: optionText, exact: true })
-    .click();
+    .getByRole("option", { name: optionText, exact: true });
+  await expect(option).toBeVisible();
+  await option.click({ force: true });
+}
+
+export async function fillPayrollAmount(input: Locator, value: string) {
+  await input.focus();
+  const currentValue = await input.inputValue();
+  await expect(input).toHaveValue(currentValue.replaceAll(",", ""));
+  await input.fill(value);
+}
+
+export function employeeFullName(employee: {
+  firstName: string;
+  middleName: string;
+  surname: string;
+}) {
+  return [employee.firstName, employee.middleName, employee.surname].filter(Boolean).join(" ");
+}
+
+export async function savePayrollAndWait(page: Page) {
+  const responsePromise = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" && response.url().includes("/trpc/payroll.save"),
+  );
+  const saveButton = page.getByRole("button", { name: "Save Payroll" });
+  await saveButton.click();
+  const response = await responsePromise;
+
+  if (!response.ok()) {
+    throw new Error(`Payroll save request failed with status ${response.status()}`);
+  }
+
+  await expect(page.getByText("Payroll saved", { exact: true }).last()).toBeVisible();
+}
+
+export async function selectGlobalFinancialYear(page: Page, optionText: string) {
+  await openSidebarIfMobile(page);
+  await selectOption(page, "Select financial year", optionText);
 }
 
 export async function goToInstitutionSettings(page: Page) {
   await openSidebarIfMobile(page);
   await page.getByRole("link", { name: "Employee Setup", exact: true }).click();
   await expect(page).toHaveURL(/\/institution-settings$/);
-  await expect(
-    page.getByRole("heading", { name: "Employee Setup" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Employee Setup" })).toBeVisible();
 }
 
 export async function goToEmployeeDirectory(page: Page) {
@@ -62,9 +88,7 @@ export async function goToEmployeeDirectory(page: Page) {
 export async function goToEmployeeCreate(page: Page) {
   await page.goto("/employee/create");
   await expect(page).toHaveURL(/\/employee\/create$/);
-  await expect(
-    page.getByRole("heading", { name: "Create Employee" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Create Employee" })).toBeVisible();
 }
 
 export async function goToPayroll(page: Page) {
@@ -81,35 +105,44 @@ export async function goToReports(page: Page) {
   await expect(page.getByRole("heading", { name: /Reports/ })).toBeVisible();
 }
 
+export function payrollSectionCard(page: Page, section: "Earnings" | "Deductions") {
+  return page.locator('[data-slot="card"]').filter({
+    has: page.getByText(section, { exact: true }),
+  });
+}
+
+export async function downloadPayrollArtifact(page: Page, buttonName: string) {
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: buttonName, exact: true }).click();
+  const download = await downloadPromise;
+  const downloadPath = await download.path();
+
+  if (!downloadPath) {
+    throw new Error("Expected downloaded payslip path to be available");
+  }
+
+  return {
+    download,
+    bytes: await readFile(downloadPath),
+  };
+}
+
 export async function createDesignation(page: Page, name: string) {
   await page.getByLabel("Designation name").fill(name);
   await page.getByRole("button", { name: "Create Designation" }).click();
-  await expect(
-    page.getByTestId("designation-name").filter({ hasText: name }),
-  ).toBeVisible();
+  await expect(page.getByTestId("designation-name").filter({ hasText: name })).toBeVisible();
 }
 
-export async function clickDesignationMove(
-  page: Page,
-  name: string,
-  direction: "up" | "down",
-) {
+export async function clickDesignationMove(page: Page, name: string, direction: "up" | "down") {
   const label = direction === "up" ? `Move ${name} up` : `Move ${name} down`;
   await page.getByRole("button", { name: label, exact: true }).click();
 }
 
-export async function expectDesignationOrder(
-  page: Page,
-  namesInOrder: string[],
-) {
+export async function expectDesignationOrder(page: Page, namesInOrder: string[]) {
   await expect
     .poll(async () => {
-      const designationNames = await page
-        .getByTestId("designation-name")
-        .allInnerTexts();
-      const indexes = namesInOrder.map((name) =>
-        designationNames.indexOf(name),
-      );
+      const designationNames = await page.getByTestId("designation-name").allInnerTexts();
+      const indexes = namesInOrder.map((name) => designationNames.indexOf(name));
       return (
         indexes.every((value) => value >= 0) &&
         indexes.every((value, index) => {
@@ -167,31 +200,31 @@ export async function fillEmployeeForm(
   if (input.surname !== undefined) await page.getByLabel("Surname").fill(input.surname);
   if (input.firstName !== undefined) await page.getByLabel("First name").fill(input.firstName);
   if (input.middleName !== undefined) await page.getByLabel("Middle name").fill(input.middleName);
-  if (input.dateOfBirth !== undefined) await page.getByLabel("Date of Birth").fill(input.dateOfBirth);
+  if (input.dateOfBirth !== undefined)
+    await page.getByLabel("Date of Birth").fill(input.dateOfBirth);
   if (input.gender !== undefined) await selectOption(page, "Gender", input.gender);
-  if (input.designationName !== undefined) await selectOption(page, "Designation", input.designationName);
-  if (input.seniorityRank !== undefined) await page.getByLabel("Seniority Rank").fill(String(input.seniorityRank));
+  if (input.designationName !== undefined)
+    await selectOption(page, "Designation", input.designationName);
+  if (input.seniorityRank !== undefined)
+    await page.getByLabel("Seniority Rank").fill(String(input.seniorityRank));
   if (input.panNumber !== undefined) await page.getByLabel("PAN number").fill(input.panNumber);
   if (input.pfNumber !== undefined) await page.getByLabel("PF number").fill(input.pfNumber);
-  if (input.npsAccountNumber !== undefined) await page.getByLabel("NPS account number").fill(input.npsAccountNumber);
-  if (input.whatsAppNumber !== undefined) await page.getByLabel("WhatsApp number").fill(input.whatsAppNumber);
-  if (input.contactNumber !== undefined) await page.getByLabel("Contact number").fill(input.contactNumber);
+  if (input.npsAccountNumber !== undefined)
+    await page.getByLabel("NPS account number").fill(input.npsAccountNumber);
+  if (input.whatsAppNumber !== undefined)
+    await page.getByLabel("WhatsApp number").fill(input.whatsAppNumber);
+  if (input.contactNumber !== undefined)
+    await page.getByLabel("Contact number").fill(input.contactNumber);
 
   if (input.customFieldLabel && input.customFieldValue !== undefined) {
     await page
-      .getByLabel(
-        new RegExp(`^${escapeRegExp(input.customFieldLabel)}(?:\\s+\\*)?$`),
-      )
+      .getByLabel(new RegExp(`^${escapeRegExp(input.customFieldLabel)}(?:\\s+\\*)?$`))
       .fill(input.customFieldValue);
   }
 
   if (input.customFields) {
     for (const [label, value] of Object.entries(input.customFields)) {
-      await page
-        .getByLabel(
-          new RegExp(`^${escapeRegExp(label)}(?:\\s+\\*)?$`),
-        )
-        .fill(value);
+      await page.getByLabel(new RegExp(`^${escapeRegExp(label)}(?:\\s+\\*)?$`)).fill(value);
     }
   }
 }
@@ -210,23 +243,16 @@ export async function expectEmployeeRow(page: Page, displayName: string) {
 
 export async function enableCustomFieldColumn(page: Page, label: string) {
   await setColumnVisibility(page, label, true);
-  await expect(
-    page.getByRole("columnheader", { name: label, exact: true }),
-  ).toBeVisible();
+  await expect(page.getByRole("columnheader", { name: label, exact: true })).toBeVisible();
 }
 
-export async function setColumnVisibility(
-  page: Page,
-  label: string,
-  visible: boolean,
-) {
+export async function setColumnVisibility(page: Page, label: string, visible: boolean) {
   await page.getByRole("button", { name: "Choose Columns" }).click();
   const columnToggle = page.getByRole("menuitemcheckbox", {
     name: label,
     exact: true,
   });
-  const isChecked =
-    (await columnToggle.getAttribute("aria-checked")) === "true";
+  const isChecked = (await columnToggle.getAttribute("aria-checked")) === "true";
 
   if (isChecked !== visible) {
     await columnToggle.click();
@@ -236,15 +262,11 @@ export async function setColumnVisibility(
   await expect(page.locator('[data-slot="dropdown-menu-content"]')).toHaveCount(0);
 
   if (visible) {
-    await expect(
-      page.getByRole("columnheader", { name: label, exact: true }),
-    ).toBeVisible();
+    await expect(page.getByRole("columnheader", { name: label, exact: true })).toBeVisible();
     return;
   }
 
-  await expect(
-    page.getByRole("columnheader", { name: label, exact: true }),
-  ).toHaveCount(0);
+  await expect(page.getByRole("columnheader", { name: label, exact: true })).toHaveCount(0);
 }
 
 export async function searchEmployeeDirectory(page: Page, value: string) {
@@ -263,17 +285,13 @@ export async function downloadEmployeeDirectoryCsv(page: Page) {
 }
 
 export function employeeRow(page: Page, displayName: string) {
-  return page
-    .locator('table[aria-label="Employee directory"] tbody tr')
-    .filter({
-      hasText: displayName,
-    });
+  return page.locator('table[aria-label="Employee directory"] tbody tr').filter({
+    hasText: displayName,
+  });
 }
 
 export async function openEmployeeActions(page: Page, displayName: string) {
-  await employeeRow(page, displayName)
-    .getByRole("button", { name: "Employee actions" })
-    .click();
+  await employeeRow(page, displayName).getByRole("button", { name: "Employee actions" }).click();
 }
 
 export async function deleteEmployee(page: Page, displayName: string) {
@@ -302,9 +320,7 @@ export async function editEmployee(page: Page, displayName: string) {
     .getByText("Edit", { exact: true })
     .click();
   await expect(page).toHaveURL(/\/employee\/.*\/edit$/);
-  await expect(
-    page.getByRole("heading", { name: "Edit Employee" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Edit Employee" })).toBeVisible();
 }
 
 export async function archiveDesignation(page: Page, name: string) {
@@ -314,9 +330,7 @@ export async function archiveDesignation(page: Page, name: string) {
     return;
   }
 
-  await row
-    .getByRole("button", { name: `Remove ${name}`, exact: true })
-    .click();
+  await row.getByRole("button", { name: `Remove ${name}`, exact: true }).click();
   const confirmButton = page.getByRole("button", {
     name: "Remove Designation",
   });
@@ -336,9 +350,7 @@ export async function archiveCustomField(page: Page, label: string) {
     return;
   }
 
-  await row
-    .getByRole("button", { name: `Remove ${label}`, exact: true })
-    .click();
+  await row.getByRole("button", { name: `Remove ${label}`, exact: true }).click();
   const confirmButton = page.getByRole("button", { name: "Remove Field" });
   if (await confirmButton.isVisible().catch(() => false)) {
     await confirmButton.click();
@@ -347,15 +359,11 @@ export async function archiveCustomField(page: Page, label: string) {
     targetRow: row,
     emptyState: customFieldEmptyState(page),
   });
-  await expect(
-    page.getByLabel(new RegExp(`^${escapeRegExp(label)}(?:\\s+\\*)?$`)),
-  ).toHaveCount(0);
+  await expect(page.getByLabel(new RegExp(`^${escapeRegExp(label)}(?:\\s+\\*)?$`))).toHaveCount(0);
 }
 
 export async function assertRunEmployeeOrder(page: Page, run: RunContext) {
-  const bodyRows = page.locator(
-    'table[aria-label="Employee directory"] tbody tr',
-  );
+  const bodyRows = page.locator('table[aria-label="Employee directory"] tbody tr');
   const allRows = await bodyRows.allInnerTexts();
   const runRows = allRows
     .filter((text) => text.includes(run.suffix))
@@ -368,94 +376,20 @@ export async function assertRunEmployeeOrder(page: Page, run: RunContext) {
   expect(runRows[3]).toContain(run.employees.associate.displayName);
 }
 
-export async function expectRowValues(
-  row: Locator,
-  values: Array<string | number>,
-) {
+export async function expectRowValues(row: Locator, values: Array<string | number>) {
   for (const value of values) {
     await expect(row).toContainText(String(value));
   }
 }
 
-export async function waitForMutationToSettle(input: {
-  targetRow: Locator;
-  emptyState: Locator;
-}) {
+export async function waitForMutationToSettle(input: { targetRow: Locator; emptyState: Locator }) {
   await expect
     .poll(async () => {
       const rowCount = await input.targetRow.count();
-      const emptyVisible = await input.emptyState
-        .isVisible()
-        .catch(() => false);
+      const emptyVisible = await input.emptyState.isVisible().catch(() => false);
       return rowCount === 0 || emptyVisible;
     })
     .toBeTruthy();
-}
-
-export async function deleteAllEmployees(page: Page) {
-  await goToEmployeeDirectory(page);
-
-  await waitForListToSettle({
-    rows: page.locator('table[aria-label="Employee directory"] tbody tr'),
-    emptyState: employeeDirectoryEmptyState(page),
-  });
-
-  while (
-    !(await employeeDirectoryEmptyState(page)
-      .isVisible()
-      .catch(() => false))
-  ) {
-    const displayName = await visibleEmployeeDisplayName(page);
-    await deleteEmployee(page, displayName);
-  }
-
-  await expect(employeeDirectoryEmptyState(page)).toBeVisible();
-}
-
-export async function archiveAllCustomFields(page: Page) {
-  await goToEmployeeCreate(page);
-
-  await waitForListToSettle({
-    rows: customFieldManagerRows(page),
-    emptyState: customFieldEmptyState(page),
-  });
-
-  while (
-    !(await customFieldEmptyState(page)
-      .isVisible()
-      .catch(() => false))
-  ) {
-    const label = await visibleCustomFieldLabel(page);
-    await archiveCustomField(page, label);
-  }
-
-  await expect(customFieldEmptyState(page)).toBeVisible();
-}
-
-export async function archiveAllDesignations(page: Page) {
-  await goToInstitutionSettings(page);
-
-  await waitForListToSettle({
-    rows: designationRows(page),
-    emptyState: designationEmptyState(page),
-  });
-
-  while (
-    !(await designationEmptyState(page)
-      .isVisible()
-      .catch(() => false))
-  ) {
-    const name = await visibleDesignationName(page);
-    await archiveDesignation(page, name);
-  }
-
-  await expect(designationEmptyState(page)).toBeVisible();
-}
-
-export async function resetInstitutionWorkspace(page: Page) {
-  await deleteAllEmployees(page);
-  await archiveAllCustomFields(page);
-  await archiveAllDesignations(page);
 }
 
 function employeeDirectoryEmptyState(page: Page) {
@@ -478,10 +412,6 @@ function customFieldManagerRow(page: Page, label: string) {
   });
 }
 
-function customFieldManagerRows(page: Page) {
-  return page.getByTestId("custom-field-manager-row");
-}
-
 function designationRow(page: Page, name: string) {
   return page.getByTestId("designation-row").filter({
     has: page
@@ -490,64 +420,8 @@ function designationRow(page: Page, name: string) {
   });
 }
 
-function designationRows(page: Page) {
-  return page.getByTestId("designation-row");
-}
-
-async function visibleEmployeeDisplayName(page: Page) {
-  const name = await page
-    .locator('table[aria-label="Employee directory"] tbody tr td')
-    .first()
-    .locator("p.font-medium")
-    .textContent();
-
-  if (!name) {
-    throw new Error("Expected at least one employee row to be visible");
-  }
-
-  return name.replace(/\s+/g, " ").trim();
-}
-
-async function visibleCustomFieldLabel(page: Page) {
-  const label = await page
-    .getByTestId("custom-field-manager-name")
-    .first()
-    .textContent();
-
-  if (!label) {
-    throw new Error("Expected at least one custom field row to be visible");
-  }
-
-  return label.replace(/\s+\*$/, "").trim();
-}
-
-async function visibleDesignationName(page: Page) {
-  const name = await page.getByTestId("designation-name").first().textContent();
-
-  if (!name) {
-    throw new Error("Expected at least one designation row to be visible");
-  }
-
-  return name.trim();
-}
-
 function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-async function waitForListToSettle(input: {
-  rows: Locator;
-  emptyState: Locator;
-}) {
-  await expect
-    .poll(async () => {
-      const rowCount = await input.rows.count();
-      const emptyVisible = await input.emptyState
-        .isVisible()
-        .catch(() => false);
-      return rowCount > 0 || emptyVisible;
-    })
-    .toBeTruthy();
 }
 
 async function readCsvDownload(download: Download) {
@@ -656,79 +530,39 @@ export async function openSidebarIfMobile(page: Page) {
 export async function expectAdminNavigation(page: Page) {
   await expect(page).toHaveURL(/\/dashboard$/);
   await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
-  await expect(
-    page.getByRole("link", { name: "Open Institution" }),
-  ).toBeVisible();
+  await expect(page.getByRole("link", { name: "Open Institution" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Open Reports" })).toBeVisible();
-  await expect(
-    page.getByRole("link", { name: "Open Employee", exact: true }),
-  ).toHaveCount(0);
-  await expect(
-    page.getByRole("link", { name: "Open Payroll", exact: true }),
-  ).toHaveCount(0);
-  await expect(
-    page.getByRole("link", { name: "Open Employee Setup", exact: true }),
-  ).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Open Employee", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Open Payroll", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Open Employee Setup", exact: true })).toHaveCount(0);
 
   await openSidebarIfMobile(page);
-  await expect(
-    page.getByRole("link", { name: "Institution", exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("link", { name: "Manage Custom Fields", exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("link", { name: "Reports", exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("link", { name: "Employee Setup", exact: true }),
-  ).toHaveCount(0);
-  await expect(
-    page.getByRole("link", { name: "Payroll", exact: true }),
-  ).toHaveCount(0);
-  await expect(
-    page.getByRole("link", { name: "Employee", exact: true }),
-  ).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Institution", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Manage Custom Fields", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Reports", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Employee Setup", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Payroll", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Employee", exact: true })).toHaveCount(0);
 }
 
 export async function expectInstitutionNavigation(page: Page) {
   await expect(page).toHaveURL(/\/dashboard$/);
   await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
-  await expect(
-    page.getByRole("link", { name: "Open Employee", exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("link", { name: "Open Payroll", exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("link", { name: "Open Reports", exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("link", { name: "Open Employee Setup", exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("link", { name: "Open Institution", exact: true }),
-  ).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Open Employee", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Open Payroll", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Open Reports", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Open Employee Setup", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Open Institution", exact: true })).toHaveCount(0);
 
   await openSidebarIfMobile(page);
-  await expect(
-    page.getByRole("link", { name: "Employee", exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("link", { name: "Employee Setup", exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("link", { name: "Payroll", exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("link", { name: "Reports", exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("link", { name: "Institution", exact: true }),
-  ).toHaveCount(0);
-  await expect(
-    page.getByRole("link", { name: "Manage Custom Fields", exact: true }),
-  ).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Employee", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Employee Setup", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Payroll", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Reports", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Institution", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Manage Custom Fields", exact: true })).toHaveCount(
+    0,
+  );
 }
 
 export async function createInstitutionViaUI(
@@ -752,9 +586,7 @@ export async function createInstitutionViaUI(
 }> {
   await page.goto("/institutions/create");
   await expect(page).toHaveURL(/\/institutions\/create$/);
-  await expect(
-    page.getByRole("heading", { name: "Create Institution" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Create Institution" })).toBeVisible();
 
   // Step 1
   await page.getByLabel("Institution Name").fill(data.name);
@@ -792,16 +624,12 @@ export async function expectInstitutionDetails(
   },
 ) {
   if (data.id) {
-    await expect(page).toHaveURL(
-      new RegExp(`/institutions/${escapeRegExp(data.id)}$`),
-    );
+    await expect(page).toHaveURL(new RegExp(`/institutions/${escapeRegExp(data.id)}$`));
   }
   await expect(page.getByRole("heading", { name: data.name })).toBeVisible();
   await expect(page.getByText(data.name).first()).toBeVisible();
   await expect(page.getByText(data.tanNumber, { exact: true })).toBeVisible();
-  await expect(
-    page.getByText(data.institutionHead, { exact: true }),
-  ).toBeVisible();
+  await expect(page.getByText(data.institutionHead, { exact: true })).toBeVisible();
   await expect(page.getByText(data.username, { exact: true })).toBeVisible();
   await expect(page.getByText(data.address, { exact: true })).toBeVisible();
   await expect(page.getByText("Current login status: Active")).toBeVisible();
@@ -810,24 +638,18 @@ export async function expectInstitutionDetails(
 export async function goToInstitutionDirectory(page: Page) {
   await page.goto("/institutions");
   await expect(page).toHaveURL(/\/institutions$/);
-  await expect(
-    page.getByRole("heading", { name: "Institution" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Institution" })).toBeVisible();
 }
 
 export async function goToInstitutionCreate(page: Page) {
   await page.goto("/institutions/create");
   await expect(page).toHaveURL(/\/institutions\/create$/);
-  await expect(
-    page.getByRole("heading", { name: "Create Institution" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Create Institution" })).toBeVisible();
 }
 
 export async function goToInstitutionDetail(page: Page, institutionId: string) {
   await page.goto(`/institutions/${institutionId}`);
-  await expect(page).toHaveURL(
-    new RegExp(`/institutions/${escapeRegExp(institutionId)}$`),
-  );
+  await expect(page).toHaveURL(new RegExp(`/institutions/${escapeRegExp(institutionId)}$`));
 }
 
 export async function fillInstitutionStep1(
@@ -839,14 +661,11 @@ export async function fillInstitutionStep1(
     address?: string;
   },
 ) {
-  if (data.name !== undefined)
-    await page.getByLabel("Institution Name").fill(data.name);
-  if (data.tanNumber !== undefined)
-    await page.getByLabel("TAN Number").fill(data.tanNumber);
+  if (data.name !== undefined) await page.getByLabel("Institution Name").fill(data.name);
+  if (data.tanNumber !== undefined) await page.getByLabel("TAN Number").fill(data.tanNumber);
   if (data.institutionHead !== undefined)
     await page.getByLabel("Institution Head").fill(data.institutionHead);
-  if (data.address !== undefined)
-    await page.getByLabel("Address").fill(data.address);
+  if (data.address !== undefined) await page.getByLabel("Address").fill(data.address);
 }
 
 export async function fillInstitutionStep2(
@@ -856,16 +675,11 @@ export async function fillInstitutionStep2(
     password?: string;
   },
 ) {
-  if (data.username !== undefined)
-    await page.getByLabel("Username or Email").fill(data.username);
-  if (data.password !== undefined)
-    await page.getByLabel("Password").fill(data.password);
+  if (data.username !== undefined) await page.getByLabel("Username or Email").fill(data.username);
+  if (data.password !== undefined) await page.getByLabel("Password").fill(data.password);
 }
 
-export async function resetInstitutionPasswordViaUI(
-  page: Page,
-  newPassword: string,
-) {
+export async function resetInstitutionPasswordViaUI(page: Page, newPassword: string) {
   await page.getByLabel("New Password").fill(newPassword);
   await page.getByRole("button", { name: "Reset Password" }).click();
 }
@@ -874,13 +688,8 @@ export async function toggleInstitutionLoginAccessViaUI(
   page: Page,
   expectNewState: "Active" | "Inactive",
 ) {
-  const buttonName =
-    expectNewState === "Inactive" ? "Deactivate Login" : "Activate Login";
+  const buttonName = expectNewState === "Inactive" ? "Deactivate Login" : "Activate Login";
   await page.getByRole("button", { name: buttonName }).click();
-  await expect(
-    page.getByText(`Current login status: ${expectNewState}`),
-  ).toBeVisible();
-  await expect(
-    page.getByText(`Status: ${expectNewState}`, { exact: true }),
-  ).toBeVisible();
+  await expect(page.getByText(`Current login status: ${expectNewState}`)).toBeVisible();
+  await expect(page.getByText(`Status: ${expectNewState}`, { exact: true })).toBeVisible();
 }

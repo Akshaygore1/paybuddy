@@ -237,7 +237,7 @@ export function buildPayrollHistoryModule(
   async function loadVersionsAndItems(profileIds: string[]) {
     if (profileIds.length === 0) return { versions: [], lineItemsByVersionId: new Map() };
 
-    const versions = await queryD1InBatches(profileIds, (profileIdChunk) =>
+    const versions = (await queryD1InBatches(profileIds, (profileIdChunk) =>
       db
         .select({
           id: employeePayrollVersions.id,
@@ -247,12 +247,12 @@ export function buildPayrollHistoryModule(
         .from(employeePayrollVersions)
         .where(inArray(employeePayrollVersions.payrollProfileId, profileIdChunk))
         .orderBy(asc(employeePayrollVersions.effectiveMonth)),
-    );
+    )) as unknown as PayrollVersion[];
     const versionIds = versions.map((version) => version.id);
-    const items =
+    const items: SavedPayrollLineItem[] =
       versionIds.length === 0
         ? []
-        : await queryD1InBatches(versionIds, (versionIdChunk) =>
+        : ((await queryD1InBatches(versionIds, (versionIdChunk) =>
             db
               .select({
                 id: payrollLineItems.id,
@@ -271,7 +271,7 @@ export function buildPayrollHistoryModule(
                 asc(payrollLineItems.sortOrder),
                 asc(payrollLineItems.label),
               ),
-          );
+          )) as unknown as SavedPayrollLineItem[]);
     const lineItemsByVersionId = new Map<string, SavedPayrollLineItem[]>();
     for (const item of items) {
       const current = lineItemsByVersionId.get(item.payrollVersionId) ?? [];

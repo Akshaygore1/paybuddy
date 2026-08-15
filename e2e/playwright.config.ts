@@ -2,6 +2,8 @@ import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./tests",
+  timeout: 120_000,
+  // Keep tests within each feature file serial; workers still parallelize independent files.
   fullyParallel: false,
   workers: process.env.E2E_WORKERS ? Number(process.env.E2E_WORKERS) : undefined,
   retries: process.env.E2E_RETRIES !== undefined ? Number(process.env.E2E_RETRIES) : 0,

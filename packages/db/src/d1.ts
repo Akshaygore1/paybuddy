@@ -19,7 +19,7 @@ export function planD1Statements<TValue, TStatement extends D1Statement>(
   let currentStatement: TStatement | undefined;
 
   for (const value of values) {
-    const candidateValues = [...currentValues, value] as [TValue, ...TValue[]];
+    const candidateValues = [...currentValues, value] as unknown as [TValue, ...TValue[]];
     const candidateStatement = buildStatement(candidateValues);
 
     if (candidateStatement.toSQL().params.length <= D1_MAX_BOUND_PARAMETERS) {

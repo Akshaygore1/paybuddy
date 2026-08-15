@@ -143,11 +143,12 @@ export function usePayrollWorkspace() {
   const saveMutation = useMutation(
     trpc.payroll.save.mutationOptions({
       onSuccess: async (data) => {
-        setState((current) =>
-          transitionPayrollWorkspace(current, {
-            type: "saveSucceeded",
-            form: toWorkspaceForm(data),
-          }).state,
+        setState(
+          (current) =>
+            transitionPayrollWorkspace(current, {
+              type: "saveSucceeded",
+              form: toWorkspaceForm(data),
+            }).state,
         );
         await completePayrollWorkspaceMutation("Payroll saved", {
           notifySuccess: toast.success,
@@ -191,11 +192,12 @@ export function usePayrollWorkspace() {
 
   React.useEffect(() => {
     if (!formQuery.data) return;
-    setState((current) =>
-      transitionPayrollWorkspace(current, {
-        type: "formLoaded",
-        form: toWorkspaceForm(formQuery.data),
-      }).state,
+    setState(
+      (current) =>
+        transitionPayrollWorkspace(current, {
+          type: "formLoaded",
+          form: toWorkspaceForm(formQuery.data),
+        }).state,
     );
   }, [formQuery.data]);
 
@@ -226,8 +228,7 @@ export function usePayrollWorkspace() {
     [employeesQuery.data],
   );
   const previousMonthView = React.useMemo(
-    () =>
-      getPayrollWorkspacePreviousMonthView(state, calendarView.selection.previousMonth),
+    () => getPayrollWorkspacePreviousMonthView(state, calendarView.selection.previousMonth),
     [calendarView.selection.previousMonth, state.loadedForm],
   );
   const editorView = React.useMemo(
@@ -293,6 +294,8 @@ export function usePayrollWorkspace() {
         notifyError: toast.error,
         downloadDocument: downloadPayrollDocument,
       });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to download payslip");
     } finally {
       setIsDownloading(false);
     }
@@ -330,17 +333,19 @@ export function usePayrollWorkspace() {
         }
       },
       updateAmount(lineItemKey: string, amount: string) {
-        setState((current) =>
-          transitionPayrollWorkspace(current, {
-            type: "amountChanged",
-            lineItemKey,
-            amount,
-          }).state,
+        setState(
+          (current) =>
+            transitionPayrollWorkspace(current, {
+              type: "amountChanged",
+              lineItemKey,
+              amount,
+            }).state,
         );
       },
       formatAmount(lineItemKey: string) {
-        setState((current) =>
-          transitionPayrollWorkspace(current, { type: "amountFormatted", lineItemKey }).state,
+        setState(
+          (current) =>
+            transitionPayrollWorkspace(current, { type: "amountFormatted", lineItemKey }).state,
         );
       },
       save,

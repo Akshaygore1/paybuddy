@@ -41,6 +41,7 @@ Options:
   -d, --depth <name>       Select suite depth: smoke, regression (default: smoke)
   -w, --workers <count>    Set worker count for execution
   -r, --retries <count>    Set retry count (default: 0)
+  -p, --project <name>     Select Playwright project, for example desktop or mobile
       --base-url <url>     Override BASE_URL environment variable
       --server-url <url>   Override SERVER_URL environment variable
       --admin-identifier <id>  Override admin identifier
@@ -158,9 +159,7 @@ function parseCliArgs(args: string[]) {
   }
 
   if (workers !== undefined && (isNaN(workers) || workers < 1)) {
-    console.error(
-      `Error: Invalid workers count "${workers}". Workers must be a positive integer.`,
-    );
+    console.error(`Error: Invalid workers count "${workers}". Workers must be a positive integer.`);
     process.exit(1);
   }
 
@@ -260,7 +259,9 @@ export function runE2E() {
   console.log(`   Feature: ${options.feature || "all"}`);
   console.log(`   Depth:   ${options.depth}`);
   console.log(`   Target:  ${testTarget}`);
-  console.log(`   Workers: ${options.workers !== undefined ? options.workers : "default (parallel)"}`);
+  console.log(
+    `   Workers: ${options.workers !== undefined ? options.workers : "default (parallel)"}`,
+  );
   console.log(`   Retries: ${options.retries}`);
   console.log(`   BaseURL: ${process.env.BASE_URL}\n`);
 
@@ -282,7 +283,8 @@ export function runE2E() {
       E2E_FEATURE: options.feature || "all",
       E2E_DEPTH: options.depth,
       E2E_RETRIES: String(options.retries),
-      E2E_WORKERS: options.workers !== undefined ? String(options.workers) : (process.env.E2E_WORKERS || ""),
+      E2E_WORKERS:
+        options.workers !== undefined ? String(options.workers) : process.env.E2E_WORKERS || "",
     },
   });
 

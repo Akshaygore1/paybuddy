@@ -1,6 +1,7 @@
 import { expect, test } from "../src/fixtures";
 import {
   expectInstitutionNavigation,
+  fillPayrollAmount,
   goToPayroll,
   selectOption,
   signIn,
@@ -56,8 +57,8 @@ test.describe("payroll smoke", () => {
     await selectOption(page, "Select payroll month", month);
 
     // 6. Enter realistic Basic Pay amount and deduction amount
-    await page.getByLabel("Basic Pay amount").fill(basicPayAmount);
-    await page.getByLabel("Professional Tax amount").fill(deductionAmount);
+    await fillPayrollAmount(page.getByLabel("Basic Pay amount"), basicPayAmount);
+    await fillPayrollAmount(page.getByLabel("Professional Tax amount"), deductionAmount);
 
     // 7. Verify calculated totals
     await expect(page.getByText("Total Earnings").locator("..")).toContainText("₹45,000.00");

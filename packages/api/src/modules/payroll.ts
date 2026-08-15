@@ -8,15 +8,13 @@ import {
 } from "@tds-nivaran/db/schema/index";
 import { TRPCError } from "@trpc/server";
 import type { BatchItem } from "drizzle-orm/batch";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 
 import type { AddPayrollCustomFieldInput, SavePayrollInput } from "../schemas/payroll";
-import {
-  buildPayrollHistoryModule,
-  fixedPayrollFields,
-} from "./payroll-history";
+import { buildPayrollHistoryModule, fixedPayrollFields } from "./payroll-history";
 import {
   buildPayrollFieldTimelineModule,
+  normalizePayrollFieldLabel,
   type PayrollFieldTimelineModule,
   type PayrollSection,
 } from "./payroll-field-timeline";
@@ -233,7 +231,10 @@ export function buildPayrollModule(options: PayrollModuleOptions = {}) {
     await getEmployee(institutionId, input.employeeId);
 
     const customFieldTimeline = await fieldTimeline.load(institutionId);
-    const activeCustomFields = fieldTimeline.getActiveFieldsForMonth(customFieldTimeline, input.month);
+    const activeCustomFields = fieldTimeline.getActiveFieldsForMonth(
+      customFieldTimeline,
+      input.month,
+    );
     const activeCustomFieldIds = new Set(activeCustomFields.map((field) => field.id));
     const activeCustomFieldsById = new Map(activeCustomFields.map((field) => [field.id, field]));
 
@@ -357,8 +358,27 @@ export function buildPayrollModule(options: PayrollModuleOptions = {}) {
       }));
       queries.push(
         ...planD1Statements(lineItems, (itemChunk) =>
-          db.insert(payrollLineItems).values(itemChunk),
+          db.insert(payrollLineItems).values([...itemChunk]),
         ),
+      );
+    }
+
+    // A save establishes a new baseline from the selected effective month onward.
+    // Remove later explicit versions before writing the replacement so a backdated
+    // correction is visible in every following month until a later month is saved
+    // again deliberately.
+    const laterVersions = existingVersions.filter(
+      (version) => version.effectiveMonth > input.month,
+    );
+    if (laterVersions.length > 0) {
+      const laterVersionIds = laterVersions.map((version) => version.id);
+      queries.push(
+        db
+          .delete(payrollLineItems)
+          .where(inArray(payrollLineItems.payrollVersionId, laterVersionIds)),
+        db
+          .delete(employeePayrollVersions)
+          .where(inArray(employeePayrollVersions.id, laterVersionIds)),
       );
     }
 
@@ -409,6 +429,16 @@ export function buildPayrollModule(options: PayrollModuleOptions = {}) {
   }
 
   async function addCustomField(institutionId: string, input: AddPayrollCustomFieldInput) {
+    const fixedFields = fixedPayrollFields[input.section];
+    const normalizedInputLabel = normalizePayrollFieldLabel(input.label);
+    if (
+      fixedFields.some((field) => normalizePayrollFieldLabel(field.label) === normalizedInputLabel)
+    ) {
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: "A payroll field with this label already exists in this section",
+      });
+    }
     return fieldTimeline.addField(institutionId, input);
   }
 
@@ -429,4 +459,3 @@ export function buildPayrollModule(options: PayrollModuleOptions = {}) {
     getCustomFields,
   };
 }
-
