@@ -48,6 +48,10 @@ coverage
 .nyc_output
 e2e/playwright-report
 e2e/test-results
+e2e/.manifests
+e2e/manifests
+manifests
+*.manifest.json
 
 # Misc
 *.tgz

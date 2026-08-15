@@ -24,3 +24,21 @@ The active suite is Playwright. Do not add unit tests; cover user-visible behavi
 ## Commit & Pull Request Guidelines
 
 History favors short, imperative subjects (for example, `Add effective-month payroll history`), with occasional Conventional Commit scopes such as `refactor(api): ...`. Keep each commit focused. Pull requests should summarize behavior and architecture changes, link the relevant issue, list verification commands, and include screenshots for UI work. Call out migrations, environment changes, and destructive E2E assumptions explicitly.
+
+## Domain Terms & Core Context
+
+- **Institution**: A customer organization that uses TDS Nivaran to manage payroll-related Employee data.
+- **Institution account**: The admin-managed account row and Login Access for an Institution, backed by a Better Auth user.
+- **Employee**: A person whose payroll-related details are managed by an Institution.
+- **Employee record**: The stored base fields, Designation, and Custom Field values for one Employee.
+- **Designation**: An Institution-defined role/title option used on Employee records and ordered in Employee Setup.
+- **Custom Field**: An Institution-defined Employee record field with a label, generated key, required flag, active flag, and display order.
+- **Payroll field timeline**: The effective-month history that determines when an Institution-defined Payroll field participates in Payroll.
+- **Payroll Financial Year**: The user-selected April-through-March calendar used to prepare and review Payroll.
+- **Login Access**: Whether the Better Auth user for an Institution account is allowed to sign in.
+
+## Architecture Context
+
+- Employee record behavior lives behind the Employee record module, with the tRPC router acting as a narrow procedure adapter.
+- Institution account behavior lives behind the Institution account module. Bootstrap user endpoints remain separate operational paths.
+- Access context: `adminProcedure`, `userProcedure`, `institutionProcedure`, `AdminRouteGuard`, and `UserRouteGuard`.

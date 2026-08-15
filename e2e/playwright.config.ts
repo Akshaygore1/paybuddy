@@ -3,20 +3,26 @@ import { defineConfig, devices } from "@playwright/test";
 export default defineConfig({
   testDir: "./tests",
   fullyParallel: false,
-  workers: 1,
-  retries: process.env.CI ? 1 : 0,
+  workers: process.env.E2E_WORKERS ? Number(process.env.E2E_WORKERS) : undefined,
+  retries: process.env.E2E_RETRIES !== undefined ? Number(process.env.E2E_RETRIES) : 0,
   reporter: [["list"], ["html", { open: "never" }]],
   use: {
-    baseURL: process.env.BASE_URL || "http://127.0.0.1:3000",
+    baseURL: process.env.BASE_URL || "http://localhost:5173",
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     video: "retain-on-failure",
   },
   projects: [
     {
-      name: "chromium",
+      name: "desktop",
       use: {
         ...devices["Desktop Chrome"],
+      },
+    },
+    {
+      name: "mobile",
+      use: {
+        ...devices["Pixel 7"],
       },
     },
   ],

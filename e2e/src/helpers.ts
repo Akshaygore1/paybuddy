@@ -15,8 +15,7 @@ export async function signIn(page: Page, identifier: string, password: string) {
   await page.getByLabel("Email or Username").fill(identifier);
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Sign In" }).click();
-  await expect(page).toHaveURL(/\/employee$/);
-  await expect(page.getByRole("heading", { name: "Employee" })).toBeVisible();
+  await expect(page).toHaveURL(/\/(?:dashboard|employee)$/);
 }
 
 export async function selectOption(page: Page, triggerName: string, optionText: string) {
@@ -461,4 +460,145 @@ function parseCsv(input: string) {
   }
 
   return rows;
+}
+
+export async function signOut(page: Page) {
+  const signOutButton = page.getByRole("button", { name: "Sign Out", exact: true });
+
+  // If on mobile or collapsed view, the sign out button is inside the sidebar sheet
+  if (!(await signOutButton.isVisible().catch(() => false))) {
+    const trigger = page.locator('[data-sidebar="trigger"]');
+    if (await trigger.isVisible().catch(() => false)) {
+      await trigger.click();
+      await expect(signOutButton).toBeVisible();
+    }
+  }
+
+  await signOutButton.click();
+  await expect(page).toHaveURL(/\/sign-in$/);
+  await expect(page.getByRole("button", { name: "Sign In" })).toBeVisible();
+}
+
+export async function openSidebarIfMobile(page: Page) {
+  const trigger = page.locator('[data-sidebar="trigger"]');
+  const isTriggerVisible = await trigger.isVisible().catch(() => false);
+  if (isTriggerVisible) {
+    const dashboardLink = page.getByRole("link", { name: "Dashboard" }).first();
+    const isLinkVisible = await dashboardLink.isVisible().catch(() => false);
+    if (!isLinkVisible) {
+      await trigger.click();
+    }
+  }
+}
+
+export async function expectAdminNavigation(page: Page) {
+  await expect(page).toHaveURL(/\/dashboard$/);
+  await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Open Institution" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Open Reports" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Open Employee", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Open Payroll", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Open Employee Setup", exact: true })).toHaveCount(0);
+
+  await openSidebarIfMobile(page);
+  await expect(page.getByRole("link", { name: "Institution", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Manage Custom Fields", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Reports", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Employee Setup", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Payroll", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Employee", exact: true })).toHaveCount(0);
+}
+
+export async function expectInstitutionNavigation(page: Page) {
+  await expect(page).toHaveURL(/\/dashboard$/);
+  await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Open Employee", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Open Payroll", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Open Reports", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Open Employee Setup", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Open Institution", exact: true })).toHaveCount(0);
+
+  await openSidebarIfMobile(page);
+  await expect(page.getByRole("link", { name: "Employee", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Employee Setup", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Payroll", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Reports", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Institution", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Manage Custom Fields", exact: true })).toHaveCount(0);
+}
+
+export async function createInstitutionViaUI(
+  page: Page,
+  data: {
+    name: string;
+    tanNumber: string;
+    institutionHead: string;
+    address: string;
+    username: string;
+    password: string;
+  },
+): Promise<{
+  id: string;
+  name: string;
+  tanNumber: string;
+  institutionHead: string;
+  address: string;
+  username: string;
+  password: string;
+}> {
+  await page.goto("/institutions/create");
+  await expect(page).toHaveURL(/\/institutions\/create$/);
+  await expect(page.getByRole("heading", { name: "Create Institution" })).toBeVisible();
+
+  // Step 1
+  await page.getByLabel("Institution Name").fill(data.name);
+  await page.getByLabel("TAN Number").fill(data.tanNumber);
+  await page.getByLabel("Institution Head").fill(data.institutionHead);
+  await page.getByLabel("Address").fill(data.address);
+  await page.getByRole("button", { name: "Continue" }).click();
+
+  // Step 2
+  await expect(page.getByLabel("Username or Email")).toBeVisible();
+  await page.getByLabel("Username or Email").fill(data.username);
+  await page.getByLabel("Password").fill(data.password);
+  await page.getByRole("button", { name: "Create Institution" }).click();
+
+  // Redirect to detail page
+  await expect(page).toHaveURL(/\/institutions\/([a-zA-Z0-9_-]+)$/);
+  const url = page.url();
+  const institutionId = url.split("/institutions/")[1] || "";
+
+  return {
+    ...data,
+    id: institutionId,
+  };
+}
+
+export async function expectInstitutionDetails(
+  page: Page,
+  data: {
+    id?: string;
+    name: string;
+    tanNumber: string;
+    institutionHead: string;
+    address: string;
+    username: string;
+  },
+) {
+  if (data.id) {
+    await expect(page).toHaveURL(new RegExp(`/institutions/${escapeRegExp(data.id)}$`));
+  }
+  await expect(page.getByRole("heading", { name: data.name })).toBeVisible();
+  await expect(page.getByText(data.name).first()).toBeVisible();
+  await expect(page.getByText(data.tanNumber, { exact: true })).toBeVisible();
+  await expect(page.getByText(data.institutionHead, { exact: true })).toBeVisible();
+  await expect(page.getByText(data.username, { exact: true })).toBeVisible();
+  await expect(page.getByText(data.address, { exact: true })).toBeVisible();
+  await expect(page.getByText("Current login status: Active")).toBeVisible();
+}
+
+export async function goToInstitutionDirectory(page: Page) {
+  await page.goto("/institutions");
+  await expect(page).toHaveURL(/\/institutions$/);
+  await expect(page.getByRole("heading", { name: "Institution" })).toBeVisible();
 }
