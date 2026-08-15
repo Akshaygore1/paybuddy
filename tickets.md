@@ -69,13 +69,13 @@ Work the **frontier**: any ticket whose blockers are all done. Implement one fro
 
 **Blocked by:** Run Payroll smoke tests independently.
 
-- [ ] Selecting Reports smoke provisions its required institution, employee, and payroll data through existing authenticated APIs.
-- [ ] The browser signs in as the institution user and opens the report for the provisioned financial year.
-- [ ] The report displays the expected employee and payroll-derived totals.
-- [ ] The institution-user report does not expose the administrator-only institution selector.
-- [ ] The workflow verifies relevant navigation and logout.
-- [ ] Desktop and mobile smoke variants complete independently.
-- [ ] The run manifest records the report fixtures and expected totals.
+- [x] Selecting Reports smoke provisions its required institution, employee, and payroll data through existing authenticated APIs.
+- [x] The browser signs in as the institution user and opens the report for the provisioned financial year.
+- [x] The report displays the expected employee and payroll-derived totals.
+- [x] The institution-user report does not expose the administrator-only institution selector.
+- [x] The workflow verifies relevant navigation and logout.
+- [x] Desktop and mobile smoke variants complete independently.
+- [x] The run manifest records the report fixtures and expected totals.
 
 ## Run the complete smoke suite in parallel
 

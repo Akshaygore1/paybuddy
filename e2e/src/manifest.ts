@@ -71,6 +71,13 @@ export type RunManifest = {
     deductions: string;
     net: string;
   };
+  reportFixture?: {
+    employeeName: string;
+    financialYear: number;
+    grossSalary: string;
+    deduction: string;
+    netSalary: string;
+  };
   viewport?: {
     name: string;
     width?: number;

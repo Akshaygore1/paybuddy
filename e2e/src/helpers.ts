@@ -58,6 +58,13 @@ export async function goToPayroll(page: Page) {
   await expect(page.getByRole("heading", { name: "Payroll" })).toBeVisible();
 }
 
+export async function goToReports(page: Page) {
+  await openSidebarIfMobile(page);
+  await page.getByRole("link", { name: "Reports", exact: true }).click();
+  await expect(page).toHaveURL(/\/reports$/);
+  await expect(page.getByRole("heading", { name: /Reports/ })).toBeVisible();
+}
+
 export async function createDesignation(page: Page, name: string) {
   await page.getByLabel("Designation name").fill(name);
   await page.getByRole("button", { name: "Create Designation" }).click();
@@ -496,13 +503,23 @@ function parseCsv(input: string) {
 
 export async function signOut(page: Page) {
   const signOutButton = page.getByRole("button", { name: "Sign Out", exact: true });
+  const trigger = page.locator('[data-sidebar="trigger"]');
+  const isMobile = (page.viewportSize()?.width ?? 1000) < 768;
 
-  // If on mobile or collapsed view, the sign out button is inside the sidebar sheet
-  if (!(await signOutButton.isVisible().catch(() => false))) {
-    const trigger = page.locator('[data-sidebar="trigger"]');
-    if (await trigger.isVisible().catch(() => false)) {
+  if (isMobile) {
+    // Wait for any previous sheet closing animation to finish
+    await page.waitForTimeout(300);
+    const isVisible = await signOutButton.isVisible().catch(() => false);
+    if (!isVisible && (await trigger.isVisible().catch(() => false))) {
       await trigger.click();
       await expect(signOutButton).toBeVisible();
+    }
+  } else {
+    if (!(await signOutButton.isVisible().catch(() => false))) {
+      if (await trigger.isVisible().catch(() => false)) {
+        await trigger.click();
+        await expect(signOutButton).toBeVisible();
+      }
     }
   }
 
@@ -519,6 +536,7 @@ export async function openSidebarIfMobile(page: Page) {
     const isLinkVisible = await dashboardLink.isVisible().catch(() => false);
     if (!isLinkVisible) {
       await trigger.click();
+      await expect(dashboardLink).toBeVisible();
     }
   }
 }

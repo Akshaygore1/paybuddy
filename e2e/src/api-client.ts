@@ -452,3 +452,144 @@ export async function provisionPayrollPrerequisitesViaApi(
   };
 }
 
+export async function savePayrollViaApi(
+  env: TestEnv,
+  cookieHeader: string,
+  data: {
+    employeeId: string;
+    financialYearStart: number;
+    month: string;
+    lineItems: Array<{
+      section: "earnings" | "deductions";
+      fixedFieldKey?: string | null;
+      customFieldDefinitionId?: string | null;
+      amount: string;
+    }>;
+  },
+): Promise<unknown> {
+  const origin = env.baseURL;
+  const serverURL = env.serverURL;
+
+  const response = await fetch(`${serverURL}/trpc/payroll.save`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Cookie: cookieHeader,
+      Origin: origin,
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => "");
+    throw new Error(`Failed to save payroll via tRPC API (${response.status}): ${errorText}`);
+  }
+
+  return response.json();
+}
+
+export type ProvisionedReportsPrerequisites = {
+  institution: ProvisionedInstitution;
+  designation: ProvisionedDesignation;
+  employee: ProvisionedEmployee;
+  payroll: {
+    financialYearStart: number;
+    month: string;
+    basicPay: string;
+    deduction: string;
+    gross: string;
+    deductions: string;
+    net: string;
+  };
+};
+
+export async function provisionReportsPrerequisitesViaApi(
+  env: TestEnv,
+  institutionData: IndianInstitutionSeed,
+  options?: {
+    designationName?: string;
+    employeeData?: IndianEmployeeSeed;
+    financialYearStart?: number;
+    month?: string;
+    basicPay?: string;
+    deduction?: string;
+  },
+): Promise<ProvisionedReportsPrerequisites> {
+  const institution = await provisionInstitutionViaApi(env, institutionData);
+  const { cookieHeader } = await authenticateInstitutionViaApi(env, {
+    username: institution.username,
+    password: institution.password,
+  });
+
+  const designationName = options?.designationName ?? `Senior Teacher [${institution.tanNumber}]`;
+  const designation = await createDesignationViaApi(env, cookieHeader, designationName);
+
+  const employeeData = options?.employeeData ?? generateIndianEmployee(institution.tanNumber);
+  const employee = await createEmployeeViaApi(env, cookieHeader, {
+    ...employeeData,
+    designationId: designation.id,
+  });
+
+  const financialYearStart = options?.financialYearStart ?? 2026;
+  const month = options?.month ?? `${financialYearStart}-04`;
+  const basicPay = options?.basicPay ?? "45000";
+  const deduction = options?.deduction ?? "200";
+
+  await savePayrollViaApi(env, cookieHeader, {
+    employeeId: employee.id,
+    financialYearStart,
+    month,
+    lineItems: [
+      {
+        section: "earnings",
+        fixedFieldKey: "basicPay",
+        amount: basicPay,
+      },
+      {
+        section: "deductions",
+        fixedFieldKey: "professionalTax",
+        amount: deduction,
+      },
+    ],
+  });
+
+  const basicPayNum = parseFloat(basicPay) || 0;
+  const deductionNum = parseFloat(deduction) || 0;
+  const annualGross = basicPayNum * 12;
+  const annualDeduction = deductionNum * 12;
+  const annualNet = annualGross - annualDeduction;
+
+  const grossFormatted = new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    minimumFractionDigits: 2,
+  }).format(annualGross);
+
+  const deductionFormatted = new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    minimumFractionDigits: 2,
+  }).format(annualDeduction);
+
+  const netFormatted = new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    minimumFractionDigits: 2,
+  }).format(annualNet);
+
+  return {
+    institution,
+    designation,
+    employee,
+    payroll: {
+      financialYearStart,
+      month,
+      basicPay,
+      deduction,
+      gross: grossFormatted,
+      deductions: deductionFormatted,
+      net: netFormatted,
+    },
+  };
+}
+

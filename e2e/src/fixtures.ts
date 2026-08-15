@@ -4,9 +4,11 @@ import {
   provisionEmployeePrerequisitesViaApi,
   provisionInstitutionViaApi,
   provisionPayrollPrerequisitesViaApi,
+  provisionReportsPrerequisitesViaApi,
   type ProvisionedEmployeePrerequisites,
   type ProvisionedInstitution,
   type ProvisionedPayrollPrerequisites,
+  type ProvisionedReportsPrerequisites,
 } from "./api-client";
 import {
   generateIndianEmployee,
@@ -27,6 +29,7 @@ type TestFixtures = {
   provisionedInstitution: ProvisionedInstitution;
   provisionedEmployeePrerequisites: ProvisionedEmployeePrerequisites;
   provisionedPayrollPrerequisites: ProvisionedPayrollPrerequisites;
+  provisionedReportsPrerequisites: ProvisionedReportsPrerequisites;
   manifest: RunManifest;
 };
 
@@ -160,6 +163,61 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
         seniorityRank: prerequisites.employee.seniorityRank,
         panNumber: prerequisites.employee.panNumber,
         contactNumber: prerequisites.employee.contactNumber,
+      },
+    }));
+
+    await use(prerequisites);
+  },
+  provisionedReportsPrerequisites: async ({ env, institution, runId }, use) => {
+    const designationName = generateRealisticDesignation(runId);
+    const employeeData = generateIndianEmployee(runId);
+    const prerequisites = await provisionReportsPrerequisitesViaApi(env, institution, {
+      designationName,
+      employeeData,
+    });
+
+    await updateRunManifest(runId, (prev) => ({
+      ...prev,
+      createdInstitution: {
+        id: prerequisites.institution.id,
+        name: prerequisites.institution.name,
+        tanNumber: prerequisites.institution.tanNumber,
+        institutionHead: prerequisites.institution.institutionHead,
+        address: prerequisites.institution.address,
+        username: prerequisites.institution.username,
+      },
+      provisionedPrerequisites: {
+        institution: {
+          id: prerequisites.institution.id,
+          name: prerequisites.institution.name,
+          tanNumber: prerequisites.institution.tanNumber,
+          username: prerequisites.institution.username,
+        },
+        designation: {
+          id: prerequisites.designation.id,
+          name: prerequisites.designation.name,
+          sortOrder: prerequisites.designation.sortOrder,
+        },
+      },
+      createdEmployee: {
+        id: prerequisites.employee.id,
+        surname: prerequisites.employee.surname,
+        firstName: prerequisites.employee.firstName,
+        middleName: prerequisites.employee.middleName,
+        displayName: prerequisites.employee.displayName,
+        dateOfBirth: prerequisites.employee.dateOfBirth,
+        gender: prerequisites.employee.gender,
+        designationName: prerequisites.designation.name,
+        seniorityRank: prerequisites.employee.seniorityRank,
+        panNumber: prerequisites.employee.panNumber,
+        contactNumber: prerequisites.employee.contactNumber,
+      },
+      reportFixture: {
+        employeeName: prerequisites.employee.displayName,
+        financialYear: prerequisites.payroll.financialYearStart,
+        grossSalary: prerequisites.payroll.gross,
+        deduction: prerequisites.payroll.deductions,
+        netSalary: prerequisites.payroll.net,
       },
     }));
 
