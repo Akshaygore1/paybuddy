@@ -1,4 +1,7 @@
+import { loadE2EEnv } from "./src/load-env";
 import { defineConfig, devices } from "@playwright/test";
+
+loadE2EEnv();
 
 export default defineConfig({
   testDir: "./tests",

@@ -1,25 +1,12 @@
 #!/usr/bin/env bun
 
 import { spawnSync } from "node:child_process";
-import { existsSync } from "node:fs";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
-import { config as loadDotenv } from "dotenv";
+import { resolve } from "node:path";
+import { loadE2EEnv, repositoryRoot } from "./load-env";
 
-// Load environment files if present
-const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-const envPaths = [
-  resolve(rootDir, "e2e/.env.test"),
-  resolve(rootDir, ".env"),
-  resolve(rootDir, "apps/server/.env"),
-  resolve(rootDir, "e2e/.env"),
-];
+loadE2EEnv();
 
-for (const envPath of envPaths) {
-  if (existsSync(envPath)) {
-    loadDotenv({ path: envPath, override: false });
-  }
-}
+const rootDir = repositoryRoot;
 
 type FeatureName = "institution" | "employee-setup" | "employee" | "payroll" | "reports";
 type DepthName = "smoke" | "regression";

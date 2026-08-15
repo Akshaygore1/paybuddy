@@ -12,10 +12,14 @@ export type ProvisionedInstitution = IndianInstitutionSeed & {
   userId?: string;
 };
 
-export async function authenticateAdminViaApi(env: TestEnv): Promise<{ cookieHeader: string }> {
+export async function authenticateAdminViaApi(
+  env: TestEnv,
+): Promise<{ cookieHeader: string }> {
   const origin = env.baseURL;
   const isEmail = env.adminIdentifier.includes("@");
-  const authPath = isEmail ? "/api/auth/sign-in/email" : "/api/auth/sign-in/username";
+  const authPath = isEmail
+    ? "/api/auth/sign-in/email"
+    : "/api/auth/sign-in/username";
   const body = isEmail
     ? { email: env.adminIdentifier, password: env.adminPassword }
     : { username: env.adminIdentifier, password: env.adminPassword };
@@ -32,7 +36,9 @@ export async function authenticateAdminViaApi(env: TestEnv): Promise<{ cookieHea
 
   if (!response.ok) {
     const errorText = await response.text().catch(() => "");
-    throw new Error(`Failed to authenticate admin via API (${response.status}): ${errorText}`);
+    throw new Error(
+      `Failed to authenticate admin via API (${response.status}): ${errorText}`,
+    );
   }
 
   let cookieHeader = "";
@@ -47,7 +53,9 @@ export async function authenticateAdminViaApi(env: TestEnv): Promise<{ cookieHea
   }
 
   if (!cookieHeader) {
-    throw new Error("Admin authentication succeeded but no session cookie was returned.");
+    throw new Error(
+      "Admin authentication succeeded but no session cookie was returned.",
+    );
   }
 
   return { cookieHeader };
@@ -80,7 +88,9 @@ export async function createInstitutionViaApi(
 
   if (!response.ok) {
     const errorText = await response.text().catch(() => "");
-    throw new Error(`Failed to create institution via tRPC API (${response.status}): ${errorText}`);
+    throw new Error(
+      `Failed to create institution via tRPC API (${response.status}): ${errorText}`,
+    );
   }
 
   const json = (await response.json()) as {
@@ -126,7 +136,9 @@ export async function authenticateInstitutionViaApi(
 ): Promise<{ cookieHeader: string }> {
   const origin = env.baseURL;
   const isEmail = credentials.username.includes("@");
-  const authPath = isEmail ? "/api/auth/sign-in/email" : "/api/auth/sign-in/username";
+  const authPath = isEmail
+    ? "/api/auth/sign-in/email"
+    : "/api/auth/sign-in/username";
   const body = isEmail
     ? { email: credentials.username, password: credentials.password }
     : { username: credentials.username, password: credentials.password };
@@ -160,7 +172,9 @@ export async function authenticateInstitutionViaApi(
   }
 
   if (!cookieHeader) {
-    throw new Error("Institution authentication succeeded but no session cookie was returned.");
+    throw new Error(
+      "Institution authentication succeeded but no session cookie was returned.",
+    );
   }
 
   return { cookieHeader };
@@ -180,15 +194,18 @@ export async function createDesignationViaApi(
   const origin = env.baseURL;
   const serverURL = env.serverURL;
 
-  const response = await fetch(`${serverURL}/trpc/employeeSettings.createDesignation`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Cookie: cookieHeader,
-      Origin: origin,
+  const response = await fetch(
+    `${serverURL}/trpc/employeeSettings.createDesignation`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: cookieHeader,
+        Origin: origin,
+      },
+      body: JSON.stringify({ name }),
     },
-    body: JSON.stringify({ name }),
-  });
+  );
 
   if (!response.ok) {
     const errorText = await response.text().catch(() => "");
@@ -239,18 +256,21 @@ export async function createCustomFieldViaApi(
   const origin = env.baseURL;
   const serverURL = env.serverURL;
 
-  const response = await fetch(`${serverURL}/trpc/employeeSettings.addCustomField`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Cookie: cookieHeader,
-      Origin: origin,
+  const response = await fetch(
+    `${serverURL}/trpc/employeeSettings.addCustomField`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: cookieHeader,
+        Origin: origin,
+      },
+      body: JSON.stringify({
+        label: data.label,
+        isRequired: data.isRequired ?? false,
+      }),
     },
-    body: JSON.stringify({
-      label: data.label,
-      isRequired: data.isRequired ?? false,
-    }),
-  });
+  );
 
   if (!response.ok) {
     const errorText = await response.text().catch(() => "");
@@ -310,10 +330,16 @@ export async function provisionEmployeePrerequisitesViaApi(
     password: institution.password,
   });
 
-  const designationName = options?.designationName ?? `Senior Teacher [${institution.tanNumber}]`;
-  const customFieldLabel = options?.customFieldLabel ?? `Staff ID [${institution.tanNumber}]`;
+  const designationName =
+    options?.designationName ?? `Senior Teacher [${institution.tanNumber}]`;
+  const customFieldLabel =
+    options?.customFieldLabel ?? `Staff ID [${institution.tanNumber}]`;
 
-  const designation = await createDesignationViaApi(env, cookieHeader, designationName);
+  const designation = await createDesignationViaApi(
+    env,
+    cookieHeader,
+    designationName,
+  );
   const customField = await createCustomFieldViaApi(env, cookieHeader, {
     label: customFieldLabel,
     isRequired: options?.customFieldRequired ?? true,
@@ -382,7 +408,9 @@ export async function createEmployeeViaApi(
 
   if (!response.ok) {
     const errorText = await response.text().catch(() => "");
-    throw new Error(`Failed to create employee via tRPC API (${response.status}): ${errorText}`);
+    throw new Error(
+      `Failed to create employee via tRPC API (${response.status}): ${errorText}`,
+    );
   }
 
   const json = (await response.json()) as {
@@ -415,7 +443,8 @@ export async function createEmployeeViaApi(
   }
 
   const res = json.result.data;
-  const displayName = `${res.surname}, ${res.firstName} ${res.middleName}`.trim();
+  const displayName =
+    `${res.surname}, ${res.firstName} ${res.middleName}`.trim();
 
   return {
     id: res.id,
@@ -432,7 +461,9 @@ export async function createEmployeeViaApi(
     npsAccountNumber: res.npsAccountNumber ?? data.npsAccountNumber ?? "",
     whatsAppNumber: res.whatsAppNumber ?? data.whatsAppNumber ?? "",
     contactNumber: res.contactNumber ?? data.contactNumber ?? "",
-    customFieldValue: data.customFieldValues ? Object.values(data.customFieldValues)[0] ?? "" : "",
+    customFieldValue: data.customFieldValues
+      ? (Object.values(data.customFieldValues)[0] ?? "")
+      : "",
   };
 }
 
@@ -473,14 +504,18 @@ export async function provisionEmployeeDirectoryViaApi(
     designations.push(desig);
   }
 
-  const customFieldLabel = options?.customFieldLabel ?? `Staff ID [${institution.tanNumber}]`;
+  const customFieldLabel =
+    options?.customFieldLabel ?? `Staff ID [${institution.tanNumber}]`;
   const customField = await createCustomFieldViaApi(env, cookieHeader, {
     label: customFieldLabel,
     isRequired: options?.customFieldRequired ?? false,
   });
 
   const employeeCount = options?.employeeCount ?? 15;
-  const catalog = generateIndianEmployeeCatalog(employeeCount, institution.tanNumber);
+  const catalog = generateIndianEmployeeCatalog(
+    employeeCount,
+    institution.tanNumber,
+  );
 
   const employees: ProvisionedEmployee[] = [];
   for (const item of catalog) {
@@ -535,10 +570,16 @@ export async function provisionPayrollPrerequisitesViaApi(
     password: institution.password,
   });
 
-  const designationName = options?.designationName ?? `Senior Teacher [${institution.tanNumber}]`;
-  const designation = await createDesignationViaApi(env, cookieHeader, designationName);
+  const designationName =
+    options?.designationName ?? `Senior Teacher [${institution.tanNumber}]`;
+  const designation = await createDesignationViaApi(
+    env,
+    cookieHeader,
+    designationName,
+  );
 
-  const employeeData = options?.employeeData ?? generateIndianEmployee(institution.tanNumber);
+  const employeeData =
+    options?.employeeData ?? generateIndianEmployee(institution.tanNumber);
   const employee = await createEmployeeViaApi(env, cookieHeader, {
     ...employeeData,
     designationId: designation.id,
@@ -581,7 +622,9 @@ export async function savePayrollViaApi(
 
   if (!response.ok) {
     const errorText = await response.text().catch(() => "");
-    throw new Error(`Failed to save payroll via tRPC API (${response.status}): ${errorText}`);
+    throw new Error(
+      `Failed to save payroll via tRPC API (${response.status}): ${errorText}`,
+    );
   }
 
   return response.json();
@@ -620,10 +663,16 @@ export async function provisionReportsPrerequisitesViaApi(
     password: institution.password,
   });
 
-  const designationName = options?.designationName ?? `Senior Teacher [${institution.tanNumber}]`;
-  const designation = await createDesignationViaApi(env, cookieHeader, designationName);
+  const designationName =
+    options?.designationName ?? `Senior Teacher [${institution.tanNumber}]`;
+  const designation = await createDesignationViaApi(
+    env,
+    cookieHeader,
+    designationName,
+  );
 
-  const employeeData = options?.employeeData ?? generateIndianEmployee(institution.tanNumber);
+  const employeeData =
+    options?.employeeData ?? generateIndianEmployee(institution.tanNumber);
   const employee = await createEmployeeViaApi(env, cookieHeader, {
     ...employeeData,
     designationId: designation.id,
@@ -691,4 +740,3 @@ export async function provisionReportsPrerequisitesViaApi(
     },
   };
 }
-

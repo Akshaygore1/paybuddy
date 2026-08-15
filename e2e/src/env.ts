@@ -1,3 +1,7 @@
+import { loadE2EEnv } from "./load-env";
+
+loadE2EEnv();
+
 export type TestEnv = {
   baseURL: string;
   serverURL: string;
@@ -15,7 +19,9 @@ function getRequiredEnv(names: string[]): string {
     }
   }
 
-  throw new Error(`Missing required E2E environment variable: ${names.join(" or ")}`);
+  throw new Error(
+    `Missing required E2E environment variable: ${names.join(" or ")}`,
+  );
 }
 
 export function validateTestEnv(): TestEnv {
@@ -25,7 +31,9 @@ export function validateTestEnv(): TestEnv {
   try {
     const parsed = new URL(rawBaseURL);
     if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-      throw new Error(`BASE_URL must use http:// or https:// protocol, got "${rawBaseURL}"`);
+      throw new Error(
+        `BASE_URL must use http:// or https:// protocol, got "${rawBaseURL}"`,
+      );
     }
     baseURL = rawBaseURL.replace(/\/+$/, "");
   } catch (error) {
@@ -43,7 +51,9 @@ export function validateTestEnv(): TestEnv {
   try {
     const parsed = new URL(rawServerURL);
     if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-      throw new Error(`SERVER_URL must use http:// or https:// protocol, got "${rawServerURL}"`);
+      throw new Error(
+        `SERVER_URL must use http:// or https:// protocol, got "${rawServerURL}"`,
+      );
     }
     serverURL = rawServerURL.replace(/\/+$/, "");
   } catch (error) {
@@ -51,7 +61,10 @@ export function validateTestEnv(): TestEnv {
     throw new Error(`Invalid SERVER_URL: "${rawServerURL}". (${msg})`);
   }
 
-  const adminIdentifier = getRequiredEnv(["ADMIN_IDENTIFIER", "TEST_IDENTIFIER"]);
+  const adminIdentifier = getRequiredEnv([
+    "ADMIN_IDENTIFIER",
+    "TEST_IDENTIFIER",
+  ]);
   const adminPassword = getRequiredEnv(["ADMIN_PASSWORD", "TEST_PASSWORD"]);
 
   return {
