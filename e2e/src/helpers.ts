@@ -6,6 +6,7 @@ import type { RunContext } from "./run-context";
 
 export * from "./api-client";
 export * from "./data/indian-institutions";
+export * from "./data/indian-employees";
 
 const EMPLOYEE_DIRECTORY_EMPTY_STATE =
   "Start by creating a designation in Employee Setup, then add your first employee here.";
@@ -118,7 +119,9 @@ export async function fillEmployeeForm(
   await page.getByLabel("Contact number").fill(input.contactNumber);
 
   if (input.customFieldValue !== undefined) {
-    await page.getByLabel(`${input.customFieldLabel} *`).fill(input.customFieldValue);
+    await page
+      .getByLabel(new RegExp(`^${escapeRegExp(input.customFieldLabel)}(?:\\s+\\*)?$`))
+      .fill(input.customFieldValue);
   }
 }
 

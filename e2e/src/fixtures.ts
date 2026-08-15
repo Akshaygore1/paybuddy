@@ -1,7 +1,17 @@
 import { test as base } from "@playwright/test";
 
-import { provisionInstitutionViaApi, type ProvisionedInstitution } from "./api-client";
-import { generateIndianInstitution, type IndianInstitutionSeed } from "./data/indian-institutions";
+import {
+  provisionEmployeePrerequisitesViaApi,
+  provisionInstitutionViaApi,
+  type ProvisionedEmployeePrerequisites,
+  type ProvisionedInstitution,
+} from "./api-client";
+import { generateRealisticCustomField } from "./data/indian-employees";
+import {
+  generateIndianInstitution,
+  generateRealisticDesignation,
+  type IndianInstitutionSeed,
+} from "./data/indian-institutions";
 import { readTestEnv, type TestEnv } from "./env";
 import { updateRunManifest, writeRunManifest, type RunManifest } from "./manifest";
 import { createRunContext, type RunContext } from "./run-context";
@@ -10,6 +20,7 @@ type TestFixtures = {
   runId: string;
   institution: IndianInstitutionSeed;
   provisionedInstitution: ProvisionedInstitution;
+  provisionedEmployeePrerequisites: ProvisionedEmployeePrerequisites;
   manifest: RunManifest;
 };
 
@@ -56,6 +67,49 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
       },
     }));
     await use(provisioned);
+  },
+  provisionedEmployeePrerequisites: async ({ env, institution, runId }, use) => {
+    const designationName = generateRealisticDesignation(runId);
+    const customFieldLabel = generateRealisticCustomField(runId);
+    const prerequisites = await provisionEmployeePrerequisitesViaApi(env, institution, {
+      designationName,
+      customFieldLabel,
+      customFieldRequired: true,
+    });
+
+    await updateRunManifest(runId, (prev) => ({
+      ...prev,
+      createdInstitution: {
+        id: prerequisites.institution.id,
+        name: prerequisites.institution.name,
+        tanNumber: prerequisites.institution.tanNumber,
+        institutionHead: prerequisites.institution.institutionHead,
+        address: prerequisites.institution.address,
+        username: prerequisites.institution.username,
+      },
+      provisionedPrerequisites: {
+        institution: {
+          id: prerequisites.institution.id,
+          name: prerequisites.institution.name,
+          tanNumber: prerequisites.institution.tanNumber,
+          username: prerequisites.institution.username,
+        },
+        designation: {
+          id: prerequisites.designation.id,
+          name: prerequisites.designation.name,
+          sortOrder: prerequisites.designation.sortOrder,
+        },
+        customField: {
+          id: prerequisites.customField.id,
+          label: prerequisites.customField.label,
+          key: prerequisites.customField.key,
+          isRequired: prerequisites.customField.isRequired,
+          sortOrder: prerequisites.customField.sortOrder,
+        },
+      },
+    }));
+
+    await use(prerequisites);
   },
   manifest: [
     async ({ env, runId, institution, page }, use, testInfo) => {

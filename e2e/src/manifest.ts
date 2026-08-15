@@ -27,6 +27,40 @@ export type RunManifest = {
     id?: string;
     name: string;
   };
+  provisionedPrerequisites?: {
+    institution?: {
+      id?: string;
+      name: string;
+      tanNumber: string;
+      username: string;
+    };
+    designation?: {
+      id?: string;
+      name: string;
+      sortOrder?: number;
+    };
+    customField?: {
+      id?: string;
+      label: string;
+      key?: string;
+      isRequired?: boolean;
+      sortOrder?: number;
+    };
+  };
+  createdEmployee?: {
+    id?: string;
+    surname: string;
+    firstName: string;
+    middleName: string;
+    displayName: string;
+    dateOfBirth: string;
+    gender: string;
+    designationName: string;
+    seniorityRank: number;
+    panNumber?: string;
+    contactNumber?: string;
+    customFields?: Record<string, string>;
+  };
   viewport?: {
     name: string;
     width?: number;

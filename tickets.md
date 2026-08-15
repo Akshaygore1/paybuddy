@@ -41,13 +41,13 @@ Work the **frontier**: any ticket whose blockers are all done. Implement one fro
 
 **Blocked by:** Run Institution smoke tests by feature.
 
-- [ ] Selecting Employee smoke provisions its own institution and minimum designation/custom-field prerequisites through existing authenticated APIs.
-- [ ] The browser signs in as the generated institution user and creates an employee using realistic Indian identity and employment data.
-- [ ] The workflow exercises text, date, dropdown, numeric, and configured custom-field controls through accessible browser locators.
-- [ ] A successful redirect or toast is not sufficient: the employee must be visible with the expected persisted values in the directory.
-- [ ] The workflow verifies relevant institution-user navigation and logout.
-- [ ] Desktop and mobile smoke variants complete independently.
-- [ ] The run manifest records the created employee and prerequisite records.
+- [x] Selecting Employee smoke provisions its own institution and minimum designation/custom-field prerequisites through existing authenticated APIs.
+- [x] The browser signs in as the generated institution user and creates an employee using realistic Indian identity and employment data.
+- [x] The workflow exercises text, date, dropdown, numeric, and configured custom-field controls through accessible browser locators.
+- [x] A successful redirect or toast is not sufficient: the employee must be visible with the expected persisted values in the directory.
+- [x] The workflow verifies relevant institution-user navigation and logout.
+- [x] Desktop and mobile smoke variants complete independently.
+- [x] The run manifest records the created employee and prerequisite records.
 
 ## Run Payroll smoke tests independently
 
