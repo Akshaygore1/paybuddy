@@ -14,9 +14,7 @@ if (envMode === "local") {
 } else if (envMode === "production") {
   config({ path: "./.env.production.local", override: true });
 } else {
-  throw new Error(
-    `Unsupported TDS_NIVARAN_ENV "${envMode}". Expected "local" or "production".`,
-  );
+  throw new Error(`Unsupported TDS_NIVARAN_ENV "${envMode}". Expected "local" or "production".`);
 }
 
 const app = await alchemy("tds-nivaran");
@@ -36,6 +34,7 @@ export const server = await Worker("server", {
     BETTER_AUTH_SECRET: alchemy.secret.env.BETTER_AUTH_SECRET!,
     BETTER_AUTH_URL: alchemy.env.BETTER_AUTH_URL!,
     BOOTSTRAP_API_SECRET: alchemy.secret.env.BOOTSTRAP_API_SECRET!,
+    E2E_OPERATIONS_ENABLED: alchemy.env.E2E_OPERATIONS_ENABLED!,
   },
   dev: {
     port: 3000,

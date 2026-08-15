@@ -147,8 +147,10 @@ function parseCliArgs(args: string[]) {
     }
   }
 
-  if (workers !== undefined && (isNaN(workers) || workers < 1)) {
-    console.error(`Error: Invalid workers count "${workers}". Workers must be a positive integer.`);
+  if (workers !== undefined && workers !== 1) {
+    console.error(
+      `Error: Invalid workers count "${workers}". This suite uses one worker because all feature tests share one institution tenant.`,
+    );
     process.exit(1);
   }
 
@@ -204,6 +206,20 @@ Please set the following environment variables:
   process.env.TEST_IDENTIFIER = adminId;
   process.env.ADMIN_PASSWORD = adminPwd;
   process.env.TEST_PASSWORD = adminPwd;
+
+  const missingTenantVariables = [
+    "E2E_INSTITUTION_ID",
+    "E2E_INSTITUTION_USERNAME",
+    "E2E_INSTITUTION_PASSWORD",
+  ].filter((name) => !process.env[name]?.trim());
+  if (missingTenantVariables.length > 0) {
+    console.error(`
+❌ E2E Configuration Error: Missing shared institution configuration.
+Please set the following environment variables in e2e/.env.test:
+  - ${missingTenantVariables.join("\n  - ")}
+`);
+    process.exit(1);
+  }
 }
 
 export function runE2E() {
@@ -248,9 +264,7 @@ export function runE2E() {
   console.log(`   Feature: ${options.feature || "all"}`);
   console.log(`   Depth:   ${options.depth}`);
   console.log(`   Target:  ${testTarget}`);
-  console.log(
-    `   Workers: ${options.workers !== undefined ? options.workers : "default (parallel)"}`,
-  );
+  console.log(`   Workers: ${options.workers !== undefined ? options.workers : "1 (serial)"}`);
   console.log(`   Retries: ${options.retries}`);
   console.log(`   BaseURL: ${process.env.BASE_URL}\n`);
 

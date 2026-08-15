@@ -9,6 +9,9 @@ export type TestEnv = {
   password: string;
   adminIdentifier: string;
   adminPassword: string;
+  institutionId: string;
+  institutionUsername: string;
+  institutionPassword: string;
 };
 
 function getRequiredEnv(names: string[]): string {
@@ -19,9 +22,7 @@ function getRequiredEnv(names: string[]): string {
     }
   }
 
-  throw new Error(
-    `Missing required E2E environment variable: ${names.join(" or ")}`,
-  );
+  throw new Error(`Missing required E2E environment variable: ${names.join(" or ")}`);
 }
 
 export function validateTestEnv(): TestEnv {
@@ -31,9 +32,7 @@ export function validateTestEnv(): TestEnv {
   try {
     const parsed = new URL(rawBaseURL);
     if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-      throw new Error(
-        `BASE_URL must use http:// or https:// protocol, got "${rawBaseURL}"`,
-      );
+      throw new Error(`BASE_URL must use http:// or https:// protocol, got "${rawBaseURL}"`);
     }
     baseURL = rawBaseURL.replace(/\/+$/, "");
   } catch (error) {
@@ -51,9 +50,7 @@ export function validateTestEnv(): TestEnv {
   try {
     const parsed = new URL(rawServerURL);
     if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-      throw new Error(
-        `SERVER_URL must use http:// or https:// protocol, got "${rawServerURL}"`,
-      );
+      throw new Error(`SERVER_URL must use http:// or https:// protocol, got "${rawServerURL}"`);
     }
     serverURL = rawServerURL.replace(/\/+$/, "");
   } catch (error) {
@@ -61,11 +58,11 @@ export function validateTestEnv(): TestEnv {
     throw new Error(`Invalid SERVER_URL: "${rawServerURL}". (${msg})`);
   }
 
-  const adminIdentifier = getRequiredEnv([
-    "ADMIN_IDENTIFIER",
-    "TEST_IDENTIFIER",
-  ]);
+  const adminIdentifier = getRequiredEnv(["ADMIN_IDENTIFIER", "TEST_IDENTIFIER"]);
   const adminPassword = getRequiredEnv(["ADMIN_PASSWORD", "TEST_PASSWORD"]);
+  const institutionId = getRequiredEnv(["E2E_INSTITUTION_ID"]);
+  const institutionUsername = getRequiredEnv(["E2E_INSTITUTION_USERNAME"]);
+  const institutionPassword = getRequiredEnv(["E2E_INSTITUTION_PASSWORD"]);
 
   return {
     baseURL,
@@ -74,6 +71,9 @@ export function validateTestEnv(): TestEnv {
     password: adminPassword,
     adminIdentifier,
     adminPassword,
+    institutionId,
+    institutionUsername,
+    institutionPassword,
   };
 }
 

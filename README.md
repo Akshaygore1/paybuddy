@@ -92,12 +92,12 @@ bun run dev:web       # Just the frontend (port 5173)
 
 ### Local Environment
 
-| File | Purpose |
-|------|---------|
-| `apps/server/.env` | Server env: `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `CORS_ORIGIN` |
-| `apps/web/.env` | Web env: `VITE_SERVER_URL=http://localhost:3000` |
-| `packages/infra/.env` | `ALCHEMY_PASSWORD` (change before deploying) |
-| `e2e/.env.test` | Local-only E2E target and disposable administrator credentials |
+| File                  | Purpose                                                                                                                                        |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/server/.env`    | Server env: `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `CORS_ORIGIN`, and local-only `E2E_OPERATIONS_ENABLED=true` for the isolated E2E workflow |
+| `apps/web/.env`       | Web env: `VITE_SERVER_URL=http://localhost:3000`                                                                                               |
+| `packages/infra/.env` | `ALCHEMY_PASSWORD` (change before deploying)                                                                                                   |
+| `e2e/.env.test`       | Local-only E2E target, disposable administrator, and shared institution credentials                                                            |
 
 Environment files are ignored by Git. Copy `e2e/.env.test.example` to `e2e/.env.test` and fill in disposable test credentials before running E2E tests. The local D1 database lives at `.alchemy/miniflare/v3/d1/` (gitignored).
 
@@ -116,7 +116,6 @@ import { z } from "zod";
 import { router, publicProcedure, protectedProcedure } from "../index";
 
 export const itemRouter = router({
-
   // Public — no auth required
   list: publicProcedure.query(async () => {
     const db = createDb();
@@ -142,7 +141,7 @@ import { itemRouter } from "./items";
 
 export const appRouter = router({
   healthCheck: publicProcedure.query(() => "OK"),
-  item: itemRouter,  // <-- add this
+  item: itemRouter, // <-- add this
 });
 ```
 
@@ -166,9 +165,9 @@ The tRPC client setup is in `apps/web/src/utils/trpc.ts`. It uses `httpBatchLink
 
 ### Procedure Types
 
-| Procedure | Auth Required | Use Case |
-|-----------|--------------|----------|
-| `publicProcedure` | No | Public data, login, signup |
+| Procedure            | Auth Required               | Use Case                      |
+| -------------------- | --------------------------- | ----------------------------- |
+| `publicProcedure`    | No                          | Public data, login, signup    |
 | `protectedProcedure` | Yes (throws `UNAUTHORIZED`) | User-specific data, mutations |
 
 ---
@@ -206,6 +205,7 @@ bun run db:generate
 ```
 
 This runs `drizzle-kit generate` (configured in `packages/db/drizzle.config.ts`) which:
+
 - Reads your schema from `packages/db/src/schema/`
 - Compares it against the last snapshot in `packages/db/src/migrations/meta/`
 - Produces a new SQL file like `0001_floating_ironman.sql`
@@ -222,8 +222,9 @@ bunx wrangler d1 migrations apply tds-nivaran-db --remote
 ```
 
 > **Tip:** The migration directory is configured in `packages/infra/alchemy.run.ts`:
+>
 > ```ts
-> D1Database("database", { migrationsDir: "../../packages/db/src/migrations" })
+> D1Database("database", { migrationsDir: "../../packages/db/src/migrations" });
 > ```
 
 ---
@@ -297,6 +298,7 @@ bun run deploy
 This runs `vp run --filter @tds-nivaran/infra deploy` which calls `alchemy deploy`.
 
 Alchemy will:
+
 1. Build the server Worker and web app
 2. Provision/update Cloudflare resources (Workers, D1 database, etc.)
 3. Upload assets and deploy Workers
@@ -314,15 +316,15 @@ This calls `alchemy destroy` to remove all provisioned Cloudflare resources.
 
 ## Local vs Deployed
 
-| Aspect | Local | Deployed |
-|--------|-------|----------|
-| **Server runtime** | Miniflare 3 (simulated Workers) | Cloudflare Workers (global network) |
-| **Database** | Local `.sqlite` file in `.alchemy/miniflare/` | Cloudflare D1 (serverless SQLite) |
-| **Migrations** | Auto-applied on `alchemy dev` | Auto-applied on `alchemy deploy` |
-| **Frontend** | Vite dev server (HMR) | Static assets served from Cloudflare |
-| **Auth** | Local sessions (stored in local SQLite) | Production sessions in D1 |
-| **Infra state** | None (ephemeral) | Managed by Alchemy in Cloudflare |
-| **Env vars** | From `.env` files | Set via Alchemy bindings |
+| Aspect             | Local                                         | Deployed                             |
+| ------------------ | --------------------------------------------- | ------------------------------------ |
+| **Server runtime** | Miniflare 3 (simulated Workers)               | Cloudflare Workers (global network)  |
+| **Database**       | Local `.sqlite` file in `.alchemy/miniflare/` | Cloudflare D1 (serverless SQLite)    |
+| **Migrations**     | Auto-applied on `alchemy dev`                 | Auto-applied on `alchemy deploy`     |
+| **Frontend**       | Vite dev server (HMR)                         | Static assets served from Cloudflare |
+| **Auth**           | Local sessions (stored in local SQLite)       | Production sessions in D1            |
+| **Infra state**    | None (ephemeral)                              | Managed by Alchemy in Cloudflare     |
+| **Env vars**       | From `.env` files                             | Set via Alchemy bindings             |
 
 ### Key difference: cookie handling
 
@@ -369,14 +371,14 @@ These run via `vite-plus` (`vp`), configured in the root `vite.config.ts`.
 
 ## Key Technologies
 
-| Layer | Tech | Role |
-|-------|------|------|
-| **Frontend** | React Router 7 (SPA) | Pages, routing, components |
-| **UI primitives** | shadcn/ui | `packages/ui` — themed components |
-| **Backend** | Hono + tRPC | Server, API, type-safe RPC |
-| **ORM** | Drizzle | Type-safe SQL (SQLite dialect) |
-| **Database** | Cloudflare D1 | Serverless SQLite |
-| **Auth** | Better Auth | Sessions, OAuth, email/password |
-| **Infra** | Alchemy | Declarative Cloudflare management |
-| **Build/tooling** | vite-plus (`vp`) | Unified build, lint, format |
-| **Package manager** | Bun | Install, run, workspace management |
+| Layer               | Tech                 | Role                               |
+| ------------------- | -------------------- | ---------------------------------- |
+| **Frontend**        | React Router 7 (SPA) | Pages, routing, components         |
+| **UI primitives**   | shadcn/ui            | `packages/ui` — themed components  |
+| **Backend**         | Hono + tRPC          | Server, API, type-safe RPC         |
+| **ORM**             | Drizzle              | Type-safe SQL (SQLite dialect)     |
+| **Database**        | Cloudflare D1        | Serverless SQLite                  |
+| **Auth**            | Better Auth          | Sessions, OAuth, email/password    |
+| **Infra**           | Alchemy              | Declarative Cloudflare management  |
+| **Build/tooling**   | vite-plus (`vp`)     | Unified build, lint, format        |
+| **Package manager** | Bun                  | Install, run, workspace management |

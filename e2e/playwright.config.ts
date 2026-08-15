@@ -6,9 +6,9 @@ loadE2EEnv();
 export default defineConfig({
   testDir: "./tests",
   timeout: 120_000,
-  // Keep tests within each feature file serial; workers still parallelize independent files.
+  // Every feature mutates the same dedicated tenant. Keep all projects and files serial.
   fullyParallel: false,
-  workers: process.env.E2E_WORKERS ? Number(process.env.E2E_WORKERS) : undefined,
+  workers: 1,
   retries: process.env.E2E_RETRIES !== undefined ? Number(process.env.E2E_RETRIES) : 0,
   reporter: [["list"], ["html", { open: "never" }]],
   use: {

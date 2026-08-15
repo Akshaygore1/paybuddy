@@ -13,9 +13,10 @@ test.describe("institution smoke", () => {
   test("creates a realistic institution, verifies persistence and role-based access", async ({
     page,
     env,
-    institution,
+    temporaryInstitution,
     runId,
   }) => {
+    const institution = temporaryInstitution;
     // 1. Log run ID and username for inspection (never log password)
     console.log(
       `[E2E Smoke: Institution] Run ID: ${runId} | Institution: "${institution.name}" | Username: "${institution.username}" | Target: ${env.baseURL}`,

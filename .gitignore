@@ -50,6 +50,7 @@ coverage
 e2e/playwright-report
 e2e/test-results
 e2e/.manifests
+e2e/.cleanup
 e2e/manifests
 manifests
 *.manifest.json

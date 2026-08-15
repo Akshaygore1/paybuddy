@@ -12,14 +12,27 @@ export type ProvisionedInstitution = IndianInstitutionSeed & {
   userId?: string;
 };
 
-export async function authenticateAdminViaApi(
-  env: TestEnv,
-): Promise<{ cookieHeader: string }> {
+type TrpcResponse<T> = {
+  result?: {
+    data?: T | { json?: T };
+  };
+  error?: {
+    message?: string;
+  };
+};
+
+function unwrapTrpcData<T>(response: TrpcResponse<T>): T | undefined {
+  const data = response.result?.data;
+  if (data && typeof data === "object" && "json" in data) {
+    return data.json;
+  }
+  return data as T | undefined;
+}
+
+export async function authenticateAdminViaApi(env: TestEnv): Promise<{ cookieHeader: string }> {
   const origin = env.baseURL;
   const isEmail = env.adminIdentifier.includes("@");
-  const authPath = isEmail
-    ? "/api/auth/sign-in/email"
-    : "/api/auth/sign-in/username";
+  const authPath = isEmail ? "/api/auth/sign-in/email" : "/api/auth/sign-in/username";
   const body = isEmail
     ? { email: env.adminIdentifier, password: env.adminPassword }
     : { username: env.adminIdentifier, password: env.adminPassword };
@@ -36,9 +49,7 @@ export async function authenticateAdminViaApi(
 
   if (!response.ok) {
     const errorText = await response.text().catch(() => "");
-    throw new Error(
-      `Failed to authenticate admin via API (${response.status}): ${errorText}`,
-    );
+    throw new Error(`Failed to authenticate admin via API (${response.status}): ${errorText}`);
   }
 
   let cookieHeader = "";
@@ -53,9 +64,7 @@ export async function authenticateAdminViaApi(
   }
 
   if (!cookieHeader) {
-    throw new Error(
-      "Admin authentication succeeded but no session cookie was returned.",
-    );
+    throw new Error("Admin authentication succeeded but no session cookie was returned.");
   }
 
   return { cookieHeader };
@@ -88,9 +97,7 @@ export async function createInstitutionViaApi(
 
   if (!response.ok) {
     const errorText = await response.text().catch(() => "");
-    throw new Error(
-      `Failed to create institution via tRPC API (${response.status}): ${errorText}`,
-    );
+    throw new Error(`Failed to create institution via tRPC API (${response.status}): ${errorText}`);
   }
 
   const json = (await response.json()) as {
@@ -130,15 +137,165 @@ export async function provisionInstitutionViaApi(
   return createInstitutionViaApi(env, cookieHeader, institutionData);
 }
 
+export async function getConfiguredInstitutionViaApi(
+  env: TestEnv,
+  cookieHeader: string,
+): Promise<ProvisionedInstitution> {
+  const response = await fetch(`${env.serverURL}/trpc/institutions.list`, {
+    method: "GET",
+    headers: {
+      Cookie: cookieHeader,
+      Origin: env.baseURL,
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => "");
+    throw new Error(
+      `Failed to list institutions while validating the shared E2E tenant (${response.status}): ${errorText}`,
+    );
+  }
+
+  const json = (await response.json()) as TrpcResponse<
+    Array<{
+      id: string;
+      userId: string;
+      name: string;
+      tanNumber: string;
+      institutionHead: string;
+      address: string;
+      username: string | null;
+    }>
+  >;
+  const institutions = unwrapTrpcData(json);
+  const configured = institutions?.find((candidate) => candidate.id === env.institutionId);
+
+  if (!configured) {
+    throw new Error(
+      `E2E_INSTITUTION_ID "${env.institutionId}" was not found in the institution directory.`,
+    );
+  }
+  if (configured.username !== env.institutionUsername) {
+    throw new Error(
+      `E2E_INSTITUTION_ID "${env.institutionId}" belongs to username "${configured.username ?? "<none>"}", not E2E_INSTITUTION_USERNAME.`,
+    );
+  }
+
+  return {
+    id: configured.id,
+    userId: configured.userId,
+    name: configured.name,
+    tanNumber: configured.tanNumber,
+    institutionHead: configured.institutionHead,
+    address: configured.address,
+    username: configured.username,
+    password: env.institutionPassword,
+  };
+}
+
+async function postE2EOperation<T>(
+  env: TestEnv,
+  cookieHeader: string,
+  path: string,
+  body: unknown,
+): Promise<T> {
+  const response = await fetch(`${env.serverURL}${path}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Cookie: cookieHeader,
+      Origin: env.baseURL,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => "");
+    throw new Error(`E2E operation ${path} failed (${response.status}): ${errorText}`);
+  }
+
+  return (await response.json()) as T;
+}
+
+export async function resetE2ETenantViaApi(
+  env: TestEnv,
+  institution: ProvisionedInstitution,
+): Promise<void> {
+  const { cookieHeader } = await authenticateAdminViaApi(env);
+  await postE2EOperation(env, cookieHeader, "/api/e2e/tenant/reset", {
+    institutionId: institution.id,
+    username: env.institutionUsername,
+    password: env.institutionPassword,
+  });
+}
+
+export async function cleanupE2ERunInstitutionsViaApi(
+  env: TestEnv,
+  runId: string,
+): Promise<{ deletedCount: number }> {
+  const { cookieHeader } = await authenticateAdminViaApi(env);
+  return postE2EOperation<{ deletedCount: number }>(
+    env,
+    cookieHeader,
+    "/api/e2e/institutions/cleanup",
+    {
+      mode: "delete-run",
+      marker: runId,
+    },
+  );
+}
+
+export type E2ECleanupReport = {
+  marker: string;
+  matchedCount: number;
+  reportHash: string;
+  records: Array<{
+    institutionId: string;
+    userId: string;
+    name: string;
+    tanNumber: string;
+    username: string;
+  }>;
+};
+
+export async function dryRunE2EInstitutionCleanupViaApi(
+  env: TestEnv,
+  marker = "run-",
+): Promise<E2ECleanupReport> {
+  const { cookieHeader } = await authenticateAdminViaApi(env);
+  return postE2EOperation<E2ECleanupReport>(env, cookieHeader, "/api/e2e/institutions/cleanup", {
+    mode: "dry-run",
+    marker,
+  });
+}
+
+export async function executeE2EInstitutionCleanupViaApi(
+  env: TestEnv,
+  report: E2ECleanupReport,
+  expectedCount: number,
+): Promise<E2ECleanupReport & { deletedCount: number }> {
+  const { cookieHeader } = await authenticateAdminViaApi(env);
+  return postE2EOperation<E2ECleanupReport & { deletedCount: number }>(
+    env,
+    cookieHeader,
+    "/api/e2e/institutions/cleanup",
+    {
+      mode: "delete",
+      marker: report.marker,
+      expectedCount,
+      institutionIds: report.records.map((record) => record.institutionId),
+      reportHash: report.reportHash,
+    },
+  );
+}
+
 export async function authenticateInstitutionViaApi(
   env: TestEnv,
   credentials: { username: string; password: string },
 ): Promise<{ cookieHeader: string }> {
   const origin = env.baseURL;
   const isEmail = credentials.username.includes("@");
-  const authPath = isEmail
-    ? "/api/auth/sign-in/email"
-    : "/api/auth/sign-in/username";
+  const authPath = isEmail ? "/api/auth/sign-in/email" : "/api/auth/sign-in/username";
   const body = isEmail
     ? { email: credentials.username, password: credentials.password }
     : { username: credentials.username, password: credentials.password };
@@ -172,9 +329,7 @@ export async function authenticateInstitutionViaApi(
   }
 
   if (!cookieHeader) {
-    throw new Error(
-      "Institution authentication succeeded but no session cookie was returned.",
-    );
+    throw new Error("Institution authentication succeeded but no session cookie was returned.");
   }
 
   return { cookieHeader };
@@ -194,24 +349,19 @@ export async function createDesignationViaApi(
   const origin = env.baseURL;
   const serverURL = env.serverURL;
 
-  const response = await fetch(
-    `${serverURL}/trpc/employeeSettings.createDesignation`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Cookie: cookieHeader,
-        Origin: origin,
-      },
-      body: JSON.stringify({ name }),
+  const response = await fetch(`${serverURL}/trpc/employeeSettings.createDesignation`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Cookie: cookieHeader,
+      Origin: origin,
     },
-  );
+    body: JSON.stringify({ name }),
+  });
 
   if (!response.ok) {
     const errorText = await response.text().catch(() => "");
-    throw new Error(
-      `Failed to create designation via tRPC API (${response.status}): ${errorText}`,
-    );
+    throw new Error(`Failed to create designation via tRPC API (${response.status}): ${errorText}`);
   }
 
   const json = (await response.json()) as {
@@ -256,27 +406,22 @@ export async function createCustomFieldViaApi(
   const origin = env.baseURL;
   const serverURL = env.serverURL;
 
-  const response = await fetch(
-    `${serverURL}/trpc/employeeSettings.addCustomField`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Cookie: cookieHeader,
-        Origin: origin,
-      },
-      body: JSON.stringify({
-        label: data.label,
-        isRequired: data.isRequired ?? false,
-      }),
+  const response = await fetch(`${serverURL}/trpc/employeeSettings.addCustomField`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Cookie: cookieHeader,
+      Origin: origin,
     },
-  );
+    body: JSON.stringify({
+      label: data.label,
+      isRequired: data.isRequired ?? false,
+    }),
+  });
 
   if (!response.ok) {
     const errorText = await response.text().catch(() => "");
-    throw new Error(
-      `Failed to add custom field via tRPC API (${response.status}): ${errorText}`,
-    );
+    throw new Error(`Failed to add custom field via tRPC API (${response.status}): ${errorText}`);
   }
 
   const json = (await response.json()) as {
@@ -325,21 +470,27 @@ export async function provisionEmployeePrerequisitesViaApi(
   },
 ): Promise<ProvisionedEmployeePrerequisites> {
   const institution = await provisionInstitutionViaApi(env, institutionData);
+  return prepareEmployeePrerequisitesViaApi(env, institution, options);
+}
+
+export async function prepareEmployeePrerequisitesViaApi(
+  env: TestEnv,
+  institution: ProvisionedInstitution,
+  options?: {
+    designationName?: string;
+    customFieldLabel?: string;
+    customFieldRequired?: boolean;
+  },
+): Promise<ProvisionedEmployeePrerequisites> {
   const { cookieHeader } = await authenticateInstitutionViaApi(env, {
     username: institution.username,
     password: institution.password,
   });
 
-  const designationName =
-    options?.designationName ?? `Senior Teacher [${institution.tanNumber}]`;
-  const customFieldLabel =
-    options?.customFieldLabel ?? `Staff ID [${institution.tanNumber}]`;
+  const designationName = options?.designationName ?? `Senior Teacher [${institution.tanNumber}]`;
+  const customFieldLabel = options?.customFieldLabel ?? `Staff ID [${institution.tanNumber}]`;
 
-  const designation = await createDesignationViaApi(
-    env,
-    cookieHeader,
-    designationName,
-  );
+  const designation = await createDesignationViaApi(env, cookieHeader, designationName);
   const customField = await createCustomFieldViaApi(env, cookieHeader, {
     label: customFieldLabel,
     isRequired: options?.customFieldRequired ?? true,
@@ -408,9 +559,7 @@ export async function createEmployeeViaApi(
 
   if (!response.ok) {
     const errorText = await response.text().catch(() => "");
-    throw new Error(
-      `Failed to create employee via tRPC API (${response.status}): ${errorText}`,
-    );
+    throw new Error(`Failed to create employee via tRPC API (${response.status}): ${errorText}`);
   }
 
   const json = (await response.json()) as {
@@ -443,8 +592,7 @@ export async function createEmployeeViaApi(
   }
 
   const res = json.result.data;
-  const displayName =
-    `${res.surname}, ${res.firstName} ${res.middleName}`.trim();
+  const displayName = `${res.surname}, ${res.firstName} ${res.middleName}`.trim();
 
   return {
     id: res.id,
@@ -487,6 +635,19 @@ export async function provisionEmployeeDirectoryViaApi(
   },
 ): Promise<ProvisionedEmployeeDirectory> {
   const institution = await provisionInstitutionViaApi(env, institutionData);
+  return prepareEmployeeDirectoryViaApi(env, institution, options);
+}
+
+export async function prepareEmployeeDirectoryViaApi(
+  env: TestEnv,
+  institution: ProvisionedInstitution,
+  options?: {
+    employeeCount?: number;
+    designationNames?: string[];
+    customFieldLabel?: string;
+    customFieldRequired?: boolean;
+  },
+): Promise<ProvisionedEmployeeDirectory> {
   const { cookieHeader } = await authenticateInstitutionViaApi(env, {
     username: institution.username,
     password: institution.password,
@@ -504,18 +665,14 @@ export async function provisionEmployeeDirectoryViaApi(
     designations.push(desig);
   }
 
-  const customFieldLabel =
-    options?.customFieldLabel ?? `Staff ID [${institution.tanNumber}]`;
+  const customFieldLabel = options?.customFieldLabel ?? `Staff ID [${institution.tanNumber}]`;
   const customField = await createCustomFieldViaApi(env, cookieHeader, {
     label: customFieldLabel,
     isRequired: options?.customFieldRequired ?? false,
   });
 
   const employeeCount = options?.employeeCount ?? 15;
-  const catalog = generateIndianEmployeeCatalog(
-    employeeCount,
-    institution.tanNumber,
-  );
+  const catalog = generateIndianEmployeeCatalog(employeeCount, institution.tanNumber);
 
   const employees: ProvisionedEmployee[] = [];
   for (const item of catalog) {
@@ -565,21 +722,26 @@ export async function provisionPayrollPrerequisitesViaApi(
   },
 ): Promise<ProvisionedPayrollPrerequisites> {
   const institution = await provisionInstitutionViaApi(env, institutionData);
+  return preparePayrollPrerequisitesViaApi(env, institution, options);
+}
+
+export async function preparePayrollPrerequisitesViaApi(
+  env: TestEnv,
+  institution: ProvisionedInstitution,
+  options?: {
+    designationName?: string;
+    employeeData?: IndianEmployeeSeed;
+  },
+): Promise<ProvisionedPayrollPrerequisites> {
   const { cookieHeader } = await authenticateInstitutionViaApi(env, {
     username: institution.username,
     password: institution.password,
   });
 
-  const designationName =
-    options?.designationName ?? `Senior Teacher [${institution.tanNumber}]`;
-  const designation = await createDesignationViaApi(
-    env,
-    cookieHeader,
-    designationName,
-  );
+  const designationName = options?.designationName ?? `Senior Teacher [${institution.tanNumber}]`;
+  const designation = await createDesignationViaApi(env, cookieHeader, designationName);
 
-  const employeeData =
-    options?.employeeData ?? generateIndianEmployee(institution.tanNumber);
+  const employeeData = options?.employeeData ?? generateIndianEmployee(institution.tanNumber);
   const employee = await createEmployeeViaApi(env, cookieHeader, {
     ...employeeData,
     designationId: designation.id,
@@ -622,9 +784,7 @@ export async function savePayrollViaApi(
 
   if (!response.ok) {
     const errorText = await response.text().catch(() => "");
-    throw new Error(
-      `Failed to save payroll via tRPC API (${response.status}): ${errorText}`,
-    );
+    throw new Error(`Failed to save payroll via tRPC API (${response.status}): ${errorText}`);
   }
 
   return response.json();
@@ -658,21 +818,30 @@ export async function provisionReportsPrerequisitesViaApi(
   },
 ): Promise<ProvisionedReportsPrerequisites> {
   const institution = await provisionInstitutionViaApi(env, institutionData);
+  return prepareReportsPrerequisitesViaApi(env, institution, options);
+}
+
+export async function prepareReportsPrerequisitesViaApi(
+  env: TestEnv,
+  institution: ProvisionedInstitution,
+  options?: {
+    designationName?: string;
+    employeeData?: IndianEmployeeSeed;
+    financialYearStart?: number;
+    month?: string;
+    basicPay?: string;
+    deduction?: string;
+  },
+): Promise<ProvisionedReportsPrerequisites> {
   const { cookieHeader } = await authenticateInstitutionViaApi(env, {
     username: institution.username,
     password: institution.password,
   });
 
-  const designationName =
-    options?.designationName ?? `Senior Teacher [${institution.tanNumber}]`;
-  const designation = await createDesignationViaApi(
-    env,
-    cookieHeader,
-    designationName,
-  );
+  const designationName = options?.designationName ?? `Senior Teacher [${institution.tanNumber}]`;
+  const designation = await createDesignationViaApi(env, cookieHeader, designationName);
 
-  const employeeData =
-    options?.employeeData ?? generateIndianEmployee(institution.tanNumber);
+  const employeeData = options?.employeeData ?? generateIndianEmployee(institution.tanNumber);
   const employee = await createEmployeeViaApi(env, cookieHeader, {
     ...employeeData,
     designationId: designation.id,

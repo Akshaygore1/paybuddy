@@ -40,32 +40,16 @@ test.describe("institution regression suite", () => {
       await page.getByRole("button", { name: "Continue" }).click();
 
       // Multi-error submission verifies error presentation and accessible associations
-      await expect(
-        page.getByText("Institution name is required"),
-      ).toBeVisible();
+      await expect(page.getByText("Institution name is required")).toBeVisible();
       await expect(page.getByText("TAN number is required")).toBeVisible();
-      await expect(
-        page.getByText("Institution head is required"),
-      ).toBeVisible();
+      await expect(page.getByText("Institution head is required")).toBeVisible();
       await expect(page.getByText("Address is required")).toBeVisible();
 
       // Accessible associations: input has aria-invalid and Field has data-invalid
-      await expect(page.getByLabel("Institution Name")).toHaveAttribute(
-        "aria-invalid",
-        "true",
-      );
-      await expect(page.getByLabel("TAN Number")).toHaveAttribute(
-        "aria-invalid",
-        "true",
-      );
-      await expect(page.getByLabel("Institution Head")).toHaveAttribute(
-        "aria-invalid",
-        "true",
-      );
-      await expect(page.getByLabel("Address")).toHaveAttribute(
-        "aria-invalid",
-        "true",
-      );
+      await expect(page.getByLabel("Institution Name")).toHaveAttribute("aria-invalid", "true");
+      await expect(page.getByLabel("TAN Number")).toHaveAttribute("aria-invalid", "true");
+      await expect(page.getByLabel("Institution Head")).toHaveAttribute("aria-invalid", "true");
+      await expect(page.getByLabel("Address")).toHaveAttribute("aria-invalid", "true");
 
       // B. Maximum / boundary validation: TAN Number > 64 chars
       await fillInstitutionStep1(page, {
@@ -76,10 +60,7 @@ test.describe("institution regression suite", () => {
       });
       await page.getByRole("button", { name: "Continue" }).click();
       await expect(page.getByText("TAN number is too long")).toBeVisible();
-      await expect(page.getByLabel("TAN Number")).toHaveAttribute(
-        "aria-invalid",
-        "true",
-      );
+      await expect(page.getByLabel("TAN Number")).toHaveAttribute("aria-invalid", "true");
 
       // C. Valid Step 1 submission advances to Step 2
       const validTan = "PUNEP12345";
@@ -99,17 +80,9 @@ test.describe("institution regression suite", () => {
           "Username must be a valid email address or use only letters, numbers, underscores, and periods",
         ),
       ).toBeVisible();
-      await expect(
-        page.getByText("Password must be at least 8 characters"),
-      ).toBeVisible();
-      await expect(page.getByLabel("Username or Email")).toHaveAttribute(
-        "aria-invalid",
-        "true",
-      );
-      await expect(page.getByLabel("Password")).toHaveAttribute(
-        "aria-invalid",
-        "true",
-      );
+      await expect(page.getByText("Password must be at least 8 characters")).toBeVisible();
+      await expect(page.getByLabel("Username or Email")).toHaveAttribute("aria-invalid", "true");
+      await expect(page.getByLabel("Password")).toHaveAttribute("aria-invalid", "true");
 
       // B. Minimum username length (< 3 chars)
       await fillInstitutionStep2(page, {
@@ -142,30 +115,20 @@ test.describe("institution regression suite", () => {
         password: "1234567",
       });
       await page.getByRole("button", { name: "Create Institution" }).click();
-      await expect(
-        page.getByText("Password must be at least 8 characters"),
-      ).toBeVisible();
+      await expect(page.getByText("Password must be at least 8 characters")).toBeVisible();
 
       // E. Back navigation preserves Step 1 data
       await page.getByRole("button", { name: "Back" }).click();
       await expect(page.getByText("Step 1 of 2")).toBeVisible();
-      await expect(page.getByLabel("Institution Name")).toHaveValue(
-        "Boundary High School",
-      );
+      await expect(page.getByLabel("Institution Name")).toHaveValue("Boundary High School");
       await expect(page.getByLabel("TAN Number")).toHaveValue(validTan);
-      await expect(page.getByLabel("Institution Head")).toHaveValue(
-        "Dr. Boundary",
-      );
-      await expect(page.getByLabel("Address")).toHaveValue(
-        "123 Boundary Road, Pune",
-      );
+      await expect(page.getByLabel("Institution Head")).toHaveValue("Dr. Boundary");
+      await expect(page.getByLabel("Address")).toHaveValue("123 Boundary Road, Pune");
 
       // Returning to Step 2 preserves Step 2 data
       await page.getByRole("button", { name: "Continue" }).click();
       await expect(page.getByText("Step 2 of 2")).toBeVisible();
-      await expect(page.getByLabel("Username or Email")).toHaveValue(
-        validUsername,
-      );
+      await expect(page.getByLabel("Username or Email")).toHaveValue(validUsername);
 
       // Clean up session
       await signOut(page);
@@ -176,8 +139,9 @@ test.describe("institution regression suite", () => {
     test("verifies directory listing, detail persistence, password reset, credential transitions, and login deactivation/reactivation", async ({
       page,
       env,
-      institution,
+      temporaryInstitution,
     }) => {
+      const institution = temporaryInstitution;
       const newPassword = `${institution.password}_updated99!`;
 
       // 1. Sign in as admin and create institution via UI
@@ -189,9 +153,7 @@ test.describe("institution regression suite", () => {
 
       // 3. Verify presence and metadata in the institution directory
       await goToInstitutionDirectory(page);
-      const directoryRow = page
-        .getByRole("row")
-        .filter({ hasText: institution.name });
+      const directoryRow = page.getByRole("row").filter({ hasText: institution.name });
       await expect(directoryRow).toBeVisible();
       await expect(directoryRow).toContainText(institution.tanNumber);
       await expect(directoryRow).toContainText(institution.institutionHead);
@@ -204,9 +166,7 @@ test.describe("institution regression suite", () => {
       // Validation: short password
       await page.getByLabel("New Password").fill("short");
       await page.getByRole("button", { name: "Reset Password" }).click();
-      await expect(
-        page.getByText("Password must be at least 8 characters"),
-      ).toBeVisible();
+      await expect(page.getByText("Password must be at least 8 characters")).toBeVisible();
 
       // Valid password reset
       await resetInstitutionPasswordViaUI(page, newPassword);
@@ -234,9 +194,7 @@ test.describe("institution regression suite", () => {
       await signIn(page, env.adminIdentifier, env.adminPassword);
       await goToInstitutionDetail(page, created.id);
       await toggleInstitutionLoginAccessViaUI(page, "Inactive");
-      await expect(
-        page.getByText("Institution login deactivated"),
-      ).toBeVisible();
+      await expect(page.getByText("Institution login deactivated")).toBeVisible();
 
       // Sign out admin
       await signOut(page);
@@ -271,8 +229,9 @@ test.describe("institution regression suite", () => {
     test("enforces role-based route guards and verifies session invalidation on logout for both roles", async ({
       page,
       env,
-      institution,
+      temporaryInstitution,
     }) => {
+      const institution = temporaryInstitution;
       // 1. Admin signs in and provisions institution
       await signIn(page, env.adminIdentifier, env.adminPassword);
       await createInstitutionViaUI(page, institution);
@@ -347,9 +306,10 @@ test.describe("institution regression suite", () => {
     test("scans primary Institution pages for WCAG serious violations and validates full keyboard operability", async ({
       page,
       env,
-      institution,
+      temporaryInstitution,
       runId,
     }) => {
+      const institution = temporaryInstitution;
       const kbInstitution = generateIndianInstitution(`${runId}kb`);
 
       // 1. Sign in as admin
@@ -372,9 +332,7 @@ test.describe("institution regression suite", () => {
       // Create institution and scan /institutions/:id detail page
       await fillInstitutionStep2(page, institution);
       await page.getByRole("button", { name: "Create Institution" }).click();
-      await expect(page).toHaveURL(
-        /\/institutions\/(?!create$)[a-zA-Z0-9_-]+$/,
-      );
+      await expect(page).toHaveURL(/\/institutions\/(?!create$)[a-zA-Z0-9_-]+$/);
       await expectAccessible(page);
 
       // 4. Full Keyboard Operability: Create institution via keyboard navigation
@@ -394,10 +352,7 @@ test.describe("institution regression suite", () => {
       await page.keyboard.type(kbInstitution.address);
 
       // Tab to Continue button and press Enter
-      await tabUntilFocused(
-        page,
-        page.getByRole("button", { name: "Continue" }),
-      );
+      await tabUntilFocused(page, page.getByRole("button", { name: "Continue" }));
       await pressEnter(page);
 
       await expect(page.getByText("Step 2 of 2")).toBeVisible();
@@ -410,55 +365,33 @@ test.describe("institution regression suite", () => {
       await page.keyboard.type(kbInstitution.password);
 
       // Tab to Create Institution button and press Enter
-      await tabUntilFocused(
-        page,
-        page.getByRole("button", { name: "Create Institution" }),
-      );
+      await tabUntilFocused(page, page.getByRole("button", { name: "Create Institution" }));
       await pressEnter(page);
 
       // Verify navigation to Detail page
-      await expect(page).toHaveURL(
-        /\/institutions\/(?!create$)[a-zA-Z0-9_-]+$/,
-      );
-      await expect(
-        page.getByRole("heading", { name: kbInstitution.name }),
-      ).toBeVisible();
+      await expect(page).toHaveURL(/\/institutions\/(?!create$)[a-zA-Z0-9_-]+$/);
+      await expect(page.getByRole("heading", { name: kbInstitution.name })).toBeVisible();
 
       // 5. Keyboard interaction on Detail page: Reset password & toggle login access
       const newKbPassword = `${kbInstitution.password}_kbReset1!`;
       await page.getByLabel("New Password").focus();
       await page.keyboard.type(newKbPassword);
 
-      await tabUntilFocused(
-        page,
-        page.getByRole("button", { name: "Reset Password" }),
-      );
+      await tabUntilFocused(page, page.getByRole("button", { name: "Reset Password" }));
       await pressEnter(page);
       await expect(page.getByText("Institution password reset")).toBeVisible();
 
       // Tab to Deactivate Login button and activate with Space / Enter
-      await tabUntilFocused(
-        page,
-        page.getByRole("button", { name: "Deactivate Login" }),
-      );
+      await tabUntilFocused(page, page.getByRole("button", { name: "Deactivate Login" }));
       await pressEnter(page);
-      await expect(
-        page.getByText("Institution login deactivated"),
-      ).toBeVisible();
-      await expect(
-        page.getByText("Current login status: Inactive"),
-      ).toBeVisible();
+      await expect(page.getByText("Institution login deactivated")).toBeVisible();
+      await expect(page.getByText("Current login status: Inactive")).toBeVisible();
 
       // Tab to Activate Login button and activate with Enter
-      await tabUntilFocused(
-        page,
-        page.getByRole("button", { name: "Activate Login" }),
-      );
+      await tabUntilFocused(page, page.getByRole("button", { name: "Activate Login" }));
       await pressEnter(page);
       await expect(page.getByText("Institution login activated")).toBeVisible();
-      await expect(
-        page.getByText("Current login status: Active"),
-      ).toBeVisible();
+      await expect(page.getByText("Current login status: Active")).toBeVisible();
 
       await signOut(page);
     });
@@ -468,8 +401,9 @@ test.describe("institution regression suite", () => {
     test("handles server-side validation error, temporary server failure, network failure, slow mutation, and unauthorized error gracefully", async ({
       page,
       env,
-      institution,
+      temporaryInstitution,
     }) => {
+      const institution = temporaryInstitution;
       // 1. Sign in as admin
       await signIn(page, env.adminIdentifier, env.adminPassword);
 
@@ -487,17 +421,11 @@ test.describe("institution regression suite", () => {
 
       await page.getByRole("button", { name: "Create Institution" }).click();
       await expect(
-        page.getByText(
-          "TAN number duplicate or invalid according to income tax rules",
-        ),
+        page.getByText("TAN number duplicate or invalid according to income tax rules"),
       ).toBeVisible();
       // Verify form state is preserved and page did not crash
-      await expect(page.getByLabel("Username or Email")).toHaveValue(
-        institution.username,
-      );
-      await expect(page.getByLabel("Password")).toHaveValue(
-        institution.password,
-      );
+      await expect(page.getByLabel("Username or Email")).toHaveValue(institution.username);
+      await expect(page.getByLabel("Password")).toHaveValue(institution.password);
       await unroute400();
 
       // --- B. Temporary Server Failure (500) ---
@@ -509,50 +437,29 @@ test.describe("institution regression suite", () => {
       );
 
       await page.getByRole("button", { name: "Create Institution" }).click();
-      await expect(
-        page.getByText("Database cluster unreachable, please try again"),
-      ).toBeVisible();
+      await expect(page.getByText("Database cluster unreachable, please try again")).toBeVisible();
       // Form state preserved
-      await expect(page.getByLabel("Username or Email")).toHaveValue(
-        institution.username,
-      );
+      await expect(page.getByLabel("Username or Email")).toHaveValue(institution.username);
       await unroute500();
 
       // --- C. Network Failure / Abort ---
-      const unrouteAbort = await simulateNetworkFailure(
-        page,
-        "**/trpc/institutions.create*",
-      );
+      const unrouteAbort = await simulateNetworkFailure(page, "**/trpc/institutions.create*");
       await page.getByRole("button", { name: "Create Institution" }).click();
       // Assert error feedback appears or button stays functional
-      await expect(
-        page.getByRole("button", { name: "Create Institution" }),
-      ).toBeVisible();
+      await expect(page.getByRole("button", { name: "Create Institution" })).toBeVisible();
       await unrouteAbort();
 
       // --- D. Slow Mutation & Pending Feedback ---
-      const unrouteSlow = await simulateSlowResponse(
-        page,
-        "**/trpc/institutions.create*",
-        1200,
-      );
+      const unrouteSlow = await simulateSlowResponse(page, "**/trpc/institutions.create*", 1200);
       await page.getByRole("button", { name: "Create Institution" }).click();
 
       // Assert pending state
-      await expect(
-        page.getByRole("button", { name: "Creating..." }),
-      ).toBeVisible();
-      await expect(
-        page.getByRole("button", { name: "Creating..." }),
-      ).toBeDisabled();
+      await expect(page.getByRole("button", { name: "Creating..." })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Creating..." })).toBeDisabled();
 
       // Await success completion after delay
-      await expect(page).toHaveURL(
-        /\/institutions\/(?!create$)[a-zA-Z0-9_-]+$/,
-      );
-      await expect(
-        page.getByText("Institution created successfully"),
-      ).toBeVisible();
+      await expect(page).toHaveURL(/\/institutions\/(?!create$)[a-zA-Z0-9_-]+$/);
+      await expect(page.getByText("Institution created successfully")).toBeVisible();
       await unrouteSlow();
 
       // --- E. Unauthorized / Session Expired (401) ---

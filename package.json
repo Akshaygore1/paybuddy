@@ -44,6 +44,7 @@
     "test:regression": "bun e2e/src/runner.ts --depth regression",
     "test:e2e:ui": "bun e2e/src/runner.ts --ui",
     "test:e2e:headed": "bun e2e/src/runner.ts --headed",
+    "test:e2e:cleanup": "bun e2e/src/cleanup.ts",
     "deploy": "vp run --filter @tds-nivaran/infra deploy",
     "destroy": "vp run --filter @tds-nivaran/infra destroy"
   },

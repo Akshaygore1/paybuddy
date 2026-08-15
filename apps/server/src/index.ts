@@ -5,9 +5,15 @@ import { createAuth, userRoles } from "@tds-nivaran/auth";
 import { createDb } from "@tds-nivaran/db";
 import { account, session, user } from "@tds-nivaran/db/schema/auth";
 import { env } from "@tds-nivaran/env/server";
+import {
+  cleanupE2EInstitutions,
+  cleanupSchema,
+  resetE2ETenant,
+  resetTenantSchema,
+} from "./e2e-operations";
 import { APIError } from "better-auth";
 import { eq } from "drizzle-orm";
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { z } from "zod";
@@ -26,6 +32,34 @@ const bootstrapUserSchema = z.object({
 const bootstrapDeleteUserSchema = z.object({
   email: z.email("Invalid email address"),
 });
+
+function e2eOperationsDisabled(c: Context) {
+  if (env.E2E_OPERATIONS_ENABLED === "true") {
+    return null;
+  }
+
+  return c.json(
+    {
+      message: "E2E operational endpoints are disabled",
+    },
+    404,
+  );
+}
+
+async function requireAdminSession(c: Context) {
+  const currentSession = await auth.api.getSession({
+    headers: c.req.raw.headers,
+  });
+
+  if (!currentSession) {
+    return c.json({ message: "Authentication required" }, 401);
+  }
+  if (currentSession.user.role !== "admin") {
+    return c.json({ message: "Administrator role required" }, 403);
+  }
+
+  return null;
+}
 
 app.use(logger());
 app.use(
@@ -73,7 +107,11 @@ app.post("/api/bootstrap/users", async (c) => {
   }
 
   const { email, name, password, role } = parsedBody.data;
-  const existingUser = await db.select({ id: user.id }).from(user).where(eq(user.email, email)).get();
+  const existingUser = await db
+    .select({ id: user.id })
+    .from(user)
+    .where(eq(user.email, email))
+    .get();
 
   if (existingUser) {
     return c.json(
@@ -150,7 +188,11 @@ app.delete("/api/bootstrap/users", async (c) => {
   }
 
   const { email } = parsedBody.data;
-  const existingUser = await db.select({ id: user.id }).from(user).where(eq(user.email, email)).get();
+  const existingUser = await db
+    .select({ id: user.id })
+    .from(user)
+    .where(eq(user.email, email))
+    .get();
 
   if (!existingUser) {
     return c.json(
@@ -172,6 +214,68 @@ app.delete("/api/bootstrap/users", async (c) => {
     },
     200,
   );
+});
+
+app.post("/api/e2e/tenant/reset", async (c) => {
+  const disabledResponse = e2eOperationsDisabled(c);
+  if (disabledResponse) {
+    return disabledResponse;
+  }
+
+  const authFailure = await requireAdminSession(c);
+  if (authFailure) {
+    return authFailure;
+  }
+
+  const parsedBody = resetTenantSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsedBody.success) {
+    return c.json(
+      {
+        message: "Invalid E2E tenant reset request",
+        issues: parsedBody.error.flatten(),
+      },
+      400,
+    );
+  }
+
+  try {
+    const institution = await resetE2ETenant(db, auth, c.req.raw.headers, parsedBody.data);
+    return c.json({ institution }, 200);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return c.json({ message }, 409);
+  }
+});
+
+app.post("/api/e2e/institutions/cleanup", async (c) => {
+  const disabledResponse = e2eOperationsDisabled(c);
+  if (disabledResponse) {
+    return disabledResponse;
+  }
+
+  const authFailure = await requireAdminSession(c);
+  if (authFailure) {
+    return authFailure;
+  }
+
+  const parsedBody = cleanupSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsedBody.success) {
+    return c.json(
+      {
+        message: "Invalid E2E institution cleanup request",
+        issues: parsedBody.error.flatten(),
+      },
+      400,
+    );
+  }
+
+  try {
+    const result = await cleanupE2EInstitutions(db, parsedBody.data);
+    return c.json(result, 200);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return c.json({ message }, 409);
+  }
 });
 
 app.on(["POST", "GET"], "/api/auth/*", (c) => auth.handler(c.req.raw));

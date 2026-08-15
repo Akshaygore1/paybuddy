@@ -1,21 +1,21 @@
 import { test as base } from "@playwright/test";
 
 import {
-  provisionEmployeeDirectoryViaApi,
-  provisionEmployeePrerequisitesViaApi,
-  provisionInstitutionViaApi,
-  provisionPayrollPrerequisitesViaApi,
-  provisionReportsPrerequisitesViaApi,
+  authenticateAdminViaApi,
+  cleanupE2ERunInstitutionsViaApi,
+  getConfiguredInstitutionViaApi,
+  prepareEmployeeDirectoryViaApi,
+  prepareEmployeePrerequisitesViaApi,
+  preparePayrollPrerequisitesViaApi,
+  prepareReportsPrerequisitesViaApi,
+  resetE2ETenantViaApi,
   type ProvisionedEmployeeDirectory,
   type ProvisionedEmployeePrerequisites,
   type ProvisionedInstitution,
   type ProvisionedPayrollPrerequisites,
   type ProvisionedReportsPrerequisites,
 } from "./api-client";
-import {
-  generateIndianEmployee,
-  generateRealisticCustomField,
-} from "./data/indian-employees";
+import { generateIndianEmployee, generateRealisticCustomField } from "./data/indian-employees";
 import {
   generateIndianInstitution,
   generateRealisticDesignation,
@@ -27,7 +27,9 @@ import { createRunContext, type RunContext } from "./run-context";
 
 type TestFixtures = {
   runId: string;
-  institution: IndianInstitutionSeed;
+  institution: ProvisionedInstitution;
+  temporaryInstitution: IndianInstitutionSeed;
+  resetTenant: void;
   provisionedInstitution: ProvisionedInstitution;
   provisionedEmployeePrerequisites: ProvisionedEmployeePrerequisites;
   provisionedPayrollPrerequisites: ProvisionedPayrollPrerequisites;
@@ -61,12 +63,31 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     const id = `run-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
     await use(id);
   },
-  institution: async ({ runId }, use) => {
-    const institution = generateIndianInstitution(runId);
+  institution: async ({ env }, use) => {
+    const { cookieHeader } = await authenticateAdminViaApi(env);
+    const institution = await getConfiguredInstitutionViaApi(env, cookieHeader);
     await use(institution);
   },
-  provisionedInstitution: async ({ env, institution, runId }, use) => {
-    const provisioned = await provisionInstitutionViaApi(env, institution);
+  temporaryInstitution: async ({ runId }, use) => {
+    await use(generateIndianInstitution(`${runId}-institution-create`));
+  },
+  resetTenant: [
+    async ({ env, institution, runId }, use) => {
+      await resetE2ETenantViaApi(env, institution);
+      try {
+        await use();
+      } finally {
+        try {
+          await cleanupE2ERunInstitutionsViaApi(env, runId);
+        } finally {
+          await resetE2ETenantViaApi(env, institution);
+        }
+      }
+    },
+    { auto: true },
+  ],
+  provisionedInstitution: async ({ institution, resetTenant: _resetTenant, runId }, use) => {
+    const provisioned = institution;
     await updateRunManifest(runId, (prev) => ({
       ...prev,
       createdInstitution: {
@@ -80,10 +101,13 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     }));
     await use(provisioned);
   },
-  provisionedEmployeePrerequisites: async ({ env, institution, runId }, use) => {
+  provisionedEmployeePrerequisites: async (
+    { env, institution, runId, resetTenant: _resetTenant },
+    use,
+  ) => {
     const designationName = generateRealisticDesignation(runId);
     const customFieldLabel = generateRealisticCustomField(runId);
-    const prerequisites = await provisionEmployeePrerequisitesViaApi(env, institution, {
+    const prerequisites = await prepareEmployeePrerequisitesViaApi(env, institution, {
       designationName,
       customFieldLabel,
       customFieldRequired: true,
@@ -123,10 +147,13 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 
     await use(prerequisites);
   },
-  provisionedPayrollPrerequisites: async ({ env, institution, runId }, use) => {
+  provisionedPayrollPrerequisites: async (
+    { env, institution, runId, resetTenant: _resetTenant },
+    use,
+  ) => {
     const designationName = generateRealisticDesignation(runId);
     const employeeData = generateIndianEmployee(runId);
-    const prerequisites = await provisionPayrollPrerequisitesViaApi(env, institution, {
+    const prerequisites = await preparePayrollPrerequisitesViaApi(env, institution, {
       designationName,
       employeeData,
     });
@@ -171,10 +198,13 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 
     await use(prerequisites);
   },
-  provisionedReportsPrerequisites: async ({ env, institution, runId }, use) => {
+  provisionedReportsPrerequisites: async (
+    { env, institution, runId, resetTenant: _resetTenant },
+    use,
+  ) => {
     const designationName = generateRealisticDesignation(runId);
     const employeeData = generateIndianEmployee(runId);
-    const prerequisites = await provisionReportsPrerequisitesViaApi(env, institution, {
+    const prerequisites = await prepareReportsPrerequisitesViaApi(env, institution, {
       designationName,
       employeeData,
     });
@@ -226,9 +256,12 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 
     await use(prerequisites);
   },
-  provisionedEmployeeDirectory: async ({ env, institution, runId }, use) => {
+  provisionedEmployeeDirectory: async (
+    { env, institution, runId, resetTenant: _resetTenant },
+    use,
+  ) => {
     const customFieldLabel = generateRealisticCustomField(runId);
-    const directoryData = await provisionEmployeeDirectoryViaApi(env, institution, {
+    const directoryData = await prepareEmployeeDirectoryViaApi(env, institution, {
       customFieldLabel,
       employeeCount: 15,
     });
@@ -268,7 +301,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     await use(directoryData);
   },
   manifest: [
-    async ({ env, runId, institution, page }, use, testInfo) => {
+    async ({ env, runId, institution, page, resetTenant: _resetTenant }, use, testInfo) => {
       const startedAt = new Date().toISOString();
       const startTime = Date.now();
       const viewport = page.viewportSize() ?? undefined;
@@ -292,8 +325,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
                   : "unknown";
 
       const matchedDepth =
-        process.env.E2E_DEPTH ||
-        (fullPath.includes("regression") ? "regression" : "smoke");
+        process.env.E2E_DEPTH || (fullPath.includes("regression") ? "regression" : "smoke");
 
       const manifestData: RunManifest = {
         runId,

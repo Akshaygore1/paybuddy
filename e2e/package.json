@@ -8,6 +8,7 @@
     "test:regression": "bun src/runner.ts --depth regression",
     "test:ui": "bun src/runner.ts --ui",
     "test:headed": "bun src/runner.ts --headed",
+    "cleanup": "bun src/cleanup.ts",
     "check-types": "tsc --noEmit"
   },
   "devDependencies": {
