@@ -1,4 +1,9 @@
-import { generateIndianEmployee, type IndianEmployeeSeed } from "./data/indian-employees";
+import {
+  generateIndianEmployee,
+  generateIndianEmployeeCatalog,
+  type IndianEmployeeCatalogItem,
+  type IndianEmployeeSeed,
+} from "./data/indian-employees";
 import type { IndianInstitutionSeed } from "./data/indian-institutions";
 import type { TestEnv } from "./env";
 
@@ -324,6 +329,9 @@ export async function provisionEmployeePrerequisitesViaApi(
 export type ProvisionedEmployee = IndianEmployeeSeed & {
   id: string;
   designationId: string;
+  pfNumber?: string;
+  npsAccountNumber?: string;
+  whatsAppNumber?: string;
 };
 
 export async function createEmployeeViaApi(
@@ -338,6 +346,9 @@ export async function createEmployeeViaApi(
     designationId: string;
     seniorityRank: number;
     panNumber?: string;
+    pfNumber?: string;
+    npsAccountNumber?: string;
+    whatsAppNumber?: string;
     contactNumber?: string;
     customFieldValues?: Record<string, string>;
   },
@@ -361,6 +372,9 @@ export async function createEmployeeViaApi(
       designationId: data.designationId,
       seniorityRank: data.seniorityRank,
       panNumber: data.panNumber ?? "",
+      pfNumber: data.pfNumber ?? "",
+      npsAccountNumber: data.npsAccountNumber ?? "",
+      whatsAppNumber: data.whatsAppNumber ?? "",
       contactNumber: data.contactNumber ?? "",
       customFieldValues: data.customFieldValues ?? {},
     }),
@@ -383,6 +397,9 @@ export async function createEmployeeViaApi(
         designationId: string;
         seniorityRank: number;
         panNumber: string | null;
+        pfNumber: string | null;
+        npsAccountNumber: string | null;
+        whatsAppNumber: string | null;
         contactNumber: string | null;
       };
     };
@@ -410,9 +427,91 @@ export async function createEmployeeViaApi(
     gender: res.gender,
     designationId: res.designationId,
     seniorityRank: res.seniorityRank,
-    panNumber: res.panNumber ?? "",
-    contactNumber: res.contactNumber ?? "",
+    panNumber: res.panNumber ?? data.panNumber ?? "",
+    pfNumber: res.pfNumber ?? data.pfNumber ?? "",
+    npsAccountNumber: res.npsAccountNumber ?? data.npsAccountNumber ?? "",
+    whatsAppNumber: res.whatsAppNumber ?? data.whatsAppNumber ?? "",
+    contactNumber: res.contactNumber ?? data.contactNumber ?? "",
     customFieldValue: data.customFieldValues ? Object.values(data.customFieldValues)[0] ?? "" : "",
+  };
+}
+
+export type ProvisionedEmployeeDirectory = {
+  institution: ProvisionedInstitution;
+  cookieHeader: string;
+  designations: ProvisionedDesignation[];
+  customField: ProvisionedCustomField;
+  catalog: IndianEmployeeCatalogItem[];
+  employees: ProvisionedEmployee[];
+};
+
+export async function provisionEmployeeDirectoryViaApi(
+  env: TestEnv,
+  institutionData: IndianInstitutionSeed,
+  options?: {
+    employeeCount?: number;
+    designationNames?: string[];
+    customFieldLabel?: string;
+    customFieldRequired?: boolean;
+  },
+): Promise<ProvisionedEmployeeDirectory> {
+  const institution = await provisionInstitutionViaApi(env, institutionData);
+  const { cookieHeader } = await authenticateInstitutionViaApi(env, {
+    username: institution.username,
+    password: institution.password,
+  });
+
+  const desigNames = options?.designationNames ?? [
+    `Principal [${institution.tanNumber}]`,
+    `Senior Teacher [${institution.tanNumber}]`,
+    `Junior Teacher [${institution.tanNumber}]`,
+  ];
+
+  const designations: ProvisionedDesignation[] = [];
+  for (const name of desigNames) {
+    const desig = await createDesignationViaApi(env, cookieHeader, name);
+    designations.push(desig);
+  }
+
+  const customFieldLabel = options?.customFieldLabel ?? `Staff ID [${institution.tanNumber}]`;
+  const customField = await createCustomFieldViaApi(env, cookieHeader, {
+    label: customFieldLabel,
+    isRequired: options?.customFieldRequired ?? false,
+  });
+
+  const employeeCount = options?.employeeCount ?? 15;
+  const catalog = generateIndianEmployeeCatalog(employeeCount, institution.tanNumber);
+
+  const employees: ProvisionedEmployee[] = [];
+  for (const item of catalog) {
+    const desig = designations[item.designationIndex % designations.length]!;
+    const employee = await createEmployeeViaApi(env, cookieHeader, {
+      firstName: item.firstName,
+      middleName: item.middleName,
+      surname: item.surname,
+      dateOfBirth: item.dateOfBirth,
+      gender: item.gender,
+      designationId: desig.id,
+      seniorityRank: item.seniorityRank,
+      panNumber: item.panNumber,
+      pfNumber: item.pfNumber,
+      npsAccountNumber: item.npsAccountNumber,
+      whatsAppNumber: item.whatsAppNumber,
+      contactNumber: item.contactNumber,
+      customFieldValues: {
+        [customField.id]: item.customFieldValue,
+      },
+    });
+    employees.push(employee);
+  }
+
+  return {
+    institution,
+    cookieHeader,
+    designations,
+    customField,
+    catalog,
+    employees,
   };
 }
 

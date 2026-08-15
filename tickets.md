@@ -146,14 +146,14 @@ Work the **frontier**: any ticket whose blockers are all done. Implement one fro
 
 **Blocked by:** Deep-test employee forms and record lifecycle.
 
-- [ ] The reusable Indian employee catalog supplies enough uniquely marked employees to cross at least one directory page boundary.
-- [ ] Directory ordering follows designation order and seniority behavior for the generated records.
-- [ ] Search covers visible standard fields, visible custom fields, hidden custom fields, clearing search, and no-match behavior.
-- [ ] Column visibility changes the rendered table and relevant search behavior as expected.
-- [ ] Pagination covers next, previous, boundary button states, filtered result counts, and return to the first page after filtering.
-- [ ] CSV download verifies the suggested filename, visible headers, expected generated rows, ordering where contractual, escaping, and exclusion of hidden columns where applicable.
-- [ ] Directory and export assertions ignore unrelated retained records by using the current run marker while still verifying real pagination behavior.
-- [ ] Directory interactions pass serious accessibility checks and remain usable at the mobile smoke viewport.
+- [x] The reusable Indian employee catalog supplies enough uniquely marked employees to cross at least one directory page boundary.
+- [x] Directory ordering follows designation order and seniority behavior for the generated records.
+- [x] Search covers visible standard fields, visible custom fields, hidden custom fields, clearing search, and no-match behavior.
+- [x] Column visibility changes the rendered table and relevant search behavior as expected.
+- [x] Pagination covers next, previous, boundary button states, filtered result counts, and return to the first page after filtering.
+- [x] CSV download verifies the suggested filename, visible headers, expected generated rows, ordering where contractual, escaping, and exclusion of hidden columns where applicable.
+- [x] Directory and export assertions ignore unrelated retained records by using the current run marker while still verifying real pagination behavior.
+- [x] Directory interactions pass serious accessibility checks and remain usable at the mobile smoke viewport.
 
 ## Deep-test payroll entry and custom fields
 

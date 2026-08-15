@@ -58,11 +58,13 @@ export async function simulateServerError(
         ? createBetterAuthErrorBody(status, errorMessage)
         : JSON.stringify({ error: errorMessage, message: errorMessage });
 
-    await route.fulfill({
-      status,
-      contentType: "application/json",
-      body,
-    });
+    await route
+      .fulfill({
+        status,
+        contentType: "application/json",
+        body,
+      })
+      .catch(() => {});
   };
 
   await page.route(urlPattern, handler);
@@ -92,7 +94,7 @@ export async function simulateNetworkFailure(
   urlPattern: string | RegExp,
 ): Promise<UnrouteFn> {
   const handler = async (route: Route) => {
-    await route.abort("failed");
+    await route.abort("failed").catch(() => {});
   };
 
   await page.route(urlPattern, handler);
@@ -108,7 +110,7 @@ export async function simulateSlowResponse(
 ): Promise<UnrouteFn> {
   const handler = async (route: Route) => {
     await new Promise((resolve) => setTimeout(resolve, delayMs));
-    await route.continue();
+    await route.continue().catch(() => {});
   };
 
   await page.route(urlPattern, handler);

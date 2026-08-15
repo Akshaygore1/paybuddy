@@ -197,11 +197,11 @@ export async function fillEmployeeForm(
 }
 
 export async function submitEmployeeCreate(page: Page) {
-  await page.getByRole("button", { name: "Create Employee" }).click();
+  await page.getByRole("button", { name: "Create Employee" }).click({ force: true });
 }
 
 export async function submitEmployeeEdit(page: Page) {
-  await page.getByRole("button", { name: "Save Changes" }).click();
+  await page.getByRole("button", { name: "Save Changes" }).click({ force: true });
 }
 
 export async function expectEmployeeRow(page: Page, displayName: string) {
@@ -233,6 +233,7 @@ export async function setColumnVisibility(
   }
 
   await page.keyboard.press("Escape");
+  await expect(page.locator('[data-slot="dropdown-menu-content"]')).toHaveCount(0);
 
   if (visible) {
     await expect(

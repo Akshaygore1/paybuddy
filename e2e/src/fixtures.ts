@@ -1,10 +1,12 @@
 import { test as base } from "@playwright/test";
 
 import {
+  provisionEmployeeDirectoryViaApi,
   provisionEmployeePrerequisitesViaApi,
   provisionInstitutionViaApi,
   provisionPayrollPrerequisitesViaApi,
   provisionReportsPrerequisitesViaApi,
+  type ProvisionedEmployeeDirectory,
   type ProvisionedEmployeePrerequisites,
   type ProvisionedInstitution,
   type ProvisionedPayrollPrerequisites,
@@ -30,6 +32,7 @@ type TestFixtures = {
   provisionedEmployeePrerequisites: ProvisionedEmployeePrerequisites;
   provisionedPayrollPrerequisites: ProvisionedPayrollPrerequisites;
   provisionedReportsPrerequisites: ProvisionedReportsPrerequisites;
+  provisionedEmployeeDirectory: ProvisionedEmployeeDirectory;
   manifest: RunManifest;
 };
 
@@ -222,6 +225,47 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     }));
 
     await use(prerequisites);
+  },
+  provisionedEmployeeDirectory: async ({ env, institution, runId }, use) => {
+    const customFieldLabel = generateRealisticCustomField(runId);
+    const directoryData = await provisionEmployeeDirectoryViaApi(env, institution, {
+      customFieldLabel,
+      employeeCount: 15,
+    });
+
+    await updateRunManifest(runId, (prev) => ({
+      ...prev,
+      createdInstitution: {
+        id: directoryData.institution.id,
+        name: directoryData.institution.name,
+        tanNumber: directoryData.institution.tanNumber,
+        institutionHead: directoryData.institution.institutionHead,
+        address: directoryData.institution.address,
+        username: directoryData.institution.username,
+      },
+      provisionedPrerequisites: {
+        institution: {
+          id: directoryData.institution.id,
+          name: directoryData.institution.name,
+          tanNumber: directoryData.institution.tanNumber,
+          username: directoryData.institution.username,
+        },
+        designation: {
+          id: directoryData.designations[0]?.id,
+          name: directoryData.designations[0]?.name ?? "",
+          sortOrder: directoryData.designations[0]?.sortOrder,
+        },
+        customField: {
+          id: directoryData.customField.id,
+          label: directoryData.customField.label,
+          key: directoryData.customField.key,
+          isRequired: directoryData.customField.isRequired,
+          sortOrder: directoryData.customField.sortOrder,
+        },
+      },
+    }));
+
+    await use(directoryData);
   },
   manifest: [
     async ({ env, runId, institution, page }, use, testInfo) => {

@@ -175,8 +175,11 @@ function parseCliArgs(args: string[]) {
 }
 
 function resolveTestTarget(feature: FeatureName | undefined, depth: DepthName): string {
+  if (feature === "employee") {
+    return `tests/employee(?:-directory)?\\.${depth}\\.spec\\.ts`;
+  }
   if (feature) {
-    return `tests/${feature}.${depth}.spec.ts`;
+    return `tests/${feature}\\.${depth}\\.spec\\.ts`;
   }
   return `tests/.*\\.${depth}\\.spec\\.ts`;
 }
