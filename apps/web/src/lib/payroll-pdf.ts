@@ -245,11 +245,7 @@ export function formatPayrollPdfCurrency(amountPaise: number) {
     return "";
   }
 
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    minimumFractionDigits: 2,
-  }).format(amountPaise / 100);
+  return formatIndianCurrencyFromPaise(amountPaise);
 }
 
 export function buildPayrollPdfTableModel(input: {
@@ -407,3 +403,4 @@ export function buildPayrollPdfTableModel(input: {
     widthFit: fittedTable.widthFit,
   } satisfies PayrollPdfTableModel;
 }
+import { formatIndianCurrencyFromPaise } from "@/lib/display-formatters";

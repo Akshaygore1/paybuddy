@@ -46,6 +46,7 @@ import { MoreHorizontalIcon } from "lucide-react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
 
+import { useConfirmModal } from "@/components/confirm-modal";
 import { PageHeader } from "@/components/page-header";
 import {
   buildEmployeeDirectoryCsv,
@@ -58,16 +59,15 @@ const PAGE_SIZE = 10;
 
 export default function EmployeeIndexPage() {
   const navigate = useNavigate();
+  const confirmModal = useConfirmModal();
   const employeesQuery = useQuery(trpc.employees.getDirectory.queryOptions());
   const employees = employeesQuery.data?.rows ?? [];
   const columns = employeesQuery.data?.columns ?? [];
 
   const [pageIndex, setPageIndex] = React.useState(0);
   const [searchTerm, setSearchTerm] = React.useState("");
+  const deferredSearchTerm = React.useDeferredValue(searchTerm);
   const [visibleColumns, setVisibleColumns] = React.useState<Record<string, boolean>>({});
-  const [employeePendingDelete, setEmployeePendingDelete] = React.useState<
-    (typeof employees)[number] | null
-  >(null);
 
   const directory = React.useMemo(
     () =>
@@ -75,11 +75,11 @@ export default function EmployeeIndexPage() {
         columns,
         rows: employees,
         visibleColumns,
-        searchTerm,
+        searchTerm: deferredSearchTerm,
         pageIndex,
         pageSize: PAGE_SIZE,
       }),
-    [columns, employees, pageIndex, searchTerm, visibleColumns],
+    [columns, deferredSearchTerm, employees, pageIndex, visibleColumns],
   );
   const visibleColumnCount = directory.columns.length;
 
@@ -87,7 +87,6 @@ export default function EmployeeIndexPage() {
     trpc.employees.delete.mutationOptions({
       onSuccess: async () => {
         toast.success("Employee deleted");
-        setEmployeePendingDelete(null);
         await queryClient.invalidateQueries({
           queryKey: trpc.employees.getDirectory.queryKey(),
         });
@@ -97,6 +96,23 @@ export default function EmployeeIndexPage() {
       },
     }),
   );
+
+  async function handleDeleteEmployee(employee: (typeof employees)[number]) {
+    const confirmed = await confirmModal({
+      title: "Delete Employee",
+      description: `Delete ${employee.firstName} ${employee.surname}? This action is permanent and cannot be undone.`,
+      confirmText: "Delete Employee",
+      variant: "destructive",
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
+    await deleteEmployeeMutation.mutateAsync({
+      employeeId: employee.id,
+    });
+  }
 
   const totalRows = employees.length;
   const filteredRows = directory.filteredRows.length;
@@ -109,7 +125,8 @@ export default function EmployeeIndexPage() {
     filteredRows === 0 ? 0 : Math.min(pageStart + paginatedEmployees.length, filteredRows);
   const canGoPrevious = clampedPageIndex > 0;
   const canGoNext = clampedPageIndex < totalPages - 1;
-  const hasSearch = searchTerm.trim().length > 0;
+  const hasSearch = deferredSearchTerm.trim().length > 0;
+  const areResultsStale = searchTerm !== deferredSearchTerm;
 
   React.useEffect(() => {
     setVisibleColumns((current) => ({
@@ -152,16 +169,6 @@ export default function EmployeeIndexPage() {
     anchor.download = "employee-directory.csv";
     anchor.click();
     URL.revokeObjectURL(url);
-  }
-
-  async function handleDeleteEmployee() {
-    if (!employeePendingDelete) {
-      return;
-    }
-
-    await deleteEmployeeMutation.mutateAsync({
-      employeeId: employeePendingDelete.id,
-    });
   }
 
   return (
@@ -250,7 +257,13 @@ export default function EmployeeIndexPage() {
             </Button>
           </div>
 
-          <div className="overflow-hidden rounded-lg border">
+          <div
+            aria-busy={areResultsStale}
+            className={`overflow-hidden rounded-lg border transition-opacity ${
+              areResultsStale ? "opacity-70" : "opacity-100"
+            }`}
+            data-stale={areResultsStale || undefined}
+          >
             <Table aria-label="Employee directory">
               <TableHeader>
                 <TableRow>
@@ -318,7 +331,7 @@ export default function EmployeeIndexPage() {
                                 Edit
                               </DropdownMenuItem>
                               <DropdownMenuItem
-                                onClick={() => setEmployeePendingDelete(employee)}
+                                onClick={() => void handleDeleteEmployee(employee)}
                                 variant="destructive"
                               >
                                 Delete
@@ -387,44 +400,6 @@ export default function EmployeeIndexPage() {
           ) : null}
         </CardContent>
       </Card>
-
-      <Dialog
-        onOpenChange={(open) => {
-          if (!open && !deleteEmployeeMutation.isPending) {
-            setEmployeePendingDelete(null);
-          }
-        }}
-        open={employeePendingDelete !== null}
-      >
-        <DialogContent showCloseButton={!deleteEmployeeMutation.isPending}>
-          <DialogHeader>
-            <DialogTitle>Delete employee</DialogTitle>
-            <DialogDescription>
-              {employeePendingDelete
-                ? `Delete ${employeePendingDelete.firstName} ${employeePendingDelete.surname}? This action is permanent and cannot be undone.`
-                : "This action is permanent and cannot be undone."}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setEmployeePendingDelete(null)}
-              disabled={deleteEmployeeMutation.isPending}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => {
-                void handleDeleteEmployee();
-              }}
-              disabled={deleteEmployeeMutation.isPending}
-            >
-              {deleteEmployeeMutation.isPending ? "Deleting..." : "Delete employee"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </section>
   );
 }

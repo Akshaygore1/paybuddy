@@ -138,6 +138,14 @@ test.describe("institution user flows", () => {
       page.getByText("Showing 1-1 of 1 matches (4 total)", { exact: true }),
     ).toBeVisible();
 
+    await searchEmployeeDirectory(page, `missing-${run.suffix}`);
+    await expect(page.getByText("No employees match your search.", { exact: true })).toBeVisible();
+
+    await searchEmployeeDirectory(page, "");
+    await expectEmployeeRow(page, run.employees.headmaster.displayName);
+    await expectEmployeeRow(page, run.employees.teacherB.displayName);
+    await expect(page.getByText("4 employee records", { exact: true })).toBeVisible();
+
     await enableCustomFieldColumn(page, run.customFieldLabel);
     await searchEmployeeDirectory(page, run.employees.teacherA.customFieldValue);
     await expectEmployeeRow(page, run.employees.teacherA.displayName);
@@ -375,6 +383,26 @@ test.describe("institution user flows", () => {
         .locator('table[aria-label="Reports table"] tbody tr')
         .filter({ hasText: run.employees.headmaster.displayName }),
     ).toBeVisible();
+
+    const reportsSearch = page.getByLabel("Search reports");
+    const reportRows = page.locator('table[aria-label="Reports table"] tbody tr');
+    await reportsSearch.fill(run.employees.headmaster.surname);
+    await expect(
+      reportRows.filter({ hasText: run.employees.headmaster.displayName }),
+    ).toBeVisible();
+    await expect(reportRows.filter({ hasText: run.employees.teacherA.displayName })).toHaveCount(0);
+    await expect(
+      page.getByText("Showing 1-1 of 1 matches (4 total)", { exact: true }),
+    ).toBeVisible();
+
+    await reportsSearch.fill(`missing-${run.suffix}`);
+    await expect(
+      page.getByText("No report rows match your search.", { exact: true }),
+    ).toBeVisible();
+
+    await reportsSearch.fill("");
+    await expect(reportRows.filter({ hasText: run.employees.teacherA.displayName })).toBeVisible();
+    await expect(page.getByText("Showing 1-4 of 4", { exact: true })).toBeVisible();
   });
 
   test("edits one employee and then deletes all created employees", async ({ page, env, run }) => {

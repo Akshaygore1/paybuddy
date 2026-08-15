@@ -1,12 +1,19 @@
+import { createDb } from "@tds-nivaran/db";
+import { institutions } from "@tds-nivaran/db/schema/index";
+import { eq } from "drizzle-orm";
+
 import { buildPayrollModule } from "../modules/payroll";
 import {
   addPayrollCustomFieldSchema,
+  adminArchivePayrollCustomFieldSchema,
   archivePayrollCustomFieldSchema,
+  getAdminPayrollCustomFieldsSchema,
   payrollEmployeeFormSchema,
   savePayrollSchema,
 } from "../schemas/payroll";
-import { institutionProcedure, router } from "../index";
+import { adminProcedure, institutionProcedure, protectedProcedure, router } from "../index";
 
+const db = createDb();
 const payroll = buildPayrollModule();
 
 export const payrollRouter = router({
@@ -29,9 +36,34 @@ export const payrollRouter = router({
     .mutation(async ({ ctx, input }) => {
       return payroll.addCustomField(ctx.institution.id, input);
     }),
-  archiveCustomField: institutionProcedure
+  archiveCustomField: protectedProcedure
     .input(archivePayrollCustomFieldSchema)
     .mutation(async ({ ctx, input }) => {
-      return payroll.archiveCustomField(ctx.institution.id, input);
+      if (ctx.session.user.role !== "admin") {
+        throw new Error("Only admin can delete payroll custom fields");
+      }
+      const institution = await db
+        .select({ id: institutions.id })
+        .from(institutions)
+        .where(eq(institutions.userId, ctx.session.user.id))
+        .get();
+
+      if (!institution) {
+        throw new Error("Institution not found");
+      }
+
+      return payroll.archiveCustomField(institution.id, input);
+    }),
+  getAdminCustomFields: adminProcedure
+    .input(getAdminPayrollCustomFieldsSchema)
+    .query(async ({ input }) => {
+      return payroll.getCustomFields(input.institutionId);
+    }),
+  adminArchiveCustomField: adminProcedure
+    .input(adminArchivePayrollCustomFieldSchema)
+    .mutation(async ({ input }) => {
+      const { institutionId, ...restInput } = input;
+      return payroll.archiveCustomField(institutionId, restInput);
     }),
 });
+

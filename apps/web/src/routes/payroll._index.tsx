@@ -28,12 +28,12 @@ import {
 import { Badge } from "@tds-nivaran/ui/components/badge";
 import { DownloadIcon, PlusIcon, Trash2Icon } from "lucide-react";
 
+import { authClient } from "@/lib/auth-client";
+import { useConfirmModal } from "@/components/confirm-modal";
 import { PageHeader } from "@/components/page-header";
 import { usePayrollWorkspace } from "@/hooks/use-payroll-workspace";
-import {
-  formatPaiseForDisplay,
-  removeMoneyGrouping,
-} from "@/lib/payroll-money";
+import { formatIndianCurrencyFromPaise } from "@/lib/display-formatters";
+import { formatPaiseForDisplay, removeMoneyGrouping } from "@/lib/payroll-money";
 import {
   getPayrollLineItemKey as getLineItemKey,
   type PayrollLineItemView,
@@ -44,14 +44,6 @@ const sectionLabels: Record<PayrollSection, string> = {
   earnings: "Earnings",
   deductions: "Deductions",
 };
-
-function formatCurrency(amountPaise: number) {
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    minimumFractionDigits: 2,
-  }).format(amountPaise / 100);
-}
 
 function PayrollTable({
   section,
@@ -66,6 +58,7 @@ function PayrollTable({
   totalPaise,
   isAddFieldPending,
   isArchivingField,
+  isAdmin,
 }: {
   section: PayrollSection;
   lineItems: PayrollLineItemView[];
@@ -79,6 +72,7 @@ function PayrollTable({
   totalPaise: number;
   isAddFieldPending: boolean;
   isArchivingField: boolean;
+  isAdmin: boolean;
 }) {
   const [isAddFieldFormOpen, setIsAddFieldFormOpen] = React.useState(false);
   const [fieldLabel, setFieldLabel] = React.useState("");
@@ -139,11 +133,21 @@ function PayrollTable({
     }
   }
 
+  const confirmModal = useConfirmModal();
+
   async function removeField(field: PayrollLineItemView) {
-    if (
-      !field.customFieldDefinitionId ||
-      !window.confirm(`Remove ‘${field.label}’ from ${selectedMonthLabel} onward?`)
-    ) {
+    if (!field.customFieldDefinitionId) {
+      return;
+    }
+
+    const confirmed = await confirmModal({
+      title: "Remove Payroll Field",
+      description: `Remove ‘${field.label}’ from ${selectedMonthLabel} onward?`,
+      confirmText: "Remove Field",
+      variant: "destructive",
+    });
+
+    if (!confirmed) {
       return;
     }
 
@@ -241,7 +245,7 @@ function PayrollTable({
                       {item.isArchivedCustomField ? (
                         <Badge variant="outline">Archived</Badge>
                       ) : null}
-                      {item.customFieldDefinitionId && !item.isArchivedCustomField ? (
+                      {item.customFieldDefinitionId && !item.isArchivedCustomField && isAdmin ? (
                         <Button
                           type="button"
                           size="icon-sm"
@@ -298,7 +302,7 @@ function PayrollTable({
         </Table>
         <div className="flex items-center justify-between border-t pt-3 text-sm">
           <span className="font-medium">Total {sectionLabels[section]}</span>
-          <span className="font-semibold">{formatCurrency(totalPaise)}</span>
+          <span className="font-semibold">{formatIndianCurrencyFromPaise(totalPaise)}</span>
         </div>
       </CardContent>
     </Card>
@@ -306,6 +310,8 @@ function PayrollTable({
 }
 
 export default function PayrollIndexPage() {
+  const { data: session } = authClient.useSession();
+  const isAdmin = session?.user.role === "admin";
   const {
     view: {
       selection: {
@@ -379,11 +385,7 @@ export default function PayrollIndexPage() {
                 }}
               >
                 <SelectTrigger aria-label="Select employee">
-                  <SelectValue placeholder="Select employee">
-                    {selectedEmployeeId
-                      ? (employeeLabelById[selectedEmployeeId] ?? "Select employee")
-                      : "Select employee"}
-                  </SelectValue>
+                  <SelectValue placeholder="Select Employee" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
@@ -403,9 +405,7 @@ export default function PayrollIndexPage() {
                 onValueChange={actions.selectFinancialYear}
               >
                 <SelectTrigger aria-label="Select payroll financial year">
-                  <SelectValue placeholder="Select financial year">
-                    {financialYearLabel}
-                  </SelectValue>
+                  <SelectValue placeholder="Select financial year" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
@@ -427,9 +427,7 @@ export default function PayrollIndexPage() {
                 }}
               >
                 <SelectTrigger aria-label="Select payroll month">
-                  <SelectValue placeholder="Select month">
-                    {selectedMonthDefinition.label}
-                  </SelectValue>
+                  <SelectValue placeholder="Select month" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
@@ -463,6 +461,7 @@ export default function PayrollIndexPage() {
                 totalPaise={totals.earningsPaise}
                 isAddFieldPending={status.addField.isPending}
                 isArchivingField={status.archiveField.isPending}
+                isAdmin={isAdmin}
               />
               <PayrollTable
                 section="deductions"
@@ -477,12 +476,13 @@ export default function PayrollIndexPage() {
                 totalPaise={totals.deductionsPaise}
                 isAddFieldPending={status.addField.isPending}
                 isArchivingField={status.archiveField.isPending}
+                isAdmin={isAdmin}
               />
             </div>
             <div className="space-y-1 px-4 py-2">
               <p className="text-xs text-muted-foreground">Net pay</p>
               <p className="text-lg font-semibold tabular-nums">
-                {formatCurrency(totals.netPayPaise)}
+                {formatIndianCurrencyFromPaise(totals.netPayPaise)}
               </p>
             </div>
           </div>

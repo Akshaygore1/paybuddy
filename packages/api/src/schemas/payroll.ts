@@ -62,5 +62,14 @@ export const archivePayrollCustomFieldSchema = payrollPeriodSchema.safeExtend({
   id: requiredTextSchema,
 });
 
+export const adminArchivePayrollCustomFieldSchema = archivePayrollCustomFieldSchema.extend({
+  institutionId: requiredTextSchema,
+});
+
+export const getAdminPayrollCustomFieldsSchema = z.object({
+  institutionId: requiredTextSchema,
+});
+
 export type SavePayrollInput = z.infer<typeof savePayrollSchema>;
 export type AddPayrollCustomFieldInput = z.infer<typeof addPayrollCustomFieldSchema>;
+

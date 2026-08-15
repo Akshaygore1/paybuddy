@@ -90,6 +90,11 @@ export default function AppSidebar() {
           to: "/institutions",
           icon: Building2Icon,
         },
+        {
+          title: "Manage Custom Fields",
+          to: "/admin/custom-fields",
+          icon: BriefcaseBusinessIcon,
+        },
         navigationItems[4],
       ];
     }

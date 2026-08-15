@@ -6,6 +6,8 @@ import {
   goToEmployeeCreate,
   submitEmployeeCreate,
   selectOption,
+  searchEmployeeDirectory,
+  employeeRow,
 } from "../src/helpers";
 
 const designations = [
@@ -14,7 +16,7 @@ const designations = [
   "Associate Teacher",
   "Librarian",
   "Clerk",
-  "Support Staff"
+  "Support Staff",
 ];
 
 const employees = [
@@ -27,7 +29,7 @@ const employees = [
     designationName: "Headmaster",
     seniorityRank: 1,
     panNumber: "BNDP1234A",
-    contactNumber: "9820123456"
+    contactNumber: "9820123456",
   },
   {
     firstName: "Sunita",
@@ -38,7 +40,7 @@ const employees = [
     designationName: "Teacher",
     seniorityRank: 2,
     panNumber: "ASDK5678B",
-    contactNumber: "9819234567"
+    contactNumber: "9819234567",
   },
   {
     firstName: "Sachin",
@@ -49,7 +51,7 @@ const employees = [
     designationName: "Teacher",
     seniorityRank: 3,
     panNumber: "CNPJ9012C",
-    contactNumber: "9892345678"
+    contactNumber: "9892345678",
   },
   {
     firstName: "Priya",
@@ -60,7 +62,7 @@ const employees = [
     designationName: "Teacher",
     seniorityRank: 4,
     panNumber: "DSPD3456D",
-    contactNumber: "9769456789"
+    contactNumber: "9769456789",
   },
   {
     firstName: "Amit",
@@ -71,7 +73,7 @@ const employees = [
     designationName: "Associate Teacher",
     seniorityRank: 5,
     panNumber: "PWAP7890E",
-    contactNumber: "9821567890"
+    contactNumber: "9821567890",
   },
   {
     firstName: "Snehal",
@@ -82,7 +84,7 @@ const employees = [
     designationName: "Associate Teacher",
     seniorityRank: 6,
     panNumber: "SHSS1234F",
-    contactNumber: "9833678901"
+    contactNumber: "9833678901",
   },
   {
     firstName: "Rahul",
@@ -93,7 +95,7 @@ const employees = [
     designationName: "Associate Teacher",
     seniorityRank: 7,
     panNumber: "MRRM5678G",
-    contactNumber: "9920789012"
+    contactNumber: "9920789012",
   },
   {
     firstName: "Anjali",
@@ -104,7 +106,7 @@ const employees = [
     designationName: "Librarian",
     seniorityRank: 8,
     panNumber: "GKAG9012H",
-    contactNumber: "9819890123"
+    contactNumber: "9819890123",
   },
   {
     firstName: "Nitin",
@@ -115,7 +117,7 @@ const employees = [
     designationName: "Clerk",
     seniorityRank: 9,
     panNumber: "TMNT3456I",
-    contactNumber: "9757901234"
+    contactNumber: "9757901234",
   },
   {
     firstName: "Kavita",
@@ -126,7 +128,7 @@ const employees = [
     designationName: "Clerk",
     seniorityRank: 10,
     panNumber: "GKKG7890J",
-    contactNumber: "9869012345"
+    contactNumber: "9869012345",
   },
   {
     firstName: "Vikas",
@@ -137,7 +139,7 @@ const employees = [
     designationName: "Associate Teacher",
     seniorityRank: 11,
     panNumber: "BHVB1234K",
-    contactNumber: "9820123499"
+    contactNumber: "9820123499",
   },
   {
     firstName: "Jyoti",
@@ -148,7 +150,7 @@ const employees = [
     designationName: "Associate Teacher",
     seniorityRank: 12,
     panNumber: "KDJK5678L",
-    contactNumber: "9819234511"
+    contactNumber: "9819234511",
   },
   {
     firstName: "Sanjay",
@@ -159,7 +161,7 @@ const employees = [
     designationName: "Support Staff",
     seniorityRank: 13,
     panNumber: "KMSK9012M",
-    contactNumber: "9892345622"
+    contactNumber: "9892345622",
   },
   {
     firstName: "Sujata",
@@ -170,7 +172,7 @@ const employees = [
     designationName: "Support Staff",
     seniorityRank: 14,
     panNumber: "KLSK3456N",
-    contactNumber: "9769456733"
+    contactNumber: "9769456733",
   },
   {
     firstName: "Ramesh",
@@ -181,8 +183,8 @@ const employees = [
     designationName: "Support Staff",
     seniorityRank: 15,
     panNumber: "RNRR7890O",
-    contactNumber: "9821567844"
-  }
+    contactNumber: "9821567844",
+  },
 ];
 
 test("Add school designations and 15 employees", async ({ page }) => {
@@ -196,7 +198,7 @@ test("Add school designations and 15 employees", async ({ page }) => {
 
   for (const name of designations) {
     const existing = page.getByTestId("designation-name").filter({ hasText: name });
-    if (await existing.count() === 0) {
+    if ((await existing.count()) === 0) {
       console.log(`Creating designation: ${name}`);
       await createDesignation(page, name);
     } else {
@@ -207,7 +209,9 @@ test("Add school designations and 15 employees", async ({ page }) => {
   // 3. Add Employees
   console.log("Adding 15 employees...");
   for (const employee of employees) {
-    console.log(`Adding employee: ${employee.firstName} ${employee.surname} (${employee.designationName})`);
+    console.log(
+      `Adding employee: ${employee.firstName} ${employee.surname} (${employee.designationName})`,
+    );
     await goToEmployeeCreate(page);
 
     // Fill the standard form
@@ -236,10 +240,27 @@ test("Add school designations and 15 employees", async ({ page }) => {
     }
 
     await submitEmployeeCreate(page);
-    
+
     // Wait for redirection back to the employee directory
     await expect(page).toHaveURL(/\/employee$/);
   }
+
+  await page.getByRole("button", { name: "Go to next page" }).click();
+  await expect(page.getByText("Showing 11-15 of 15", { exact: true })).toBeVisible();
+
+  await searchEmployeeDirectory(page, "Patil");
+  await expect(employeeRow(page, "Patil Rajesh Ramesh")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Go to previous page" })).toBeDisabled();
+  await expect(
+    page.getByText("Showing 1-1 of 1 matches (15 total)", { exact: true }),
+  ).toBeVisible();
+
+  await searchEmployeeDirectory(page, "no-employee-has-this-value");
+  await expect(page.getByText("No employees match your search.", { exact: true })).toBeVisible();
+
+  await searchEmployeeDirectory(page, "");
+  await expect(page.getByText("Showing 1-10 of 15", { exact: true })).toBeVisible();
+  await expect(employeeRow(page, "Patil Rajesh Ramesh")).toBeVisible();
 
   console.log("Successfully added all designations and 15 employees!");
 });

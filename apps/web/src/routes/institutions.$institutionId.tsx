@@ -14,14 +14,8 @@ import { Link, useParams } from "react-router";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/page-header";
+import { formatInstitutionDateTime } from "@/lib/display-formatters";
 import { queryClient, trpc } from "@/utils/trpc";
-
-function formatDate(value: Date | string | number) {
-  return new Intl.DateTimeFormat("en-IN", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
-}
 
 export default function InstitutionDetailPage() {
   const params = useParams();
@@ -148,11 +142,11 @@ export default function InstitutionDetailPage() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Created</p>
-                <p className="font-medium">{formatDate(institution.createdAt)}</p>
+                <p className="font-medium">{formatInstitutionDateTime(institution.createdAt)}</p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Last Updated</p>
-                <p className="font-medium">{formatDate(institution.updatedAt)}</p>
+                <p className="font-medium">{formatInstitutionDateTime(institution.updatedAt)}</p>
               </div>
             </CardContent>
           </Card>

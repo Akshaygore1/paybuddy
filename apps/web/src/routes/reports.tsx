@@ -43,15 +43,8 @@ import {
   getSelectedFinancialYearStart,
   subscribeSelectedFinancialYear,
 } from "@/lib/financial-year";
+import { formatIndianCurrencyFromPaise } from "@/lib/display-formatters";
 import { trpc } from "@/utils/trpc";
-
-function formatCurrency(amountPaise: number) {
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    minimumFractionDigits: 2,
-  }).format(amountPaise / 100);
-}
 
 function normalizeSearchText(value: string) {
   return value.trim().toLocaleLowerCase();
@@ -93,9 +86,37 @@ type ReportColumnKey = (typeof reportColumnDefinitions)[number]["key"];
 type ReportColumn = {
   key: ReportColumnKey;
   label: string;
-  getValue(row: ReportRow): string;
-  isNumeric?: boolean;
+  isNumeric: boolean;
 };
+
+type ReportDisplayRow = {
+  employeeId: string;
+  values: Record<ReportColumnKey, string>;
+  normalizedValues: string[];
+};
+
+const reportColumns: ReportColumn[] = reportColumnDefinitions.map((column) => ({
+  ...column,
+  isNumeric: column.key !== "name",
+}));
+
+function createReportDisplayRow(row: ReportRow): ReportDisplayRow {
+  const values: Record<ReportColumnKey, string> = {
+    name: row.name,
+    grossSalary: formatIndianCurrencyFromPaise(row.grossSalaryPaise),
+    deduction: formatIndianCurrencyFromPaise(row.deductionPaise),
+    netSalary: formatIndianCurrencyFromPaise(row.netSalaryPaise),
+    tdsDeductedTillNow: formatIndianCurrencyFromPaise(row.tdsDeductedTillNowPaise),
+    totalTax: formatIndianCurrencyFromPaise(row.totalTaxPaise),
+    pendingTds: formatIndianCurrencyFromPaise(row.pendingTdsPaise),
+  };
+
+  return {
+    employeeId: row.employeeId,
+    values,
+    normalizedValues: reportColumns.map((column) => normalizeSearchText(values[column.key])),
+  };
+}
 
 export default function ReportsPage() {
   const { data: session, isPending } = authClient.useSession();
@@ -107,9 +128,9 @@ export default function ReportsPage() {
   const [selectedInstitutionId, setSelectedInstitutionId] = React.useState("");
   const [pageIndex, setPageIndex] = React.useState(0);
   const [searchTerm, setSearchTerm] = React.useState("");
+  const deferredSearchTerm = React.useDeferredValue(searchTerm);
   const isAdmin = session?.user.role === "admin";
-  const shouldFetchReport =
-    session?.user.role === "user" || (isAdmin && selectedInstitutionId);
+  const shouldFetchReport = session?.user.role === "user" || (isAdmin && selectedInstitutionId);
 
   const institutionsQuery = useQuery({
     ...trpc.institutions.list.queryOptions(),
@@ -123,55 +144,25 @@ export default function ReportsPage() {
     enabled: Boolean(shouldFetchReport),
   });
 
-  const reportRows = reportQuery.data?.rows ?? [];
+  const reportRows = React.useMemo(
+    () => (reportQuery.data?.rows ?? []).map(createReportDisplayRow),
+    [reportQuery.data?.rows],
+  );
   const isReportLoading = reportQuery.isPending && Boolean(shouldFetchReport);
   const selectedInstitutionName =
     reportQuery.data?.institution.name ??
-    institutionsQuery.data?.find(
-      (institution) => institution.id === selectedInstitutionId,
-    )?.name;
-  const pageTitle = selectedInstitutionName
-    ? `Reports - ${selectedInstitutionName}`
-    : "Reports";
-  const searchableColumns = React.useMemo<ReportColumn[]>(
-    () =>
-      reportColumnDefinitions.map((column) => ({
-        key: column.key,
-        label: column.label,
-        isNumeric: column.key !== "name",
-        getValue(row) {
-          switch (column.key) {
-            case "name":
-              return row.name;
-            case "grossSalary":
-              return formatCurrency(row.grossSalaryPaise);
-            case "deduction":
-              return formatCurrency(row.deductionPaise);
-            case "netSalary":
-              return formatCurrency(row.netSalaryPaise);
-            case "tdsDeductedTillNow":
-              return formatCurrency(row.tdsDeductedTillNowPaise);
-            case "totalTax":
-              return formatCurrency(row.totalTaxPaise);
-            case "pendingTds":
-              return formatCurrency(row.pendingTdsPaise);
-          }
-        },
-      })),
-    [],
-  );
-  const normalizedSearchTerm = normalizeSearchText(searchTerm);
+    institutionsQuery.data?.find((institution) => institution.id === selectedInstitutionId)?.name;
+  const pageTitle = selectedInstitutionName ? `Reports - ${selectedInstitutionName}` : "Reports";
+  const normalizedSearchTerm = normalizeSearchText(deferredSearchTerm);
   const filteredReportRows = React.useMemo(() => {
     if (!normalizedSearchTerm) {
       return reportRows;
     }
 
     return reportRows.filter((row) =>
-      searchableColumns.some((column) =>
-        normalizeSearchText(column.getValue(row)).includes(normalizedSearchTerm),
-      ),
+      row.normalizedValues.some((value) => value.includes(normalizedSearchTerm)),
     );
-  }, [normalizedSearchTerm, reportRows, searchableColumns]);
+  }, [normalizedSearchTerm, reportRows]);
   const visibleColumnCount = reportColumnDefinitions.length;
   const totalRows = reportRows.length;
   const filteredRows = filteredReportRows.length;
@@ -185,6 +176,7 @@ export default function ReportsPage() {
   const canGoPrevious = clampedPageIndex > 0;
   const canGoNext = clampedPageIndex < totalPages - 1;
   const hasSearch = normalizedSearchTerm.length > 0;
+  const areResultsStale = searchTerm !== deferredSearchTerm;
 
   React.useEffect(() => {
     if (pageIndex !== clampedPageIndex) {
@@ -207,11 +199,9 @@ export default function ReportsPage() {
 
   function handleDownloadCsv() {
     const csvRows = [
-      searchableColumns.map((column) => escapeCsvValue(column.label)).join(","),
+      reportColumns.map((column) => escapeCsvValue(column.label)).join(","),
       ...filteredReportRows.map((row) =>
-        searchableColumns
-          .map((column) => escapeCsvValue(column.getValue(row)))
-          .join(","),
+        reportColumns.map((column) => escapeCsvValue(row.values[column.key])).join(","),
       ),
     ];
     const blob = new Blob([csvRows.join("\r\n")], {
@@ -240,15 +230,8 @@ export default function ReportsPage() {
                 value={selectedInstitutionId}
                 onValueChange={(value) => setSelectedInstitutionId(value ?? "")}
               >
-                <SelectTrigger
-                  id="reports-institute"
-                  aria-label="Select institute"
-                >
-                  <SelectValue placeholder="Select institute">
-                    {selectedInstitutionId
-                      ? (selectedInstitutionName ?? "Select institute")
-                      : "Select institute"}
-                  </SelectValue>
+                <SelectTrigger id="reports-institute" aria-label="Select institute">
+                  <SelectValue placeholder="Select Institute" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
@@ -276,7 +259,7 @@ export default function ReportsPage() {
           <CardTitle>FY payroll report</CardTitle>
           <CardDescription>
             {selectedInstitutionName
-    ? `${selectedInstitutionName} · FY ${getPayrollFinancialYearLabel(financialYearStart)}`
+              ? `${selectedInstitutionName} · FY ${getPayrollFinancialYearLabel(financialYearStart)}`
               : "Select an institute to load report totals."}
           </CardDescription>
         </CardHeader>
@@ -304,13 +287,19 @@ export default function ReportsPage() {
                 <Button
                   variant="outline"
                   onClick={handleDownloadCsv}
-                  disabled={isReportLoading || totalRows === 0}
+                  disabled={isReportLoading || totalRows === 0 || areResultsStale}
                 >
                   Download CSV
                 </Button>
               </div>
 
-              <div className="overflow-hidden rounded-lg border">
+              <div
+                aria-busy={areResultsStale}
+                className={`overflow-hidden rounded-lg border transition-opacity ${
+                  areResultsStale ? "opacity-70" : "opacity-100"
+                }`}
+                data-stale={areResultsStale || undefined}
+              >
                 <Table aria-label="Reports table">
                   <TableHeader>
                     <TableRow>
@@ -318,9 +307,7 @@ export default function ReportsPage() {
                       <TableHead className="text-right">Gross Salary</TableHead>
                       <TableHead className="text-right">Deduction</TableHead>
                       <TableHead className="text-right">Net Salary</TableHead>
-                      <TableHead className="text-right">
-                        TDS Deducted Till Now
-                      </TableHead>
+                      <TableHead className="text-right">TDS Deducted Till Now</TableHead>
                       <TableHead className="text-right">Total Tax</TableHead>
                       <TableHead className="text-right">Pending TDS</TableHead>
                     </TableRow>
@@ -333,9 +320,7 @@ export default function ReportsPage() {
                               <TableCell key={`${column.key}-${rowIndex}`}>
                                 <Skeleton
                                   className={
-                                    column.key === "name"
-                                      ? "h-4 w-36"
-                                      : "ml-auto h-4 w-24"
+                                    column.key === "name" ? "h-4 w-36" : "ml-auto h-4 w-24"
                                   }
                                 />
                               </TableCell>
@@ -347,14 +332,12 @@ export default function ReportsPage() {
                     {!isReportLoading && paginatedRows.length > 0
                       ? paginatedRows.map((row) => (
                           <TableRow key={row.employeeId}>
-                            {searchableColumns.map((column) => (
+                            {reportColumns.map((column) => (
                               <TableCell
-                                className={
-                                  column.isNumeric ? "text-right" : "font-medium"
-                                }
+                                className={column.isNumeric ? "text-right" : "font-medium"}
                                 key={column.key}
                               >
-                                {column.getValue(row)}
+                                {row.values[column.key]}
                               </TableCell>
                             ))}
                           </TableRow>
@@ -367,8 +350,8 @@ export default function ReportsPage() {
                           className="h-24 text-center text-muted-foreground"
                           colSpan={Math.max(visibleColumnCount, 1)}
                         >
-                          No employees or saved payroll data are available for this
-                          institute and financial year.
+                          No employees or saved payroll data are available for this institute and
+                          financial year.
                         </TableCell>
                       </TableRow>
                     ) : null}
@@ -399,9 +382,7 @@ export default function ReportsPage() {
                       <PaginationItem>
                         <PaginationPrevious
                           disabled={!canGoPrevious}
-                          onClick={() =>
-                            setPageIndex((current) => Math.max(current - 1, 0))
-                          }
+                          onClick={() => setPageIndex((current) => Math.max(current - 1, 0))}
                           variant="outline"
                         />
                       </PaginationItem>
@@ -409,9 +390,7 @@ export default function ReportsPage() {
                         <PaginationNext
                           disabled={!canGoNext}
                           onClick={() =>
-                            setPageIndex((current) =>
-                              Math.min(current + 1, totalPages - 1),
-                            )
+                            setPageIndex((current) => Math.min(current + 1, totalPages - 1))
                           }
                           variant="outline"
                         />

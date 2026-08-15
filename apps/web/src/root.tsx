@@ -56,6 +56,8 @@ export function HydrateFallback() {
   );
 }
 
+import { ConfirmModalProvider } from "./components/confirm-modal";
+
 export default function App() {
   const location = useLocation();
   const isAuthRoute = location.pathname === "/sign-in";
@@ -70,25 +72,27 @@ export default function App() {
         enableSystem={false}
         storageKey="vite-ui-theme"
       >
-        {isAuthRoute ? (
-          <Outlet />
-        ) : (
-          <SidebarProvider>
-            <AppSidebar />
-            <SidebarInset>
-              <header className="sticky top-0 z-20 flex h-14 items-center border-b border-border/70 bg-background/80 px-4 backdrop-blur">
-                <SidebarTrigger />
-                <div className="ml-3 min-w-0">
-                  <p className="text-sm font-semibold tracking-tight">TDS Nivaran</p>
+        <ConfirmModalProvider>
+          {isAuthRoute ? (
+            <Outlet />
+          ) : (
+            <SidebarProvider>
+              <AppSidebar />
+              <SidebarInset>
+                <header className="sticky top-0 z-20 flex h-14 items-center border-b border-border/70 bg-background/80 px-4 backdrop-blur">
+                  <SidebarTrigger />
+                  <div className="ml-3 min-w-0">
+                    <p className="text-sm font-semibold tracking-tight">TDS Nivaran</p>
+                  </div>
+                </header>
+                <div className="min-w-0 flex-1">
+                  <Outlet />
                 </div>
-              </header>
-              <div className="min-w-0 flex-1">
-                <Outlet />
-              </div>
-            </SidebarInset>
-          </SidebarProvider>
-        )}
-        <Toaster richColors />
+              </SidebarInset>
+            </SidebarProvider>
+          )}
+          <Toaster richColors />
+        </ConfirmModalProvider>
       </ThemeProvider>
       <ReactQueryDevtools position="bottom" buttonPosition="bottom-right" />
     </QueryClientProvider>

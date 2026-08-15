@@ -416,11 +416,17 @@ export function buildPayrollModule(options: PayrollModuleOptions = {}) {
     return fieldTimeline.archiveField(institutionId, input);
   }
 
+  async function getCustomFields(institutionId: string) {
+    return fieldTimeline.load(institutionId);
+  }
+
   return {
     getEmployees,
     getForm,
     save,
     addCustomField,
     archiveCustomField,
+    getCustomFields,
   };
 }
+

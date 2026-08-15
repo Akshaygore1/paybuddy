@@ -6,23 +6,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@tds-nivaran/ui/components/card";
-import {
-  Field,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-} from "@tds-nivaran/ui/components/field";
+import { Field, FieldError, FieldGroup, FieldLabel } from "@tds-nivaran/ui/components/field";
 import { Input } from "@tds-nivaran/ui/components/input";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@tds-nivaran/ui/components/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@tds-nivaran/ui/components/tooltip";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { ArrowDownIcon, ArrowUpIcon, InfoIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { useConfirmModal } from "@/components/confirm-modal";
 import { PageHeader } from "@/components/page-header";
 import { queryClient, trpc } from "@/utils/trpc";
 
@@ -31,6 +23,20 @@ function moveItem<T>(items: T[], fromIndex: number, toIndex: number) {
   const [movedItem] = nextItems.splice(fromIndex, 1);
   nextItems.splice(toIndex, 0, movedItem);
   return nextItems;
+}
+
+function invalidateDesignationQueries() {
+  return Promise.all([
+    queryClient.invalidateQueries({
+      queryKey: trpc.employeeSettings.getFormConfig.queryKey(),
+    }),
+    queryClient.invalidateQueries({
+      queryKey: trpc.employees.getCreateForm.queryKey(),
+    }),
+    queryClient.invalidateQueries({
+      queryKey: trpc.employees.getEditForm.queryKey(),
+    }),
+  ]);
 }
 
 export default function InstitutionSettingsIndexPage() {
@@ -45,7 +51,7 @@ export default function InstitutionSettingsIndexPage() {
         toast.success("Designation added");
         setDesignationName("");
         setDesignationError(null);
-        await queryClient.invalidateQueries();
+        await invalidateDesignationQueries();
       },
       onError: (error) => {
         toast.error(error.message);
@@ -56,7 +62,7 @@ export default function InstitutionSettingsIndexPage() {
   const reorderDesignationsMutation = useMutation(
     trpc.employeeSettings.reorderDesignations.mutationOptions({
       onSuccess: async () => {
-        await queryClient.invalidateQueries();
+        await invalidateDesignationQueries();
       },
       onError: (error) => {
         toast.error(error.message);
@@ -68,7 +74,7 @@ export default function InstitutionSettingsIndexPage() {
     trpc.employeeSettings.archiveDesignation.mutationOptions({
       onSuccess: async () => {
         toast.success("Designation removed");
-        await queryClient.invalidateQueries();
+        await invalidateDesignationQueries();
       },
       onError: (error) => {
         toast.error(error.message);
@@ -102,7 +108,22 @@ export default function InstitutionSettingsIndexPage() {
     await createDesignationMutation.mutateAsync({ name: normalizedName });
   }
 
-  async function archiveDesignation(designationId: string) {
+  const confirmModal = useConfirmModal();
+
+  async function archiveDesignation(designationId: string, name?: string) {
+    const confirmed = await confirmModal({
+      title: "Remove Designation",
+      description: name
+        ? `Are you sure you want to remove '${name}'?`
+        : "Are you sure you want to remove this designation?",
+      confirmText: "Remove Designation",
+      variant: "destructive",
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
     await archiveDesignationMutation.mutateAsync({ id: designationId });
   }
 
@@ -116,9 +137,7 @@ export default function InstitutionSettingsIndexPage() {
       <Card>
         <CardHeader>
           <CardTitle>Designations</CardTitle>
-          <CardDescription>
-            Control the designation list used on the employee form.
-          </CardDescription>
+          <CardDescription>Control the designation list used on the employee form.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
           <form className="grid gap-3 md:grid-cols-[1fr_auto]" onSubmit={handleAddDesignation}>
@@ -206,7 +225,7 @@ export default function InstitutionSettingsIndexPage() {
                       variant="outline"
                       disabled={archiveDesignationMutation.isPending}
                       onClick={() => {
-                        void archiveDesignation(designation.id);
+                        void archiveDesignation(designation.id, designation.name);
                       }}
                     >
                       <Trash2Icon />

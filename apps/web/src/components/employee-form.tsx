@@ -20,6 +20,8 @@ import {
 import { PlusIcon, Trash2Icon } from "lucide-react";
 import * as React from "react";
 
+import { useConfirmModal } from "@/components/confirm-modal";
+
 import type {
   EmployeeRecordBaseField,
   EmployeeRecordDraft,
@@ -75,6 +77,7 @@ export function EmployeeForm({
   onCancel,
   customFieldManager,
 }: EmployeeFormProps) {
+  const confirmModal = useConfirmModal();
   const designationItems =
     formOptions?.designations.map((designation) => ({
       label: designation.name,
@@ -358,7 +361,17 @@ export function EmployeeForm({
                     type="button"
                     variant="outline"
                     disabled={customFieldManager.isAddingField || customFieldManager.isArchivingField}
-                    onClick={() => customFieldManager.onArchiveField(field.id)}
+                    onClick={async () => {
+                      const confirmed = await confirmModal({
+                        title: "Remove Custom Field",
+                        description: `Remove ‘${field.label}’ from future employee forms?`,
+                        confirmText: "Remove Field",
+                        variant: "destructive",
+                      });
+                      if (confirmed) {
+                        customFieldManager.onArchiveField(field.id);
+                      }
+                    }}
                   >
                     <Trash2Icon />
                   </Button>

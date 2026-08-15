@@ -59,7 +59,9 @@ export default function InstitutionsCreatePage() {
         setValues(initialValues);
         setErrors({});
         setStep(1);
-        await queryClient.invalidateQueries();
+        await queryClient.invalidateQueries({
+          queryKey: trpc.institutions.list.queryKey(),
+        });
         navigate(`/institutions/${institution.id}`);
       },
       onError: (error) => {
@@ -206,7 +208,10 @@ export default function InstitutionsCreatePage() {
                   />
                   <FieldError>{errors.institutionHead}</FieldError>
                 </Field>
-                <Field className="md:col-span-2" data-invalid={Boolean(errors.address) || undefined}>
+                <Field
+                  className="md:col-span-2"
+                  data-invalid={Boolean(errors.address) || undefined}
+                >
                   <FieldLabel htmlFor="institution-address">Address</FieldLabel>
                   <Input
                     id="institution-address"

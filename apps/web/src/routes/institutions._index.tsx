@@ -28,14 +28,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router";
 
 import { PageHeader } from "@/components/page-header";
+import { formatInstitutionDateTime } from "@/lib/display-formatters";
 import { trpc } from "@/utils/trpc";
-
-function formatDate(value: Date | string | number) {
-  return new Intl.DateTimeFormat("en-IN", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
-}
 
 const PAGE_SIZE = 10;
 
@@ -77,8 +71,7 @@ export default function InstitutionsIndexPage() {
         <CardHeader>
           <CardTitle>Institution directory</CardTitle>
           <CardDescription>
-            Review created institutions and open a record to reset credentials or deactivate
-            login.
+            Review created institutions and open a record to reset credentials or deactivate login.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
@@ -125,7 +118,7 @@ export default function InstitutionsIndexPage() {
                           {institution.loginActive ? "Active" : "Inactive"}
                         </Badge>
                       </TableCell>
-                      <TableCell>{formatDate(institution.createdAt)}</TableCell>
+                      <TableCell>{formatInstitutionDateTime(institution.createdAt)}</TableCell>
                     </TableRow>
                   ))
                 : null}
