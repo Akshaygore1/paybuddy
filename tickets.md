@@ -115,14 +115,14 @@ Work the **frontier**: any ticket whose blockers are all done. Implement one fro
 
 **Blocked by:** Run Employee Setup smoke tests independently; Deep-test Institution and establish regression probes.
 
-- [ ] Designation regression covers required and maximum-length validation, successful creation, persisted ordering, moving items up/down, and narrowly scoped archival.
-- [ ] Employee custom-field regression covers required and optional fields, required/maximum-length label validation, successful creation, form visibility, ordering, and narrowly scoped archival.
-- [ ] Archival affects only records created for the scenario and never performs a broad workspace reset.
-- [ ] Persisted setup is verified after navigation or reload rather than only through toasts.
-- [ ] Relevant unauthorized, server-error, slow-response, and failed-mutation UI states are deterministic and asserted.
-- [ ] Primary setup pages pass serious accessibility scanning.
-- [ ] Designation and custom-field workflows are keyboard operable, including ordering and confirmation controls.
-- [ ] Institution-user login/logout and administrator-only route denial are covered within the feature.
+- [x] Designation regression covers required and maximum-length validation, successful creation, persisted ordering, moving items up/down, and narrowly scoped archival.
+- [x] Employee custom-field regression covers required and optional fields, required/maximum-length label validation, successful creation, form visibility, ordering, and narrowly scoped archival.
+- [x] Archival affects only records created for the scenario and never performs a broad workspace reset.
+- [x] Persisted setup is verified after navigation or reload rather than only through toasts.
+- [x] Relevant unauthorized, server-error, slow-response, and failed-mutation UI states are deterministic and asserted.
+- [x] Primary setup pages pass serious accessibility scanning.
+- [x] Designation and custom-field workflows are keyboard operable, including ordering and confirmation controls.
+- [x] Institution-user login/logout and administrator-only route denial are covered within the feature.
 
 ## Deep-test employee forms and record lifecycle
 

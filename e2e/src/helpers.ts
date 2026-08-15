@@ -135,6 +135,15 @@ export async function addRequiredCustomField(page: Page, label: string) {
   await expect(page.getByLabel(`${label} *`)).toBeVisible();
 }
 
+export async function addOptionalCustomField(page: Page, label: string) {
+  await page.getByLabel("Field label").fill(label);
+  await page.getByRole("button", { name: "Add Field" }).click();
+  await expect(
+    page.getByTestId("custom-field-manager-name").filter({ hasText: label }),
+  ).toBeVisible();
+  await expect(page.getByLabel(label, { exact: true })).toBeVisible();
+}
+
 export async function fillEmployeeForm(
   page: Page,
   input: {
@@ -290,6 +299,12 @@ export async function archiveDesignation(page: Page, name: string) {
   await row
     .getByRole("button", { name: `Remove ${name}`, exact: true })
     .click();
+  const confirmButton = page.getByRole("button", {
+    name: "Remove Designation",
+  });
+  if (await confirmButton.isVisible().catch(() => false)) {
+    await confirmButton.click();
+  }
   await waitForMutationToSettle({
     targetRow: row,
     emptyState: designationEmptyState(page),
@@ -306,11 +321,17 @@ export async function archiveCustomField(page: Page, label: string) {
   await row
     .getByRole("button", { name: `Remove ${label}`, exact: true })
     .click();
+  const confirmButton = page.getByRole("button", { name: "Remove Field" });
+  if (await confirmButton.isVisible().catch(() => false)) {
+    await confirmButton.click();
+  }
   await waitForMutationToSettle({
     targetRow: row,
     emptyState: customFieldEmptyState(page),
   });
-  await expect(page.getByLabel(`${label} *`)).toHaveCount(0);
+  await expect(
+    page.getByLabel(new RegExp(`^${escapeRegExp(label)}(?:\\s+\\*)?$`)),
+  ).toHaveCount(0);
 }
 
 export async function assertRunEmployeeOrder(page: Page, run: RunContext) {

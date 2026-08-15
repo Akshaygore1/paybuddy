@@ -321,13 +321,14 @@ export function EmployeeForm({
               <Field className="h-8 justify-center" orientation="horizontal">
                 <Checkbox
                   aria-label="Required"
+                  id="custom-field-required"
                   checked={customFieldManager.fieldRequired}
                   onCheckedChange={(checked) =>
                     customFieldManager.onFieldRequiredChange(Boolean(checked))
                   }
                   disabled={customFieldManager.isAddingField || customFieldManager.isArchivingField}
                 />
-                <FieldLabel>Required</FieldLabel>
+                <FieldLabel htmlFor="custom-field-required">Required</FieldLabel>
               </Field>
               <Button
                 type="button"

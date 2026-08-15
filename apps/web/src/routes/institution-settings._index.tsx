@@ -91,9 +91,13 @@ export default function InstitutionSettingsIndexPage() {
 
     const nextIndex = direction === "up" ? index - 1 : index + 1;
     const reordered = moveItem(formConfig.designations, index, nextIndex);
-    await reorderDesignationsMutation.mutateAsync({
-      orderedIds: reordered.map((designation) => designation.id),
-    });
+    try {
+      await reorderDesignationsMutation.mutateAsync({
+        orderedIds: reordered.map((designation) => designation.id),
+      });
+    } catch {
+      // Mutation callbacks provide user-facing errors.
+    }
   }
 
   async function handleAddDesignation(event: React.FormEvent<HTMLFormElement>) {
@@ -105,7 +109,11 @@ export default function InstitutionSettingsIndexPage() {
       return;
     }
 
-    await createDesignationMutation.mutateAsync({ name: normalizedName });
+    try {
+      await createDesignationMutation.mutateAsync({ name: normalizedName });
+    } catch {
+      // Mutation callbacks provide user-facing errors.
+    }
   }
 
   const confirmModal = useConfirmModal();
@@ -124,7 +132,11 @@ export default function InstitutionSettingsIndexPage() {
       return;
     }
 
-    await archiveDesignationMutation.mutateAsync({ id: designationId });
+    try {
+      await archiveDesignationMutation.mutateAsync({ id: designationId });
+    } catch {
+      // Mutation callbacks provide user-facing errors.
+    }
   }
 
   return (
@@ -168,7 +180,10 @@ export default function InstitutionSettingsIndexPage() {
             <div className="flex items-center gap-2">
               <h2 className="text-sm font-medium">Active designations</h2>
               <Tooltip>
-                <TooltipTrigger render={<InfoIcon className="size-4 text-muted-foreground" />} />
+                <TooltipTrigger
+                  aria-label="Designation ordering information"
+                  render={<InfoIcon className="size-4 text-muted-foreground" />}
+                />
                 <TooltipContent>
                   Higher designations should be placed above lower designations for form display.
                   Employee table order is controlled by seniority rank.
