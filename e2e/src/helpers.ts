@@ -147,35 +147,52 @@ export async function addOptionalCustomField(page: Page, label: string) {
 export async function fillEmployeeForm(
   page: Page,
   input: {
-    firstName: string;
-    middleName: string;
-    surname: string;
-    dateOfBirth: string;
-    gender: "Male" | "Female";
-    designationName: string;
-    seniorityRank: number;
-    panNumber: string;
-    contactNumber: string;
-    customFieldLabel: string;
+    firstName?: string;
+    middleName?: string;
+    surname?: string;
+    dateOfBirth?: string;
+    gender?: "Male" | "Female";
+    designationName?: string;
+    seniorityRank?: number | string;
+    panNumber?: string;
+    pfNumber?: string;
+    npsAccountNumber?: string;
+    whatsAppNumber?: string;
+    contactNumber?: string;
+    customFieldLabel?: string;
     customFieldValue?: string;
+    customFields?: Record<string, string>;
   },
 ) {
-  await page.getByLabel("Surname").fill(input.surname);
-  await page.getByLabel("First name").fill(input.firstName);
-  await page.getByLabel("Middle name").fill(input.middleName);
-  await page.getByLabel("Date of Birth").fill(input.dateOfBirth);
-  await selectOption(page, "Gender", input.gender);
-  await selectOption(page, "Designation", input.designationName);
-  await page.getByLabel("Seniority Rank").fill(String(input.seniorityRank));
-  await page.getByLabel("PAN number").fill(input.panNumber);
-  await page.getByLabel("Contact number").fill(input.contactNumber);
+  if (input.surname !== undefined) await page.getByLabel("Surname").fill(input.surname);
+  if (input.firstName !== undefined) await page.getByLabel("First name").fill(input.firstName);
+  if (input.middleName !== undefined) await page.getByLabel("Middle name").fill(input.middleName);
+  if (input.dateOfBirth !== undefined) await page.getByLabel("Date of Birth").fill(input.dateOfBirth);
+  if (input.gender !== undefined) await selectOption(page, "Gender", input.gender);
+  if (input.designationName !== undefined) await selectOption(page, "Designation", input.designationName);
+  if (input.seniorityRank !== undefined) await page.getByLabel("Seniority Rank").fill(String(input.seniorityRank));
+  if (input.panNumber !== undefined) await page.getByLabel("PAN number").fill(input.panNumber);
+  if (input.pfNumber !== undefined) await page.getByLabel("PF number").fill(input.pfNumber);
+  if (input.npsAccountNumber !== undefined) await page.getByLabel("NPS account number").fill(input.npsAccountNumber);
+  if (input.whatsAppNumber !== undefined) await page.getByLabel("WhatsApp number").fill(input.whatsAppNumber);
+  if (input.contactNumber !== undefined) await page.getByLabel("Contact number").fill(input.contactNumber);
 
-  if (input.customFieldValue !== undefined) {
+  if (input.customFieldLabel && input.customFieldValue !== undefined) {
     await page
       .getByLabel(
         new RegExp(`^${escapeRegExp(input.customFieldLabel)}(?:\\s+\\*)?$`),
       )
       .fill(input.customFieldValue);
+  }
+
+  if (input.customFields) {
+    for (const [label, value] of Object.entries(input.customFields)) {
+      await page
+        .getByLabel(
+          new RegExp(`^${escapeRegExp(label)}(?:\\s+\\*)?$`),
+        )
+        .fill(value);
+    }
   }
 }
 

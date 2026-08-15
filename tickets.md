@@ -130,15 +130,15 @@ Work the **frontier**: any ticket whose blockers are all done. Implement one fro
 
 **Blocked by:** Run Employee smoke tests independently; Deep-test Institution and establish regression probes.
 
-- [ ] Regression exercises every standard employee field and required/optional institution custom fields.
-- [ ] Required, malformed, whole-number, positive-number, date, maximum-length, and custom-field boundaries are covered without a combinatorial explosion.
-- [ ] A representative multi-error submission verifies error visibility, associations, and focus behavior.
-- [ ] Successful creation is verified from persisted directory and edit-form values.
-- [ ] Editing designation, seniority, contact/payroll details, and a custom value persists after navigation or reload.
-- [ ] Deletion targets only an employee created for that scenario and verifies its disappearance without deleting unrelated records.
-- [ ] Relevant role protection, login, and logout behavior is covered inside the feature.
-- [ ] Controlled unauthorized, server-error, slow-save, and failed-save states produce usable feedback and preserve form data where appropriate.
-- [ ] Primary employee form pages pass serious accessibility scanning and the critical create/edit flows are keyboard operable.
+- [x] Regression exercises every standard employee field and required/optional institution custom fields.
+- [x] Required, malformed, whole-number, positive-number, date, maximum-length, and custom-field boundaries are covered without a combinatorial explosion.
+- [x] A representative multi-error submission verifies error visibility, associations, and focus behavior.
+- [x] Successful creation is verified from persisted directory and edit-form values.
+- [x] Editing designation, seniority, contact/payroll details, and a custom value persists after navigation or reload.
+- [x] Deletion targets only an employee created for that scenario and verifies its disappearance without deleting unrelated records.
+- [x] Relevant role protection, login, and logout behavior is covered inside the feature.
+- [x] Controlled unauthorized, server-error, slow-save, and failed-save states produce usable feedback and preserve form data where appropriate.
+- [x] Primary employee form pages pass serious accessibility scanning and the critical create/edit flows are keyboard operable.
 
 ## Deep-test the employee directory and CSV export
 

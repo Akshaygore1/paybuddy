@@ -8,14 +8,6 @@ import {
   CardTitle,
 } from "@tds-nivaran/ui/components/card";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@tds-nivaran/ui/components/dialog";
-import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,

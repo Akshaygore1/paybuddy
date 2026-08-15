@@ -90,7 +90,7 @@ export function EmployeeForm({
   }
 
   return (
-    <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
+    <form noValidate className="flex flex-col gap-5" onSubmit={handleSubmit}>
       <FieldGroup className="grid gap-4 md:grid-cols-2">
         <Field data-invalid={Boolean(errors.surname) || undefined}>
           <FieldLabel htmlFor={`employee-surname-${mode}`}>Surname</FieldLabel>
