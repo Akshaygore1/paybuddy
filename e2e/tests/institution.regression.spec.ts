@@ -268,8 +268,6 @@ test.describe("institution regression suite", () => {
       // Verify institution user can access institution routes
       await page.goto("/employee");
       await expect(page).toHaveURL(/\/employee$/);
-      await page.goto("/institution-settings");
-      await expect(page).toHaveURL(/\/institution-settings$/);
       await page.goto("/payroll");
       await expect(page).toHaveURL(/\/payroll$/);
       await page.goto("/reports");
@@ -289,9 +287,6 @@ test.describe("institution regression suite", () => {
       await signOut(page);
 
       await page.goto("/employee");
-      await expect(page).toHaveURL(/\/sign-in$/);
-
-      await page.goto("/institution-settings");
       await expect(page).toHaveURL(/\/sign-in$/);
 
       await page.goto("/payroll");

@@ -39,15 +39,12 @@ test.describe("employee regression suite", () => {
       provisionedEmployeePrerequisites,
       runId,
     }) => {
-      const { institution, customField } =
-        provisionedEmployeePrerequisites;
+      const { institution, customField } = provisionedEmployeePrerequisites;
 
       // 1. Sign in as institution user and navigate to Create Employee page
       await signIn(page, institution.username, institution.password);
       await goToEmployeeCreate(page);
-      await expect(
-        page.getByRole("combobox", { name: "Designation" }),
-      ).toBeVisible();
+      await expect(page.getByRole("combobox", { name: "Designation" })).toBeVisible();
 
       // Add an optional custom field so both required and optional are present on form
       const optFieldLabel = `Bus Route_${runId}`;
@@ -60,83 +57,59 @@ test.describe("employee regression suite", () => {
       await expect(page.getByText("Surname is too long")).toHaveCount(0);
       await expect(page.getByText("This field is required").first()).toBeVisible();
       await expect(page.getByText("Please select a valid gender")).toBeVisible();
-      await expect(
-        page.getByText("Seniority rank must be greater than zero"),
-      ).toBeVisible();
-      await expect(
-        page.getByText(`${customField.label} is required`),
-      ).toBeVisible();
+      await expect(page.getByText("Seniority rank must be greater than zero")).toBeVisible();
+      await expect(page.getByText(`${customField.label} is required`)).toBeVisible();
 
       // Verify aria-invalid="true" attributes across all required controls
-      await expect(page.getByLabel("Surname")).toHaveAttribute(
+      await expect(page.getByLabel("Surname")).toHaveAttribute("aria-invalid", "true");
+      await expect(page.getByLabel("First name")).toHaveAttribute("aria-invalid", "true");
+      await expect(page.getByLabel("Middle name")).toHaveAttribute("aria-invalid", "true");
+      await expect(page.getByLabel("Date of Birth")).toHaveAttribute("aria-invalid", "true");
+      await expect(page.getByRole("combobox", { name: "Gender" })).toHaveAttribute(
         "aria-invalid",
         "true",
       );
-      await expect(page.getByLabel("First name")).toHaveAttribute(
+      await expect(page.getByRole("combobox", { name: "Designation" })).toHaveAttribute(
         "aria-invalid",
         "true",
       );
-      await expect(page.getByLabel("Middle name")).toHaveAttribute(
+      await expect(page.getByLabel("Seniority Rank")).toHaveAttribute("aria-invalid", "true");
+      await expect(page.getByLabel(`${customField.label} *`)).toHaveAttribute(
         "aria-invalid",
         "true",
       );
-      await expect(page.getByLabel("Date of Birth")).toHaveAttribute(
-        "aria-invalid",
-        "true",
-      );
-      await expect(
-        page.getByRole("combobox", { name: "Gender" }),
-      ).toHaveAttribute("aria-invalid", "true");
-      await expect(
-        page.getByRole("combobox", { name: "Designation" }),
-      ).toHaveAttribute("aria-invalid", "true");
-      await expect(page.getByLabel("Seniority Rank")).toHaveAttribute(
-        "aria-invalid",
-        "true",
-      );
-      await expect(
-        page.getByLabel(`${customField.label} *`),
-      ).toHaveAttribute("aria-invalid", "true");
 
       // Optional custom field should NOT be marked invalid
-      await expect(
-        page.getByLabel(optFieldLabel, { exact: true }),
-      ).not.toHaveAttribute("aria-invalid", "true");
+      await expect(page.getByLabel(optFieldLabel, { exact: true })).not.toHaveAttribute(
+        "aria-invalid",
+        "true",
+      );
 
       // --- B. Boundary Validations ---
       // 1. Seniority Rank Boundaries
       // Seniority rank: 0 (must be > 0)
       await page.getByLabel("Seniority Rank").fill("0");
       await submitEmployeeCreate(page);
-      await expect(
-        page.getByText("Seniority rank must be greater than zero"),
-      ).toBeVisible();
+      await expect(page.getByText("Seniority rank must be greater than zero")).toBeVisible();
       await expect(page.getByLabel("Seniority Rank")).toHaveValue("0");
 
       // Seniority rank: -5
       await page.getByLabel("Seniority Rank").fill("-5");
       await submitEmployeeCreate(page);
-      await expect(
-        page.getByText("Seniority rank must be greater than zero"),
-      ).toBeVisible();
+      await expect(page.getByText("Seniority rank must be greater than zero")).toBeVisible();
       await expect(page.getByLabel("Seniority Rank")).toHaveValue("-5");
 
       // Seniority rank: 1.5 (decimal)
       await page.getByLabel("Seniority Rank").fill("1.5");
       await submitEmployeeCreate(page);
-      await expect(
-        page.getByText("Seniority rank must be a whole number"),
-      ).toBeVisible();
+      await expect(page.getByText("Seniority rank must be a whole number")).toBeVisible();
       await expect(page.getByLabel("Seniority Rank")).toHaveValue("1.5");
 
       // 2. Date of Birth Boundary
       await page.getByLabel("Date of Birth").fill("1990-01-01");
       await page.getByLabel("Date of Birth").fill("");
       await submitEmployeeCreate(page);
-      await expect(page.getByLabel("Date of Birth")).toHaveAttribute(
-        "aria-invalid",
-        "true",
-      );
+      await expect(page.getByLabel("Date of Birth")).toHaveAttribute("aria-invalid", "true");
 
       // 3. Text Fields Max Length Boundary (> 160 chars)
       const overLongName = "A".repeat(165);
@@ -166,16 +139,13 @@ test.describe("employee regression suite", () => {
       provisionedEmployeePrerequisites,
       runId,
     }) => {
-      const { institution, designation, customField } =
-        provisionedEmployeePrerequisites;
+      const { institution, designation, customField } = provisionedEmployeePrerequisites;
       const employeeData = generateIndianEmployee(runId);
 
       // 1. Sign in as institution user
       await signIn(page, institution.username, institution.password);
       await goToEmployeeCreate(page);
-      await expect(
-        page.getByRole("combobox", { name: "Designation" }),
-      ).toBeVisible();
+      await expect(page.getByRole("combobox", { name: "Designation" })).toBeVisible();
 
       // Add an optional custom field to cover all field combinations
       const optFieldLabel = `Shift Group_${runId}`;
@@ -184,14 +154,9 @@ test.describe("employee regression suite", () => {
 
       // Also create a second designation so we can test changing designation during edit
       const desig2Name = `Assistant Professor_${runId}`;
-      await page.goto("/institution-settings");
       await createDesignation(page, desig2Name);
 
-      // Navigate to Create Employee page
-      await goToEmployeeCreate(page);
-      await expect(
-        page.getByRole("combobox", { name: "Designation" }),
-      ).toBeVisible();
+      await expect(page.getByRole("combobox", { name: "Designation" })).toBeVisible();
 
       const pfNumber = `MH/BAN/${runId.slice(-5)}/001`;
       const npsNumber = `PRAN-1100${runId.slice(-4)}`;
@@ -214,9 +179,7 @@ test.describe("employee regression suite", () => {
         customFieldLabel: customField.label,
         customFieldValue: employeeData.customFieldValue,
       });
-      await page
-        .getByLabel(optFieldLabel, { exact: true })
-        .fill(optFieldValue);
+      await page.getByLabel(optFieldLabel, { exact: true }).fill(optFieldValue);
 
       // 3. Submit creation form
       await submitEmployeeCreate(page);
@@ -256,9 +219,7 @@ test.describe("employee regression suite", () => {
       await searchEmployeeDirectory(page, employeeData.surname);
       await expect(row).toBeVisible();
       await searchEmployeeDirectory(page, "NonExistentName9999");
-      await expect(
-        page.getByText("No employees match your search."),
-      ).toBeVisible();
+      await expect(page.getByText("No employees match your search.")).toBeVisible();
       await searchEmployeeDirectory(page, "");
       await expect(row).toBeVisible();
 
@@ -269,9 +230,7 @@ test.describe("employee regression suite", () => {
       expect(csvHeader).toContain("Employee");
       expect(csvHeader).toContain("Rank");
       expect(csvHeader).toContain("Designation");
-      const employeeCsvRow = csvRows.find((r) =>
-        r.some((c) => c.includes(employeeData.surname)),
-      );
+      const employeeCsvRow = csvRows.find((r) => r.some((c) => c.includes(employeeData.surname)));
       expect(employeeCsvRow).toBeDefined();
 
       // 6. Open Edit Form
@@ -281,41 +240,27 @@ test.describe("employee regression suite", () => {
 
       // Verify all populated values in edit form
       await expect(page.getByLabel("Surname")).toHaveValue(employeeData.surname);
-      await expect(page.getByLabel("First name")).toHaveValue(
-        employeeData.firstName,
+      await expect(page.getByLabel("First name")).toHaveValue(employeeData.firstName);
+      await expect(page.getByLabel("Middle name")).toHaveValue(employeeData.middleName);
+      await expect(page.getByLabel("Date of Birth")).toHaveValue(employeeData.dateOfBirth);
+      await expect(page.getByRole("combobox", { name: "Gender" })).toContainText(
+        employeeData.gender,
       );
-      await expect(page.getByLabel("Middle name")).toHaveValue(
-        employeeData.middleName,
+      await expect(page.getByRole("combobox", { name: "Designation" })).toContainText(
+        designation.name,
       );
-      await expect(page.getByLabel("Date of Birth")).toHaveValue(
-        employeeData.dateOfBirth,
-      );
-      await expect(
-        page.getByRole("combobox", { name: "Gender" }),
-      ).toContainText(employeeData.gender);
-      await expect(
-        page.getByRole("combobox", { name: "Designation" }),
-      ).toContainText(designation.name);
       await expect(page.getByLabel("Seniority Rank")).toHaveValue(
         String(employeeData.seniorityRank),
       );
-      await expect(page.getByLabel("PAN number")).toHaveValue(
-        employeeData.panNumber,
-      );
+      await expect(page.getByLabel("PAN number")).toHaveValue(employeeData.panNumber);
       await expect(page.getByLabel("PF number")).toHaveValue(pfNumber);
       await expect(page.getByLabel("NPS account number")).toHaveValue(npsNumber);
-      await expect(page.getByLabel("WhatsApp number")).toHaveValue(
-        whatsAppNumber,
+      await expect(page.getByLabel("WhatsApp number")).toHaveValue(whatsAppNumber);
+      await expect(page.getByLabel("Contact number")).toHaveValue(employeeData.contactNumber);
+      await expect(page.getByLabel(`${customField.label} *`)).toHaveValue(
+        employeeData.customFieldValue,
       );
-      await expect(page.getByLabel("Contact number")).toHaveValue(
-        employeeData.contactNumber,
-      );
-      await expect(
-        page.getByLabel(`${customField.label} *`),
-      ).toHaveValue(employeeData.customFieldValue);
-      await expect(
-        page.getByLabel(optFieldLabel, { exact: true }),
-      ).toHaveValue(optFieldValue);
+      await expect(page.getByLabel(optFieldLabel, { exact: true })).toHaveValue(optFieldValue);
 
       // 7. Perform Full Edit: Update Designation, Seniority, Contact, PF, PAN, and Custom values
       const updatedSeniority = 7;
@@ -334,9 +279,7 @@ test.describe("employee regression suite", () => {
         customFieldLabel: customField.label,
         customFieldValue: updatedCustomReq,
       });
-      await page
-        .getByLabel(optFieldLabel, { exact: true })
-        .fill(updatedCustomOpt);
+      await page.getByLabel(optFieldLabel, { exact: true }).fill(updatedCustomOpt);
 
       // 8. Submit Edit Form
       await submitEmployeeEdit(page);
@@ -345,11 +288,7 @@ test.describe("employee regression suite", () => {
       // Verify default visible columns in Directory
       const updatedRow = employeeRow(page, employeeData.displayName);
       await expect(updatedRow).toBeVisible();
-      await expectRowValues(updatedRow, [
-        updatedSeniority,
-        desig2Name,
-        updatedContact,
-      ]);
+      await expectRowValues(updatedRow, [updatedSeniority, desig2Name, updatedContact]);
 
       // Enable custom field columns and verify updated custom values
       await enableCustomFieldColumn(page, customField.label);
@@ -361,47 +300,25 @@ test.describe("employee regression suite", () => {
       // 9. Reopen Edit Form and verify all updated values persist across reload
       await editEmployee(page, employeeData.displayName);
       await expect(page.getByLabel("Surname")).toHaveValue(employeeData.surname);
-      await expect(
-        page.getByRole("combobox", { name: "Designation" }),
-      ).toContainText(desig2Name);
-      await expect(page.getByLabel("Seniority Rank")).toHaveValue(
-        String(updatedSeniority),
-      );
-      await expect(page.getByLabel("Contact number")).toHaveValue(
-        updatedContact,
-      );
+      await expect(page.getByRole("combobox", { name: "Designation" })).toContainText(desig2Name);
+      await expect(page.getByLabel("Seniority Rank")).toHaveValue(String(updatedSeniority));
+      await expect(page.getByLabel("Contact number")).toHaveValue(updatedContact);
       await expect(page.getByLabel("PF number")).toHaveValue(updatedPf);
       await expect(page.getByLabel("PAN number")).toHaveValue(updatedPan);
-      await expect(
-        page.getByLabel(`${customField.label} *`),
-      ).toHaveValue(updatedCustomReq);
-      await expect(
-        page.getByLabel(optFieldLabel, { exact: true }),
-      ).toHaveValue(updatedCustomOpt);
+      await expect(page.getByLabel(`${customField.label} *`)).toHaveValue(updatedCustomReq);
+      await expect(page.getByLabel(optFieldLabel, { exact: true })).toHaveValue(updatedCustomOpt);
 
       // Page reload verification
       await page.reload();
-      await expect(
-        page.getByRole("heading", { name: "Edit Employee" }),
-      ).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Edit Employee" })).toBeVisible();
       await expect(page.getByLabel("Surname")).toHaveValue(employeeData.surname);
-      await expect(
-        page.getByRole("combobox", { name: "Designation" }),
-      ).toContainText(desig2Name);
-      await expect(page.getByLabel("Seniority Rank")).toHaveValue(
-        String(updatedSeniority),
-      );
-      await expect(page.getByLabel("Contact number")).toHaveValue(
-        updatedContact,
-      );
+      await expect(page.getByRole("combobox", { name: "Designation" })).toContainText(desig2Name);
+      await expect(page.getByLabel("Seniority Rank")).toHaveValue(String(updatedSeniority));
+      await expect(page.getByLabel("Contact number")).toHaveValue(updatedContact);
       await expect(page.getByLabel("PF number")).toHaveValue(updatedPf);
       await expect(page.getByLabel("PAN number")).toHaveValue(updatedPan);
-      await expect(
-        page.getByLabel(`${customField.label} *`),
-      ).toHaveValue(updatedCustomReq);
-      await expect(
-        page.getByLabel(optFieldLabel, { exact: true }),
-      ).toHaveValue(updatedCustomOpt);
+      await expect(page.getByLabel(`${customField.label} *`)).toHaveValue(updatedCustomReq);
+      await expect(page.getByLabel(optFieldLabel, { exact: true })).toHaveValue(updatedCustomOpt);
 
       await signOut(page);
     });
@@ -413,8 +330,7 @@ test.describe("employee regression suite", () => {
       provisionedEmployeePrerequisites,
       runId,
     }) => {
-      const { institution, designation, customField } =
-        provisionedEmployeePrerequisites;
+      const { institution, designation, customField } = provisionedEmployeePrerequisites;
 
       // 1. Sign in as institution user
       await signIn(page, institution.username, institution.password);
@@ -422,9 +338,7 @@ test.describe("employee regression suite", () => {
       // 2. Create Employee A
       const empA = generateIndianEmployee(`A_${runId}`);
       await goToEmployeeCreate(page);
-      await expect(
-        page.getByRole("combobox", { name: "Designation" }),
-      ).toBeVisible();
+      await expect(page.getByRole("combobox", { name: "Designation" })).toBeVisible();
       await fillEmployeeForm(page, {
         surname: empA.surname,
         firstName: empA.firstName,
@@ -448,9 +362,7 @@ test.describe("employee regression suite", () => {
       empB.displayName = `${empB.surname}, ${empB.firstName} ${empB.middleName}`.trim();
 
       await goToEmployeeCreate(page);
-      await expect(
-        page.getByRole("combobox", { name: "Designation" }),
-      ).toBeVisible();
+      await expect(page.getByRole("combobox", { name: "Designation" })).toBeVisible();
       await fillEmployeeForm(page, {
         surname: empB.surname,
         firstName: empB.firstName,
@@ -477,13 +389,9 @@ test.describe("employee regression suite", () => {
         .locator('[data-slot="dropdown-menu-content"]')
         .getByText("Delete", { exact: true })
         .click();
-      await expect(
-        page.getByRole("heading", { name: "Delete Employee" }),
-      ).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Delete Employee" })).toBeVisible();
       await page.getByRole("button", { name: "Cancel" }).click();
-      await expect(
-        page.getByRole("heading", { name: "Delete Employee" }),
-      ).toHaveCount(0);
+      await expect(page.getByRole("heading", { name: "Delete Employee" })).toHaveCount(0);
 
       // Employee A is still present
       await expectEmployeeRow(page, empA.displayName);
@@ -516,14 +424,10 @@ test.describe("employee regression suite", () => {
 
       // 2. Institution user can access Employee directory and Employee create
       await goToEmployeeDirectory(page);
-      await expect(
-        page.getByRole("heading", { name: "Employee" }),
-      ).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Employee" })).toBeVisible();
 
       await goToEmployeeCreate(page);
-      await expect(
-        page.getByRole("heading", { name: "Create Employee" }),
-      ).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Create Employee" })).toBeVisible();
 
       // 3. Institution user is blocked from admin routes -> redirected to /dashboard
       await page.goto("/institutions");
@@ -557,8 +461,7 @@ test.describe("employee regression suite", () => {
       provisionedEmployeePrerequisites,
       runId,
     }) => {
-      const { institution, designation, customField } =
-        provisionedEmployeePrerequisites;
+      const { institution, designation, customField } = provisionedEmployeePrerequisites;
 
       // 1. Sign in as institution user
       await signIn(page, institution.username, institution.password);
@@ -568,9 +471,7 @@ test.describe("employee regression suite", () => {
       await expectAccessible(page);
 
       await goToEmployeeCreate(page);
-      await expect(
-        page.getByRole("combobox", { name: "Designation" }),
-      ).toBeVisible();
+      await expect(page.getByRole("combobox", { name: "Designation" })).toBeVisible();
       await expect(page.getByLabel("Surname")).toBeVisible();
       await expectAccessible(page);
 
@@ -594,10 +495,7 @@ test.describe("employee regression suite", () => {
       await page.getByLabel("Date of Birth").fill(kbEmployee.dateOfBirth);
 
       // Tab to Gender trigger, open with Space, select with ArrowDown and Enter
-      await tabUntilFocused(
-        page,
-        page.getByRole("combobox", { name: "Gender" }),
-      );
+      await tabUntilFocused(page, page.getByRole("combobox", { name: "Gender" }));
       await pressSpace(page);
       await page
         .locator('[data-slot="select-content"]')
@@ -605,10 +503,7 @@ test.describe("employee regression suite", () => {
         .click();
 
       // Tab to Designation trigger, open with Space, select option
-      await tabUntilFocused(
-        page,
-        page.getByRole("combobox", { name: "Designation" }),
-      );
+      await tabUntilFocused(page, page.getByRole("combobox", { name: "Designation" }));
       await pressSpace(page);
       await page
         .locator('[data-slot="select-content"]')
@@ -628,17 +523,11 @@ test.describe("employee regression suite", () => {
       await page.keyboard.type(kbEmployee.contactNumber);
 
       // Tab to Required custom field
-      await tabUntilFocused(
-        page,
-        page.getByLabel(`${customField.label} *`),
-      );
+      await tabUntilFocused(page, page.getByLabel(`${customField.label} *`));
       await page.keyboard.type(kbEmployee.customFieldValue);
 
       // Tab to Create Employee button and submit with Enter
-      await tabUntilFocused(
-        page,
-        page.getByRole("button", { name: "Create Employee" }),
-      );
+      await tabUntilFocused(page, page.getByRole("button", { name: "Create Employee" }));
       await pressEnter(page);
 
       // Redirect to directory and verify created employee
@@ -658,10 +547,7 @@ test.describe("employee regression suite", () => {
       await page.keyboard.type("6");
 
       // Tab to Save Changes button and submit with Enter
-      await tabUntilFocused(
-        page,
-        page.getByRole("button", { name: "Save Changes" }),
-      );
+      await tabUntilFocused(page, page.getByRole("button", { name: "Save Changes" }));
       await pressEnter(page);
 
       await expect(page).toHaveURL(/\/employee$/);
@@ -670,10 +556,7 @@ test.describe("employee regression suite", () => {
 
       // --- E. Keyboard Deletion Flow ---
       // Open actions menu via keyboard
-      await tabUntilFocused(
-        page,
-        row.getByRole("button", { name: "Employee actions" }),
-      );
+      await tabUntilFocused(page, row.getByRole("button", { name: "Employee actions" }));
       await pressEnter(page);
 
       // Navigate to Delete and press Enter
@@ -683,30 +566,18 @@ test.describe("employee regression suite", () => {
       await deleteMenuItem.click();
 
       // Dismiss modal with Escape
-      await expect(
-        page.getByRole("heading", { name: "Delete Employee" }),
-      ).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Delete Employee" })).toBeVisible();
       await pressEscape(page);
-      await expect(
-        page.getByRole("heading", { name: "Delete Employee" }),
-      ).toHaveCount(0);
+      await expect(page.getByRole("heading", { name: "Delete Employee" })).toHaveCount(0);
       await expectEmployeeRow(page, kbEmployee.displayName);
 
       // Reopen delete modal and confirm with keyboard
-      await tabUntilFocused(
-        page,
-        row.getByRole("button", { name: "Employee actions" }),
-      );
+      await tabUntilFocused(page, row.getByRole("button", { name: "Employee actions" }));
       await pressEnter(page);
       await deleteMenuItem.click();
 
-      await expect(
-        page.getByRole("heading", { name: "Delete Employee" }),
-      ).toBeVisible();
-      await tabUntilFocused(
-        page,
-        page.getByRole("button", { name: "Delete Employee" }),
-      );
+      await expect(page.getByRole("heading", { name: "Delete Employee" })).toBeVisible();
+      await tabUntilFocused(page, page.getByRole("button", { name: "Delete Employee" }));
       await pressEnter(page);
 
       // Verify employee deleted
@@ -722,16 +593,13 @@ test.describe("employee regression suite", () => {
       provisionedEmployeePrerequisites,
       runId,
     }) => {
-      const { institution, designation, customField } =
-        provisionedEmployeePrerequisites;
+      const { institution, designation, customField } = provisionedEmployeePrerequisites;
       const employeeData = generateIndianEmployee(runId);
 
       // 1. Sign in as institution user
       await signIn(page, institution.username, institution.password);
       await goToEmployeeCreate(page);
-      await expect(
-        page.getByRole("combobox", { name: "Designation" }),
-      ).toBeVisible();
+      await expect(page.getByRole("combobox", { name: "Designation" })).toBeVisible();
 
       // --- A. Create Form Network Interceptions ---
       // Fill base form data
@@ -756,16 +624,10 @@ test.describe("employee regression suite", () => {
         "Duplicate employee record detected on server",
       );
       await submitEmployeeCreate(page);
-      await expect(
-        page.getByText("Duplicate employee record detected on server"),
-      ).toBeVisible();
+      await expect(page.getByText("Duplicate employee record detected on server")).toBeVisible();
       // Form preserves inputs
-      await expect(page.getByLabel("Surname")).toHaveValue(
-        employeeData.surname,
-      );
-      await expect(page.getByLabel("First name")).toHaveValue(
-        employeeData.firstName,
-      );
+      await expect(page.getByLabel("Surname")).toHaveValue(employeeData.surname);
+      await expect(page.getByLabel("First name")).toHaveValue(employeeData.firstName);
       await page.waitForTimeout(200);
       await unroute400();
 
@@ -777,43 +639,24 @@ test.describe("employee regression suite", () => {
         "Internal database cluster connection failed",
       );
       await submitEmployeeCreate(page);
-      await expect(
-        page.getByText("Internal database cluster connection failed"),
-      ).toBeVisible();
-      await expect(page.getByLabel("Surname")).toHaveValue(
-        employeeData.surname,
-      );
+      await expect(page.getByText("Internal database cluster connection failed")).toBeVisible();
+      await expect(page.getByLabel("Surname")).toHaveValue(employeeData.surname);
       await page.waitForTimeout(200);
       await unroute500();
 
       // 3. Network failure / connection drop
-      const unrouteAbort = await simulateNetworkFailure(
-        page,
-        "**/trpc/employees.create*",
-      );
+      const unrouteAbort = await simulateNetworkFailure(page, "**/trpc/employees.create*");
       await submitEmployeeCreate(page);
-      await expect(
-        page.getByRole("button", { name: "Create Employee" }),
-      ).toBeVisible();
-      await expect(page.getByLabel("Surname")).toHaveValue(
-        employeeData.surname,
-      );
+      await expect(page.getByRole("button", { name: "Create Employee" })).toBeVisible();
+      await expect(page.getByLabel("Surname")).toHaveValue(employeeData.surname);
       await page.waitForTimeout(200);
       await unrouteAbort();
 
       // 4. Slow mutation & pending indicator
-      const unrouteSlow = await simulateSlowResponse(
-        page,
-        "**/trpc/employees.create*",
-        1500,
-      );
+      const unrouteSlow = await simulateSlowResponse(page, "**/trpc/employees.create*", 1500);
       await submitEmployeeCreate(page);
-      await expect(
-        page.getByRole("button", { name: "Saving..." }),
-      ).toBeVisible();
-      await expect(
-        page.getByRole("button", { name: "Saving..." }),
-      ).toBeDisabled();
+      await expect(page.getByRole("button", { name: "Saving..." })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Saving..." })).toBeDisabled();
       await unrouteSlow();
 
       // Verify successful redirection after slow response resolves
@@ -833,27 +676,17 @@ test.describe("employee regression suite", () => {
       );
       await page.getByLabel("Seniority Rank").fill("9");
       await submitEmployeeEdit(page);
-      await expect(
-        page.getByText("Unable to update employee record in database"),
-      ).toBeVisible();
+      await expect(page.getByText("Unable to update employee record in database")).toBeVisible();
       // Modified value retained
       await expect(page.getByLabel("Seniority Rank")).toHaveValue("9");
       await page.waitForTimeout(200);
       await unrouteUpdate500();
 
       // 2. Slow response on update
-      const unrouteUpdateSlow = await simulateSlowResponse(
-        page,
-        "**/trpc/employees.update*",
-        1500,
-      );
+      const unrouteUpdateSlow = await simulateSlowResponse(page, "**/trpc/employees.update*", 1500);
       await submitEmployeeEdit(page);
-      await expect(
-        page.getByRole("button", { name: "Saving..." }),
-      ).toBeVisible();
-      await expect(
-        page.getByRole("button", { name: "Saving..." }),
-      ).toBeDisabled();
+      await expect(page.getByRole("button", { name: "Saving..." })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Saving..." })).toBeDisabled();
       await unrouteUpdateSlow();
 
       // Successful redirect back to directory

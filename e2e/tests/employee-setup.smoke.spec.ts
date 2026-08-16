@@ -3,7 +3,7 @@ import {
   createDesignation,
   expectInstitutionNavigation,
   generateRealisticDesignation,
-  goToInstitutionSettings,
+  goToEmployeeCreate,
   signIn,
   signOut,
 } from "../src/helpers";
@@ -34,13 +34,13 @@ test.describe("employee-setup smoke", () => {
     // 2. Sign in as the generated institution user
     await signIn(page, provisionedInstitution.username, provisionedInstitution.password);
 
-    // 3. Verify role-appropriate navigation (Institution user sees Employee Setup, does NOT see Institution management)
+    // 3. Verify role-appropriate navigation (Institution user does NOT see Institution management)
     await expectInstitutionNavigation(page);
 
-    // 4. Go to Employee Setup (/institution-settings)
-    await goToInstitutionSettings(page);
+    // 4. Go to the employee create form
+    await goToEmployeeCreate(page);
 
-    // 5. Create a realistically named designation and verify it appears in the designation list
+    // 5. Create a realistically named designation via the inline dialog and verify it is selected
     await createDesignation(page, designationName);
 
     // 6. Record created designation in the run manifest

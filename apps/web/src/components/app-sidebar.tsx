@@ -58,11 +58,6 @@ const navigationItems = [
     icon: WalletCardsIcon,
   },
   {
-    title: "Employee Setup",
-    to: "/institution-settings",
-    icon: BriefcaseBusinessIcon,
-  },
-  {
     title: "Payroll",
     to: "/payroll",
     icon: ReceiptIndianRupeeIcon,

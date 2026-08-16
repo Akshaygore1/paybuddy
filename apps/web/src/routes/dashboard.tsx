@@ -1,6 +1,5 @@
 import {
   Building2Icon,
-  BriefcaseBusinessIcon,
   FileTextIcon,
   ReceiptIndianRupeeIcon,
   WalletCardsIcon,
@@ -61,12 +60,6 @@ const instituteDashboardLinks: DashboardLink[] = [
     to: "/reports",
     icon: FileTextIcon,
   },
-  {
-    title: "Employee Setup",
-    description: "Configure designations and custom fields.",
-    to: "/institution-settings",
-    icon: BriefcaseBusinessIcon,
-  },
 ];
 
 export default function Dashboard() {
@@ -81,16 +74,11 @@ export default function Dashboard() {
   }
 
   const dashboardLinks =
-    session.user.role === "admin"
-      ? adminDashboardLinks
-      : instituteDashboardLinks;
+    session.user.role === "admin" ? adminDashboardLinks : instituteDashboardLinks;
 
   return (
     <section className="space-y-6 p-6">
-      <PageHeader
-        title="Dashboard"
-        description="Open the payroll workspace area you need."
-      />
+      <PageHeader title="Dashboard" description="Open the payroll workspace area you need." />
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {dashboardLinks.map((item) => (
           <Card key={item.to}>

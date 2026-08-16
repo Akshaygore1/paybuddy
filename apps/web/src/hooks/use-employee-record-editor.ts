@@ -16,9 +16,7 @@ import {
 } from "../lib/employee-record-editor";
 import { queryClient, trpc } from "../utils/trpc";
 
-type EmployeeRecordEditorInput =
-  | { mode: "create" }
-  | { mode: "edit"; employeeId: string };
+type EmployeeRecordEditorInput = { mode: "create" } | { mode: "edit"; employeeId: string };
 
 export function useEmployeeRecordEditor(input: EmployeeRecordEditorInput) {
   const navigate = useNavigate();
@@ -29,6 +27,8 @@ export function useEmployeeRecordEditor(input: EmployeeRecordEditorInput) {
   const [fieldLabel, setFieldLabel] = React.useState("");
   const [fieldRequired, setFieldRequired] = React.useState(false);
   const [fieldError, setFieldError] = React.useState<string | null>(null);
+  const [designationName, setDesignationName] = React.useState("");
+  const [designationError, setDesignationError] = React.useState<string | null>(null);
 
   const createFormQuery = useQuery({
     ...trpc.employees.getCreateForm.queryOptions(),
@@ -113,6 +113,24 @@ export function useEmployeeRecordEditor(input: EmployeeRecordEditorInput) {
       onError: (error) => toast.error(error.message),
     }),
   );
+  const createDesignationMutation = useMutation(
+    trpc.employeeSettings.createDesignation.mutationOptions({
+      onSuccess: async (createdDesignation) => {
+        toast.success("Designation added");
+        setDesignationName("");
+        setDesignationError(null);
+        setEditorState((current) =>
+          updateEmployeeRecordField(
+            current,
+            "designationId",
+            current.draft.designationId || createdDesignation.id,
+          ),
+        );
+        await invalidateEmployeeSetup();
+      },
+      onError: (error) => toast.error(error.message),
+    }),
+  );
 
   function updateField<Key extends EmployeeRecordBaseField>(
     field: Key,
@@ -181,6 +199,21 @@ export function useEmployeeRecordEditor(input: EmployeeRecordEditorInput) {
     }
   }
 
+  async function addDesignation() {
+    const name = designationName.trim();
+    if (!name) {
+      setDesignationError("Designation name is required");
+      return false;
+    }
+    try {
+      await createDesignationMutation.mutateAsync({ name });
+      return true;
+    } catch {
+      // Mutation callbacks provide user-facing errors.
+      return false;
+    }
+  }
+
   return {
     view: {
       mode: input.mode,
@@ -195,6 +228,10 @@ export function useEmployeeRecordEditor(input: EmployeeRecordEditorInput) {
               fieldError,
             }
           : null,
+      designationManager: {
+        designationName,
+        designationError,
+      },
     },
     status: {
       form: {
@@ -206,6 +243,7 @@ export function useEmployeeRecordEditor(input: EmployeeRecordEditorInput) {
       },
       addField: { isPending: addCustomFieldMutation.isPending },
       archiveField: { isPending: archiveCustomFieldMutation.isPending },
+      createDesignation: { isPending: createDesignationMutation.isPending },
     },
     actions: {
       updateField,
@@ -224,6 +262,13 @@ export function useEmployeeRecordEditor(input: EmployeeRecordEditorInput) {
               archive: archiveCustomField,
             }
           : null,
+      designations: {
+        setName(value: string) {
+          setDesignationName(value);
+          setDesignationError(null);
+        },
+        create: addDesignation,
+      },
     },
   };
 }

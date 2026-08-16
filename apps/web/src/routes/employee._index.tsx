@@ -341,7 +341,7 @@ export default function EmployeeIndexPage() {
                       className="h-24 text-center text-muted-foreground"
                       colSpan={visibleColumnCount + 1}
                     >
-                      Start by creating a designation in Employee Setup, then add your first
+                      Start by adding a designation from the employee form, then add your first
                       employee here.
                     </TableCell>
                   </TableRow>

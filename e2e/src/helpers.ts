@@ -12,10 +12,8 @@ export * from "./keyboard-helpers";
 export * from "./network-helpers";
 
 const EMPLOYEE_DIRECTORY_EMPTY_STATE =
-  "Start by creating a designation in Employee Setup, then add your first employee here.";
+  "Start by adding a designation from the employee form, then add your first employee here.";
 const CUSTOM_FIELDS_EMPTY_STATE = "No custom fields added yet.";
-const DESIGNATIONS_EMPTY_STATE =
-  "No designations added yet. Create one to unlock employee creation.";
 
 export async function signIn(page: Page, identifier: string, password: string) {
   await page.goto("/");
@@ -71,13 +69,6 @@ export async function selectGlobalFinancialYear(page: Page, optionText: string) 
   await selectOption(page, "Select financial year", optionText);
 }
 
-export async function goToInstitutionSettings(page: Page) {
-  await openSidebarIfMobile(page);
-  await page.getByRole("link", { name: "Employee Setup", exact: true }).click();
-  await expect(page).toHaveURL(/\/institution-settings$/);
-  await expect(page.getByRole("heading", { name: "Employee Setup" })).toBeVisible();
-}
-
 export async function goToEmployeeDirectory(page: Page) {
   await openSidebarIfMobile(page);
   await page.getByRole("link", { name: "Employee", exact: true }).click();
@@ -128,34 +119,22 @@ export async function downloadPayrollArtifact(page: Page, buttonName: string) {
 }
 
 export async function createDesignation(page: Page, name: string) {
+  // Requires the employee create or edit form to be open.
+  await page.getByRole("button", { name: "Add designation" }).click();
   await page.getByLabel("Designation name").fill(name);
   await page.getByRole("button", { name: "Create Designation" }).click();
-  await expect(page.getByTestId("designation-name").filter({ hasText: name })).toBeVisible();
+  await expect(page.getByLabel("Designation name")).toHaveCount(0);
+  await expect(page.getByText("Designation added", { exact: true }).last()).toBeVisible();
 }
 
-export async function clickDesignationMove(page: Page, name: string, direction: "up" | "down") {
-  const label = direction === "up" ? `Move ${name} up` : `Move ${name} down`;
-  await page.getByRole("button", { name: label, exact: true }).click();
-}
-
-export async function expectDesignationOrder(page: Page, namesInOrder: string[]) {
-  await expect
-    .poll(async () => {
-      const designationNames = await page.getByTestId("designation-name").allInnerTexts();
-      const indexes = namesInOrder.map((name) => designationNames.indexOf(name));
-      return (
-        indexes.every((value) => value >= 0) &&
-        indexes.every((value, index) => {
-          if (index === 0) {
-            return true;
-          }
-
-          const previousValue = indexes[index - 1];
-          return previousValue !== undefined && value > previousValue;
-        })
-      );
-    })
-    .toBeTruthy();
+export async function expectDesignationOptions(page: Page, namesInOrder: string[]) {
+  await page.getByRole("combobox", { name: "Designation", exact: true }).click();
+  const options = page.locator('[data-slot="select-content"]').getByRole("option");
+  await expect(options).toHaveCount(namesInOrder.length);
+  for (const [index, name] of namesInOrder.entries()) {
+    await expect(options.nth(index)).toHaveText(name, { useInnerText: true });
+  }
+  await page.keyboard.press("Escape");
 }
 
 export async function addRequiredCustomField(page: Page, label: string) {
@@ -323,26 +302,6 @@ export async function editEmployee(page: Page, displayName: string) {
   await expect(page.getByRole("heading", { name: "Edit Employee" })).toBeVisible();
 }
 
-export async function archiveDesignation(page: Page, name: string) {
-  const row = designationRow(page, name);
-
-  if ((await row.count()) === 0) {
-    return;
-  }
-
-  await row.getByRole("button", { name: `Remove ${name}`, exact: true }).click();
-  const confirmButton = page.getByRole("button", {
-    name: "Remove Designation",
-  });
-  if (await confirmButton.isVisible().catch(() => false)) {
-    await confirmButton.click();
-  }
-  await waitForMutationToSettle({
-    targetRow: row,
-    emptyState: designationEmptyState(page),
-  });
-}
-
 export async function archiveCustomField(page: Page, label: string) {
   const row = customFieldManagerRow(page, label);
 
@@ -400,23 +359,11 @@ function customFieldEmptyState(page: Page) {
   return page.getByText(CUSTOM_FIELDS_EMPTY_STATE, { exact: true });
 }
 
-function designationEmptyState(page: Page) {
-  return page.getByText(DESIGNATIONS_EMPTY_STATE, { exact: true });
-}
-
 function customFieldManagerRow(page: Page, label: string) {
   return page.getByTestId("custom-field-manager-row").filter({
     has: page
       .getByTestId("custom-field-manager-name")
       .filter({ hasText: new RegExp(`^${escapeRegExp(label)}(?:\\s+\\*)?$`) }),
-  });
-}
-
-function designationRow(page: Page, name: string) {
-  return page.getByTestId("designation-row").filter({
-    has: page
-      .getByTestId("designation-name")
-      .filter({ hasText: new RegExp(`^${escapeRegExp(name)}$`) }),
   });
 }
 
@@ -534,13 +481,11 @@ export async function expectAdminNavigation(page: Page) {
   await expect(page.getByRole("link", { name: "Open Reports" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Open Employee", exact: true })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Open Payroll", exact: true })).toHaveCount(0);
-  await expect(page.getByRole("link", { name: "Open Employee Setup", exact: true })).toHaveCount(0);
 
   await openSidebarIfMobile(page);
   await expect(page.getByRole("link", { name: "Institution", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Manage Custom Fields", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Reports", exact: true })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Employee Setup", exact: true })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Payroll", exact: true })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Employee", exact: true })).toHaveCount(0);
 }
@@ -551,12 +496,10 @@ export async function expectInstitutionNavigation(page: Page) {
   await expect(page.getByRole("link", { name: "Open Employee", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Open Payroll", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Open Reports", exact: true })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Open Employee Setup", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Open Institution", exact: true })).toHaveCount(0);
 
   await openSidebarIfMobile(page);
   await expect(page.getByRole("link", { name: "Employee", exact: true })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Employee Setup", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Payroll", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Reports", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Institution", exact: true })).toHaveCount(0);

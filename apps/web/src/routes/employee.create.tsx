@@ -26,6 +26,13 @@ export default function EmployeeCreatePage() {
         }
       : undefined;
 
+  const designationManager = {
+    ...view.designationManager,
+    isCreatingDesignation: status.createDesignation.isPending,
+    onDesignationNameChange: actions.designations.setName,
+    onAddDesignation: actions.designations.create,
+  };
+
   return (
     <section className="space-y-6 p-6">
       <PageHeader
@@ -61,6 +68,7 @@ export default function EmployeeCreatePage() {
             onSubmit={actions.submit}
             onCancel={actions.cancel}
             customFieldManager={customFieldManager}
+            designationManager={designationManager}
           />
         </CardContent>
       </Card>

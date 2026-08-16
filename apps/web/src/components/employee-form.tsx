@@ -8,6 +8,16 @@ import {
   FieldGroup,
   FieldLabel,
 } from "@tds-nivaran/ui/components/field";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@tds-nivaran/ui/components/dialog";
 import { Input } from "@tds-nivaran/ui/components/input";
 import {
   Select,
@@ -41,6 +51,14 @@ type EmployeeCustomFieldManagerProps = {
   onArchiveField: (fieldId: string) => void;
 };
 
+type EmployeeDesignationManagerProps = {
+  designationName: string;
+  designationError: string | null;
+  isCreatingDesignation: boolean;
+  onDesignationNameChange: (value: string) => void;
+  onAddDesignation: () => Promise<boolean>;
+};
+
 type EmployeeFormProps = {
   mode: "create" | "edit";
   submitLabel: string;
@@ -59,6 +77,7 @@ type EmployeeFormProps = {
   onSubmit: () => Promise<void>;
   onCancel: () => void;
   customFieldManager?: EmployeeCustomFieldManagerProps;
+  designationManager: EmployeeDesignationManagerProps;
 };
 
 export function EmployeeForm({
@@ -76,8 +95,10 @@ export function EmployeeForm({
   onSubmit,
   onCancel,
   customFieldManager,
+  designationManager,
 }: EmployeeFormProps) {
   const confirmModal = useConfirmModal();
+  const [isDesignationDialogOpen, setIsDesignationDialogOpen] = React.useState(false);
   const designationItems =
     formOptions?.designations.map((designation) => ({
       label: designation.name,
@@ -170,31 +191,98 @@ export function EmployeeForm({
         </Field>
         <Field data-invalid={Boolean(errors.designationId) || undefined}>
           <FieldLabel>Designation</FieldLabel>
-          <Select
-            items={designationItems}
-            value={values.designationId}
-            onValueChange={(value) => onFieldChange("designationId", value ?? "")}
-          >
-            <SelectTrigger
-              aria-invalid={Boolean(errors.designationId)}
-              aria-label="Designation"
-              disabled={isLoading || isSubmitting}
+          <div className="flex items-end gap-2">
+            <Select
+              items={designationItems}
+              value={values.designationId}
+              onValueChange={(value) => onFieldChange("designationId", value ?? "")}
             >
-              <SelectValue placeholder="Select designation" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                {(formOptions?.designations ?? []).map((designation) => (
-                  <SelectItem key={designation.id} value={designation.id}>
-                    {designation.name}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
+              <SelectTrigger
+                aria-invalid={Boolean(errors.designationId)}
+                aria-label="Designation"
+                disabled={isLoading || isSubmitting}
+              >
+                <SelectValue placeholder="Select designation" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {(formOptions?.designations ?? []).map((designation) => (
+                    <SelectItem key={designation.id} value={designation.id}>
+                      {designation.name}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+            <Dialog open={isDesignationDialogOpen} onOpenChange={setIsDesignationDialogOpen}>
+              <DialogTrigger
+                render={
+                  <Button
+                    aria-label="Add designation"
+                    size="icon-sm"
+                    type="button"
+                    variant="outline"
+                    disabled={isLoading || isSubmitting || designationManager.isCreatingDesignation}
+                  />
+                }
+              >
+                <PlusIcon />
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Add Designation</DialogTitle>
+                  <DialogDescription>
+                    Create a designation to use on employee forms.
+                  </DialogDescription>
+                </DialogHeader>
+                <Field
+                  data-invalid={Boolean(designationManager.designationError) || undefined}
+                  className="mt-4"
+                >
+                  <FieldLabel htmlFor="designation-name">Designation name</FieldLabel>
+                  <Input
+                    id="designation-name"
+                    value={designationManager.designationName}
+                    onChange={(event) =>
+                      designationManager.onDesignationNameChange(event.target.value)
+                    }
+                    aria-invalid={Boolean(designationManager.designationError)}
+                    disabled={designationManager.isCreatingDesignation}
+                  />
+                  <FieldError>{designationManager.designationError}</FieldError>
+                </Field>
+                <DialogFooter>
+                  <DialogClose
+                    render={
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={designationManager.isCreatingDesignation}
+                      />
+                    }
+                  >
+                    Cancel
+                  </DialogClose>
+                  <Button
+                    type="button"
+                    disabled={designationManager.isCreatingDesignation}
+                    onClick={async () => {
+                      const created = await designationManager.onAddDesignation();
+                      if (created) {
+                        setIsDesignationDialogOpen(false);
+                      }
+                    }}
+                  >
+                    <PlusIcon data-icon="inline-start" />
+                    {designationManager.isCreatingDesignation ? "Adding..." : "Create Designation"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
           {(formOptions?.designations.length ?? 0) === 0 ? (
             <FieldDescription>
-              Create a designation in Employee Setup before adding employees.
+              No designations yet. Use the + button to add one before saving.
             </FieldDescription>
           ) : null}
           <FieldError>{errors.designationId}</FieldError>
@@ -236,7 +324,9 @@ export function EmployeeForm({
           />
         </Field>
         <Field>
-          <FieldLabel htmlFor={`employee-nps-account-number-${mode}`}>NPS account number</FieldLabel>
+          <FieldLabel htmlFor={`employee-nps-account-number-${mode}`}>
+            NPS account number
+          </FieldLabel>
           <Input
             id={`employee-nps-account-number-${mode}`}
             value={values.npsAccountNumber}
@@ -361,7 +451,9 @@ export function EmployeeForm({
                     size="icon-sm"
                     type="button"
                     variant="outline"
-                    disabled={customFieldManager.isAddingField || customFieldManager.isArchivingField}
+                    disabled={
+                      customFieldManager.isAddingField || customFieldManager.isArchivingField
+                    }
                     onClick={async () => {
                       const confirmed = await confirmModal({
                         title: "Remove Custom Field",

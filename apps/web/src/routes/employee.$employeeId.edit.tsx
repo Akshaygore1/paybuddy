@@ -20,6 +20,13 @@ export default function EmployeeEditPage() {
     employeeId: resolvedEmployeeId,
   });
 
+  const designationManager = {
+    ...view.designationManager,
+    isCreatingDesignation: status.createDesignation.isPending,
+    onDesignationNameChange: actions.designations.setName,
+    onAddDesignation: actions.designations.create,
+  };
+
   return (
     <section className="space-y-6 p-6">
       <PageHeader
@@ -53,6 +60,7 @@ export default function EmployeeEditPage() {
             onCustomFieldChange={actions.updateCustomField}
             onSubmit={actions.submit}
             onCancel={actions.cancel}
+            designationManager={designationManager}
           />
         </CardContent>
       </Card>
