@@ -34,7 +34,7 @@ export const server = await Worker("server", {
     BETTER_AUTH_SECRET: alchemy.secret.env.BETTER_AUTH_SECRET!,
     BETTER_AUTH_URL: alchemy.env.BETTER_AUTH_URL!,
     BOOTSTRAP_API_SECRET: alchemy.secret.env.BOOTSTRAP_API_SECRET!,
-    E2E_OPERATIONS_ENABLED: alchemy.env.E2E_OPERATIONS_ENABLED!,
+    E2E_OPERATIONS_ENABLED: process.env.E2E_OPERATIONS_ENABLED ?? "false",
   },
   dev: {
     port: 3000,
