@@ -203,12 +203,10 @@ export function transitionPayrollWorkspace(
         () => ({ ...state, employeeId: command.employeeId }),
       );
     case "selectMonth":
-      return applySelection(
-        state,
-        command.month !== state.month,
-        command.discardConfirmed,
-        () => ({ ...state, month: command.month }),
-      );
+      return applySelection(state, command.month !== state.month, command.discardConfirmed, () => ({
+        ...state,
+        month: command.month,
+      }));
     case "selectFinancialYear":
       return applySelection(
         state,
@@ -255,11 +253,7 @@ export function transitionPayrollWorkspace(
       };
     }
     case "customFieldAdded": {
-      if (
-        state.lineItems.some(
-          (item) => item.customFieldDefinitionId === command.field.id,
-        )
-      ) {
+      if (state.lineItems.some((item) => item.customFieldDefinitionId === command.field.id)) {
         return { state, outcome: "refreshRequired" };
       }
 
@@ -298,10 +292,7 @@ export function validatePayrollWorkspace(state: PayrollWorkspaceState) {
   return {
     hasInvalidAmounts,
     canSave: Boolean(state.loadedForm) && !hasInvalidAmounts,
-    canDownload:
-      Boolean(state.loadedForm?.hasSavedPayroll) &&
-      !state.isDirty &&
-      !hasInvalidAmounts,
+    canDownload: Boolean(state.loadedForm?.hasSavedPayroll) && !state.isDirty && !hasInvalidAmounts,
   };
 }
 

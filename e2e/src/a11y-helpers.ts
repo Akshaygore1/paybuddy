@@ -8,10 +8,7 @@ export type AxeScanOptions = {
   impactLevels?: ("critical" | "serious" | "moderate" | "minor")[];
 };
 
-export async function scanAccessibility(
-  page: Page,
-  options: AxeScanOptions = {},
-) {
+export async function scanAccessibility(page: Page, options: AxeScanOptions = {}) {
   let builder = new AxeBuilder({ page });
 
   const defaultExcludes = [
@@ -36,9 +33,7 @@ export async function scanAccessibility(
   }
 
   if (options.include) {
-    const includes = Array.isArray(options.include)
-      ? options.include
-      : [options.include];
+    const includes = Array.isArray(options.include) ? options.include : [options.include];
     for (const inc of includes) {
       builder = builder.include(inc);
     }
@@ -52,10 +47,7 @@ export async function scanAccessibility(
   const targetImpacts = options.impactLevels ?? ["critical", "serious"];
   const targetedViolations = results.violations.filter(
     (v) =>
-      v.impact &&
-      targetImpacts.includes(
-        v.impact as "critical" | "serious" | "moderate" | "minor",
-      ),
+      v.impact && targetImpacts.includes(v.impact as "critical" | "serious" | "moderate" | "minor"),
   );
 
   return {
@@ -66,10 +58,7 @@ export async function scanAccessibility(
   };
 }
 
-export async function expectAccessible(
-  page: Page,
-  options: AxeScanOptions = {},
-) {
+export async function expectAccessible(page: Page, options: AxeScanOptions = {}) {
   const { targetedViolations } = await scanAccessibility(page, options);
 
   if (targetedViolations.length > 0) {
@@ -85,10 +74,7 @@ export async function expectAccessible(
             .join("\n"),
       )
       .join("\n\n");
-    expect(
-      targetedViolations,
-      `Accessibility violations detected:\n${formatted}`,
-    ).toHaveLength(0);
+    expect(targetedViolations, `Accessibility violations detected:\n${formatted}`).toHaveLength(0);
   } else {
     expect(targetedViolations).toHaveLength(0);
   }

@@ -1,10 +1,5 @@
 import { expect, test } from "../src/fixtures";
-import {
-  expectInstitutionNavigation,
-  goToReports,
-  signIn,
-  signOut,
-} from "../src/helpers";
+import { expectInstitutionNavigation, goToReports, signIn, signOut } from "../src/helpers";
 import { updateRunManifest } from "../src/manifest";
 
 test.describe("reports smoke", () => {

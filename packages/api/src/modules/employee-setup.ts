@@ -1,8 +1,5 @@
 import { createDb } from "@tds-nivaran/db";
-import {
-  employeeCustomFieldDefinitions,
-  employeeDesignations,
-} from "@tds-nivaran/db/schema/index";
+import { employeeCustomFieldDefinitions, employeeDesignations } from "@tds-nivaran/db/schema/index";
 import { TRPCError } from "@trpc/server";
 import { and, asc, desc, eq } from "drizzle-orm";
 
@@ -76,7 +73,9 @@ export function assertNoDuplicateActiveLabel(
 ) {
   const normalizedLabel = normalizeText(label);
 
-  if (existingFields.some((field) => field.isActive && normalizeText(field.label) === normalizedLabel)) {
+  if (
+    existingFields.some((field) => field.isActive && normalizeText(field.label) === normalizedLabel)
+  ) {
     throw new TRPCError({
       code: "CONFLICT",
       message: "A custom field with this label already exists",
@@ -148,7 +147,10 @@ export function buildEmployeeSetupModule(options: EmployeeSetupModuleOptions = {
             eq(employeeCustomFieldDefinitions.isActive, true),
           ),
         )
-        .orderBy(asc(employeeCustomFieldDefinitions.sortOrder), asc(employeeCustomFieldDefinitions.label)),
+        .orderBy(
+          asc(employeeCustomFieldDefinitions.sortOrder),
+          asc(employeeCustomFieldDefinitions.label),
+        ),
       db
         .select({
           id: employeeDesignations.id,

@@ -1,7 +1,11 @@
 import { cn } from "@tds-nivaran/ui/lib/utils";
 import * as React from "react";
 
-function Separator({ className, orientation = "horizontal", ...props }: React.ComponentProps<"div"> & {
+function Separator({
+  className,
+  orientation = "horizontal",
+  ...props
+}: React.ComponentProps<"div"> & {
   orientation?: "horizontal" | "vertical";
 }) {
   return (

@@ -7,7 +7,9 @@ export const user = sqliteTable("user", {
   email: text("email").notNull().unique(),
   username: text("username").unique(),
   displayUsername: text("display_username"),
-  role: text("role", { enum: ["admin", "user"] }).default("user").notNull(),
+  role: text("role", { enum: ["admin", "user"] })
+    .default("user")
+    .notNull(),
   banned: integer("banned", { mode: "boolean" }).default(false).notNull(),
   banReason: text("ban_reason"),
   banExpires: integer("ban_expires", { mode: "timestamp_ms" }),

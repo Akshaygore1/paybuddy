@@ -3,11 +3,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 
 import "./index.css";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@tds-nivaran/ui/components/sidebar";
+import { SidebarInset, SidebarProvider, SidebarTrigger } from "@tds-nivaran/ui/components/sidebar";
 import {
   isRouteErrorResponse,
   Links,
@@ -82,9 +78,7 @@ export default function App() {
                 <header className="sticky top-0 z-20 flex h-14 items-center border-b border-border/70 bg-background/80 px-4 backdrop-blur">
                   <SidebarTrigger />
                   <div className="ml-3 min-w-0">
-                    <p className="text-sm font-semibold tracking-tight">
-                      TDS Nivaran
-                    </p>
+                    <p className="text-sm font-semibold tracking-tight">TDS Nivaran</p>
                   </div>
                 </header>
                 <div className="min-w-0 flex-1">
@@ -108,9 +102,7 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   if (isRouteErrorResponse(error)) {
     message = error.status === 404 ? "404" : "Error";
     details =
-      error.status === 404
-        ? "The requested page could not be found."
-        : error.statusText || details;
+      error.status === 404 ? "The requested page could not be found." : error.statusText || details;
   } else if (import.meta.env.DEV && error && error instanceof Error) {
     details = error.message;
     stack = error.stack;

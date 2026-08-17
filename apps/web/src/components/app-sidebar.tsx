@@ -46,7 +46,30 @@ import {
 
 import UserMenu from "./user-menu";
 
-const navigationItems = [
+const adminNavigationItems = [
+  {
+    title: "Dashboard",
+    to: "/dashboard",
+    icon: LayoutDashboardIcon,
+  },
+  {
+    title: "Institution",
+    to: "/institutions",
+    icon: Building2Icon,
+  },
+  {
+    title: "Manage Custom Fields",
+    to: "/admin/custom-fields",
+    icon: BriefcaseBusinessIcon,
+  },
+  {
+    title: "Reports",
+    to: "/reports",
+    icon: FileTextIcon,
+  },
+];
+
+const instituteNavigationItems = [
   {
     title: "Dashboard",
     to: "/dashboard",
@@ -85,26 +108,8 @@ export default function AppSidebar() {
     getSelectedFinancialYearStart,
     getSelectedFinancialYearStart,
   );
-  const visibleNavigationItems = (() => {
-    if (session?.user.role === "admin") {
-      return [
-        navigationItems[0],
-        {
-          title: "Institution",
-          to: "/institutions",
-          icon: Building2Icon,
-        },
-        {
-          title: "Manage Custom Fields",
-          to: "/admin/custom-fields",
-          icon: BriefcaseBusinessIcon,
-        },
-        navigationItems[4],
-      ];
-    }
-
-    return navigationItems;
-  })();
+  const visibleNavigationItems =
+    session?.user.role === "admin" ? adminNavigationItems : instituteNavigationItems;
 
   function updateFinancialYear(value: string | null) {
     const nextFinancialYearStart = Number(value);

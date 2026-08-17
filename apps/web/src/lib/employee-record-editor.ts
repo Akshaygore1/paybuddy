@@ -99,8 +99,7 @@ export function reconcileEmployeeRecordEditor(
   const identityChanged =
     input.identity.mode !== state.identity.mode ||
     (input.identity.mode === "edit" &&
-      (state.identity.mode !== "edit" ||
-        input.identity.employeeId !== state.identity.employeeId));
+      (state.identity.mode !== "edit" || input.identity.employeeId !== state.identity.employeeId));
 
   if (identityChanged) {
     return createEmployeeRecordEditorState(input);
@@ -183,10 +182,7 @@ export function prepareEmployeeRecordSubmission(
       if (field === "customFieldValues" && typeof customFieldId === "string") {
         errors.customFieldValues ??= {};
         errors.customFieldValues[customFieldId] ??= issue.message;
-      } else if (
-        typeof field === "string" &&
-        !errors[field as EmployeeRecordBaseField]
-      ) {
+      } else if (typeof field === "string" && !errors[field as EmployeeRecordBaseField]) {
         errors[field as EmployeeRecordBaseField] = issue.message;
       }
     }

@@ -194,7 +194,9 @@ test.describe("employee-directory regression suite", () => {
       // Default visible columns: Employee, Rank, Designation, Contact, Created
       await expect(page.getByRole("columnheader", { name: "Employee", exact: true })).toBeVisible();
       await expect(page.getByRole("columnheader", { name: "Rank", exact: true })).toBeVisible();
-      await expect(page.getByRole("columnheader", { name: "Designation", exact: true })).toBeVisible();
+      await expect(
+        page.getByRole("columnheader", { name: "Designation", exact: true }),
+      ).toBeVisible();
       await expect(page.getByRole("columnheader", { name: "Contact", exact: true })).toBeVisible();
       await expect(page.getByRole("columnheader", { name: "Created", exact: true })).toBeVisible();
 
@@ -202,10 +204,16 @@ test.describe("employee-directory regression suite", () => {
       await expect(page.getByRole("columnheader", { name: "PAN", exact: true })).toHaveCount(0);
       await expect(page.getByRole("columnheader", { name: "PF", exact: true })).toHaveCount(0);
       await expect(page.getByRole("columnheader", { name: "NPS", exact: true })).toHaveCount(0);
-      await expect(page.getByRole("columnheader", { name: "WhatsApp", exact: true })).toHaveCount(0);
-      await expect(page.getByRole("columnheader", { name: "Date of Birth", exact: true })).toHaveCount(0);
+      await expect(page.getByRole("columnheader", { name: "WhatsApp", exact: true })).toHaveCount(
+        0,
+      );
+      await expect(
+        page.getByRole("columnheader", { name: "Date of Birth", exact: true }),
+      ).toHaveCount(0);
       await expect(page.getByRole("columnheader", { name: "Gender", exact: true })).toHaveCount(0);
-      await expect(page.getByRole("columnheader", { name: customField.label, exact: true })).toHaveCount(0);
+      await expect(
+        page.getByRole("columnheader", { name: customField.label, exact: true }),
+      ).toHaveCount(0);
 
       const targetRow = employeeRow(page, sampleEmp.displayName);
       await expect(targetRow).toBeVisible();
@@ -236,11 +244,15 @@ test.describe("employee-directory regression suite", () => {
       await expect(targetRow).toContainText(sampleEmp.gender);
 
       await setColumnVisibility(page, "Date of Birth", true);
-      await expect(page.getByRole("columnheader", { name: "Date of Birth", exact: true })).toBeVisible();
+      await expect(
+        page.getByRole("columnheader", { name: "Date of Birth", exact: true }),
+      ).toBeVisible();
 
       // --- F. Enable Custom Field Column ---
       await setColumnVisibility(page, customField.label, true);
-      await expect(page.getByRole("columnheader", { name: customField.label, exact: true })).toBeVisible();
+      await expect(
+        page.getByRole("columnheader", { name: customField.label, exact: true }),
+      ).toBeVisible();
       await expect(targetRow).toContainText(sampleEmp.customFieldValue);
 
       // --- G. Disable Columns and verify removal from DOM ---
@@ -252,7 +264,9 @@ test.describe("employee-directory regression suite", () => {
       await expect(page.getByRole("columnheader", { name: "PF", exact: true })).toHaveCount(0);
 
       await setColumnVisibility(page, customField.label, false);
-      await expect(page.getByRole("columnheader", { name: customField.label, exact: true })).toHaveCount(0);
+      await expect(
+        page.getByRole("columnheader", { name: customField.label, exact: true }),
+      ).toHaveCount(0);
       await expect(targetRow).not.toContainText(sampleEmp.customFieldValue);
 
       await signOut(page);

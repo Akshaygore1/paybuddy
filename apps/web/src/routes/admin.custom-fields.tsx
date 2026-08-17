@@ -67,7 +67,8 @@ export default function AdminManageCustomFieldsPage() {
 
   // Determine current active status & period info
   const financialYearStart = getSelectedFinancialYearStart();
-  const currentMonth = getPayrollFinancialYearMonths(financialYearStart)[0]?.value ?? `${financialYearStart}-04`;
+  const currentMonth =
+    getPayrollFinancialYearMonths(financialYearStart)[0]?.value ?? `${financialYearStart}-04`;
 
   const confirmModal = useConfirmModal();
 

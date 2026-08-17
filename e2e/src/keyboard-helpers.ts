@@ -32,11 +32,7 @@ export async function fillActiveElement(page: Page, text: string) {
   await page.keyboard.type(text);
 }
 
-export async function tabUntilFocused(
-  page: Page,
-  target: Locator,
-  maxTabs = 25,
-) {
+export async function tabUntilFocused(page: Page, target: Locator, maxTabs = 25) {
   for (let i = 0; i < maxTabs; i++) {
     const isTargetFocused = await target
       .evaluate((node) => node === document.activeElement)

@@ -21,10 +21,7 @@ export function isPayrollFinancialYearStart(value: unknown): value is PayrollFin
   );
 }
 
-export function containsPayrollMonth(
-  financialYearStart: number,
-  yyyyMm: string,
-) {
+export function containsPayrollMonth(financialYearStart: number, yyyyMm: string) {
   const match = payrollMonthPattern.exec(yyyyMm);
 
   if (!match) {
@@ -35,8 +32,7 @@ export function containsPayrollMonth(
   const month = Number(match[2]);
 
   return (
-    (year === financialYearStart && month >= 4) ||
-    (year === financialYearStart + 1 && month <= 3)
+    (year === financialYearStart && month >= 4) || (year === financialYearStart + 1 && month <= 3)
   );
 }
 
@@ -60,9 +56,7 @@ export function getPayrollFinancialYearLabel(financialYearStart: number) {
   return `${financialYearStart}-${financialYearStart + 1}`;
 }
 
-export function getCurrentPayrollFinancialYearStart(
-  date = new Date(),
-): PayrollFinancialYearStart {
+export function getCurrentPayrollFinancialYearStart(date = new Date()): PayrollFinancialYearStart {
   const year = date.getUTCFullYear();
   const monthIndex = date.getUTCMonth();
   const financialYearStart = monthIndex >= 3 ? year : year - 1;
@@ -72,10 +66,7 @@ export function getCurrentPayrollFinancialYearStart(
     : payrollFinancialYearStartValues[0];
 }
 
-export function getDefaultPayrollMonth(
-  financialYearStart: number,
-  date = new Date(),
-) {
+export function getDefaultPayrollMonth(financialYearStart: number, date = new Date()) {
   const currentMonth = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
   return containsPayrollMonth(financialYearStart, currentMonth)
     ? currentMonth

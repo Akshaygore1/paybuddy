@@ -26,10 +26,10 @@ export const payrollPeriodSchema = financialYearStartSchema
   .extend({
     month: payrollMonthSchema,
   })
-  .refine(
-    ({ financialYearStart, month }) => containsPayrollMonth(financialYearStart, month),
-    { path: ["month"], message: "Month must belong to the financial year" },
-  );
+  .refine(({ financialYearStart, month }) => containsPayrollMonth(financialYearStart, month), {
+    path: ["month"],
+    message: "Month must belong to the financial year",
+  });
 
 export const payrollEmployeeFormSchema = payrollPeriodSchema.safeExtend({
   employeeId: requiredTextSchema,
@@ -72,4 +72,3 @@ export const getAdminPayrollCustomFieldsSchema = z.object({
 
 export type SavePayrollInput = z.infer<typeof savePayrollSchema>;
 export type AddPayrollCustomFieldInput = z.infer<typeof addPayrollCustomFieldSchema>;
-

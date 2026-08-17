@@ -5,11 +5,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@tds-nivaran/ui/components/card";
-import {
-  Field,
-  FieldError,
-  FieldLabel,
-} from "@tds-nivaran/ui/components/field";
+import { Field, FieldError, FieldLabel } from "@tds-nivaran/ui/components/field";
 import { resetInstitutionPasswordSchema } from "@tds-nivaran/api/schemas/institutions";
 import { Button } from "@tds-nivaran/ui/components/button";
 import { Input } from "@tds-nivaran/ui/components/input";
@@ -54,9 +50,7 @@ export default function InstitutionDetailPage() {
     trpc.institutions.setLoginAccess.mutationOptions({
       onSuccess: async (_data, variables) => {
         toast.success(
-          variables.active
-            ? "Institution login activated"
-            : "Institution login deactivated",
+          variables.active ? "Institution login activated" : "Institution login deactivated",
         );
         await queryClient.invalidateQueries({
           queryKey: trpc.institutions.getById.queryKey({ institutionId }),
@@ -117,15 +111,12 @@ export default function InstitutionDetailPage() {
             <CardHeader>
               <CardTitle>Institution details</CardTitle>
               <CardDescription>
-                Current login status:{" "}
-                {institution.loginActive ? "Active" : "Inactive"}
+                Current login status: {institution.loginActive ? "Active" : "Inactive"}
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4 md:grid-cols-2">
               <div>
-                <p className="text-sm text-muted-foreground">
-                  Institution Name
-                </p>
+                <p className="text-sm text-muted-foreground">Institution Name</p>
                 <p className="font-medium">{institution.name}</p>
               </div>
               <div>
@@ -133,21 +124,15 @@ export default function InstitutionDetailPage() {
                 <p className="font-medium">{institution.tanNumber}</p>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">
-                  Institution Head
-                </p>
+                <p className="text-sm text-muted-foreground">Institution Head</p>
                 <p className="font-medium">{institution.institutionHead}</p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Username</p>
-                <p className="font-medium">
-                  {institution.username ?? "Not set"}
-                </p>
+                <p className="font-medium">{institution.username ?? "Not set"}</p>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">
-                  System User Name
-                </p>
+                <p className="text-sm text-muted-foreground">System User Name</p>
                 <p className="font-medium">{institution.userName}</p>
               </div>
               <div>
@@ -160,15 +145,11 @@ export default function InstitutionDetailPage() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Created</p>
-                <p className="font-medium">
-                  {formatInstitutionDateTime(institution.createdAt)}
-                </p>
+                <p className="font-medium">{formatInstitutionDateTime(institution.createdAt)}</p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Last Updated</p>
-                <p className="font-medium">
-                  {formatInstitutionDateTime(institution.updatedAt)}
-                </p>
+                <p className="font-medium">{formatInstitutionDateTime(institution.updatedAt)}</p>
               </div>
             </CardContent>
           </Card>
@@ -198,13 +179,8 @@ export default function InstitutionDetailPage() {
                     />
                     <FieldError>{passwordError}</FieldError>
                   </Field>
-                  <Button
-                    type="submit"
-                    disabled={resetPasswordMutation.isPending}
-                  >
-                    {resetPasswordMutation.isPending
-                      ? "Resetting..."
-                      : "Reset Password"}
+                  <Button type="submit" disabled={resetPasswordMutation.isPending}>
+                    {resetPasswordMutation.isPending ? "Resetting..." : "Reset Password"}
                   </Button>
                 </form>
               </CardContent>
@@ -214,8 +190,7 @@ export default function InstitutionDetailPage() {
               <CardHeader>
                 <CardTitle>Login access</CardTitle>
                 <CardDescription>
-                  Deactivation blocks future sign-ins while keeping the
-                  institution record visible.
+                  Deactivation blocks future sign-ins while keeping the institution record visible.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">

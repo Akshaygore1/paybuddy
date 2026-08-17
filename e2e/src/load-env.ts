@@ -3,10 +3,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { config as loadDotenv } from "dotenv";
 
-export const repositoryRoot = resolve(
-  dirname(fileURLToPath(import.meta.url)),
-  "../..",
-);
+export const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
 const environmentFiles = [
   resolve(repositoryRoot, "e2e/.env.test"),

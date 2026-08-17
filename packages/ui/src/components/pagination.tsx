@@ -34,11 +34,7 @@ type PaginationButtonProps = React.ComponentProps<typeof Button> & {
   text?: string;
 };
 
-function PaginationPrevious({
-  className,
-  text = "Previous",
-  ...props
-}: PaginationButtonProps) {
+function PaginationPrevious({ className, text = "Previous", ...props }: PaginationButtonProps) {
   return (
     <Button
       aria-label="Go to previous page"

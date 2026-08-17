@@ -91,10 +91,7 @@ export const employees = sqliteTable(
       "employees_date_of_birth_format_check",
       sql`${table.dateOfBirth} GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'`,
     ),
-    check(
-      "employees_gender_check",
-      sql`${table.gender} IN ('Male', 'Female')`,
-    ),
+    check("employees_gender_check", sql`${table.gender} IN ('Male', 'Female')`),
   ],
 );
 
@@ -127,16 +124,13 @@ export const employeeCustomFieldValues = sqliteTable(
   ],
 );
 
-export const employeeDesignationsRelations = relations(
-  employeeDesignations,
-  ({ one, many }) => ({
-    institution: one(institutions, {
-      fields: [employeeDesignations.institutionId],
-      references: [institutions.id],
-    }),
-    employees: many(employees),
+export const employeeDesignationsRelations = relations(employeeDesignations, ({ one, many }) => ({
+  institution: one(institutions, {
+    fields: [employeeDesignations.institutionId],
+    references: [institutions.id],
   }),
-);
+  employees: many(employees),
+}));
 
 export const employeeCustomFieldDefinitionsRelations = relations(
   employeeCustomFieldDefinitions,

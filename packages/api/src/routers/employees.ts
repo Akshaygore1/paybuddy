@@ -1,9 +1,5 @@
 import { buildEmployeeRecordsModule } from "../modules/employee-records";
-import {
-  createEmployeeSchema,
-  employeeIdSchema,
-  updateEmployeeSchema,
-} from "../schemas/employees";
+import { createEmployeeSchema, employeeIdSchema, updateEmployeeSchema } from "../schemas/employees";
 import { institutionProcedure, router } from "../index";
 
 const employeeRecords = buildEmployeeRecordsModule();
